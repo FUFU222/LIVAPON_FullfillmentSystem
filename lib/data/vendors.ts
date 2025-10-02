@@ -1,0 +1,419 @@
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/supabase/types';
+
+const serviceUrl = process.env.SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const serviceClient: SupabaseClient<Database> | null = serviceUrl && serviceKey
+  ? createClient<Database>(serviceUrl, serviceKey, {
+      auth: {
+        persistSession: false
+      }
+    })
+  : null;
+
+type VendorApplicationRecord = Database['public']['Tables']['vendor_applications']['Row'];
+
+type VendorInsert = Database['public']['Tables']['vendors']['Insert'];
+
+type MinimalVendor = {
+  id: number;
+  code: string | null;
+  name: string;
+  contact_email: string | null;
+};
+
+export type VendorProfile = {
+  id: number;
+  code: string | null;
+  name: string;
+  contactEmail: string | null;
+};
+
+export type VendorApplication = {
+  id: number;
+  vendorCode: string | null;
+  companyName: string;
+  contactName: string | null;
+  contactEmail: string;
+  message: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  notes: string | null;
+  vendorId: number | null;
+  reviewerId: string | null;
+  reviewerEmail: string | null;
+  reviewedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+function assertServiceClient(): SupabaseClient {
+  if (!serviceClient) {
+    throw new Error('Supabase service client is not configured');
+  }
+  return serviceClient;
+}
+
+function sanitizeVendorCode(code: string | null | undefined): string | null {
+  if (!code) {
+    return null;
+  }
+  const normalized = code.trim();
+  if (!/^\d{4}$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function toVendorApplication(record: VendorApplicationRecord): VendorApplication {
+  return {
+    id: record.id,
+    vendorCode: record.vendor_code,
+    companyName: record.company_name,
+    contactName: record.contact_name,
+    contactEmail: record.contact_email,
+    message: record.message,
+    status: (record.status as VendorApplication['status']) ?? 'pending',
+    notes: record.notes,
+    vendorId: record.vendor_id,
+    reviewerId: record.reviewer_id,
+    reviewerEmail: record.reviewer_email,
+    reviewedAt: record.reviewed_at,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at
+  };
+}
+
+async function generateNextVendorCode(client: SupabaseClient<Database>): Promise<string> {
+  const { data, error } = await client
+    .from('vendors')
+    .select('code')
+    .not('code', 'is', null)
+    .order('code', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  const latestCode = data?.[0]?.code;
+  const numeric = Number(latestCode ?? '0');
+  if (Number.isNaN(numeric)) {
+    return '0001';
+  }
+  const next = numeric + 1;
+  return next.toString().padStart(4, '0');
+}
+
+async function ensureVendor(
+  client: SupabaseClient<Database>,
+  params: {
+    vendorId: number | null;
+    vendorCode: string | null;
+    companyName: string;
+    contactEmail: string;
+  }
+): Promise<MinimalVendor> {
+  if (params.vendorId) {
+    const { data, error } = await client
+      .from('vendors')
+      .select('id, code, name, contact_email')
+      .eq('id', params.vendorId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (data) {
+      return data;
+    }
+  }
+
+  const sanitizedCode = sanitizeVendorCode(params.vendorCode);
+
+  if (sanitizedCode) {
+    const { data: existingVendor, error: existingVendorError } = await client
+      .from('vendors')
+      .select('id, code, name, contact_email')
+      .eq('code', sanitizedCode)
+      .maybeSingle();
+
+    if (existingVendorError) {
+      throw existingVendorError;
+    }
+
+    if (existingVendor) {
+      return existingVendor;
+    }
+
+    const insertPayload: VendorInsert = {
+      code: sanitizedCode,
+      name: params.companyName,
+      contact_email: params.contactEmail
+    };
+
+    const { data: insertedVendor, error: insertError } = await client
+      .from('vendors')
+      .insert(insertPayload)
+      .select('id, code, name, contact_email')
+      .single();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    return insertedVendor;
+  }
+
+  const nextCode = await generateNextVendorCode(client);
+  const insertPayload: VendorInsert = {
+    code: nextCode,
+    name: params.companyName,
+    contact_email: params.contactEmail
+  };
+
+  const { data: newVendor, error: newVendorError } = await client
+    .from('vendors')
+    .insert(insertPayload)
+      .select('id, code, name, contact_email')
+    .single();
+
+  if (newVendorError) {
+    throw newVendorError;
+  }
+
+  return newVendor;
+}
+
+export async function createVendorApplication(input: {
+  vendorCode?: string;
+  companyName: string;
+  contactName?: string;
+  contactEmail: string;
+  message?: string;
+}): Promise<VendorApplication> {
+  const client = assertServiceClient();
+
+  const normalizedVendorCode = sanitizeVendorCode(input.vendorCode ?? null);
+  const normalizedEmail = input.contactEmail.trim().toLowerCase();
+
+  const { data: existingPending, error: existingError } = await client
+    .from('vendor_applications')
+    .select('id, status')
+    .eq('contact_email', normalizedEmail)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existingPending) {
+    throw new Error('既に審査中の申請が存在します');
+  }
+
+  const insertPayload: Database['public']['Tables']['vendor_applications']['Insert'] = {
+    vendor_code: normalizedVendorCode,
+    company_name: input.companyName.trim(),
+    contact_name: input.contactName?.trim() ?? null,
+    contact_email: normalizedEmail,
+    message: input.message?.trim() ?? null,
+    status: 'pending'
+  };
+
+  const { data, error } = await client
+    .from('vendor_applications')
+    .insert(insertPayload)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toVendorApplication(data);
+}
+
+export async function getPendingVendorApplications(): Promise<VendorApplication[]> {
+  const client = assertServiceClient();
+
+  const { data, error } = await client
+    .from('vendor_applications')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toVendorApplication);
+}
+
+export async function getRecentVendorApplications(limit = 20): Promise<VendorApplication[]> {
+  const client = assertServiceClient();
+
+  const { data, error } = await client
+    .from('vendor_applications')
+    .select('*')
+    .neq('status', 'pending')
+    .order('reviewed_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toVendorApplication);
+}
+
+export async function approveVendorApplication(params: {
+  applicationId: number;
+  reviewerId: string;
+  reviewerEmail: string | null;
+  notes?: string | null;
+}): Promise<{ vendorId: number; vendorCode: string }> {
+  const client = assertServiceClient();
+
+  const { data: application, error: fetchError } = await client
+    .from('vendor_applications')
+    .select('*')
+    .eq('id', params.applicationId)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  if (!application) {
+    throw new Error('申請が見つかりません');
+  }
+
+  if (application.status !== 'pending') {
+    throw new Error('この申請は既に処理済みです');
+  }
+
+  const vendor = await ensureVendor(client, {
+    vendorId: application.vendor_id,
+    vendorCode: application.vendor_code,
+    companyName: application.company_name,
+    contactEmail: application.contact_email
+  });
+
+  const { error: updateApplicationError } = await client
+    .from('vendor_applications')
+    .update({
+      status: 'approved',
+      vendor_id: vendor.id,
+      vendor_code: vendor.code,
+      reviewed_at: new Date().toISOString(),
+      reviewer_id: params.reviewerId,
+      reviewer_email: params.reviewerEmail,
+      notes: params.notes ?? null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', params.applicationId);
+
+  if (updateApplicationError) {
+    throw updateApplicationError;
+  }
+
+  const { error: updateVendorError } = await client
+    .from('vendors')
+    .update({
+      name: application.company_name,
+      contact_email: application.contact_email
+    })
+    .eq('id', vendor.id);
+
+  if (updateVendorError) {
+    throw updateVendorError;
+  }
+
+  if (serviceKey) {
+    try {
+      await client.auth.admin.inviteUserByEmail(application.contact_email, {
+        data: {
+          vendor_id: vendor.id,
+          role: 'vendor'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to invite vendor user', error);
+    }
+  }
+
+  return {
+    vendorId: vendor.id,
+    vendorCode: vendor.code ?? ''
+  };
+}
+
+export async function rejectVendorApplication(params: {
+  applicationId: number;
+  reviewerId: string;
+  reviewerEmail: string | null;
+  reason?: string | null;
+}): Promise<void> {
+  const client = assertServiceClient();
+
+  const { data: application, error: fetchError } = await client
+    .from('vendor_applications')
+    .select('id, status')
+    .eq('id', params.applicationId)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  if (!application) {
+    throw new Error('申請が見つかりません');
+  }
+
+  if (application.status !== 'pending') {
+    throw new Error('この申請は既に処理済みです');
+  }
+
+  const { error: updateError } = await client
+    .from('vendor_applications')
+    .update({
+      status: 'rejected',
+      notes: params.reason ?? null,
+      reviewed_at: new Date().toISOString(),
+      reviewer_id: params.reviewerId,
+      reviewer_email: params.reviewerEmail,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', params.applicationId);
+
+  if (updateError) {
+    throw updateError;
+  }
+}
+
+export async function getVendorProfile(vendorId: number): Promise<VendorProfile | null> {
+  const client = assertServiceClient();
+
+  const { data, error } = await client
+    .from('vendors')
+    .select('id, code, name, contact_email')
+    .eq('id', vendorId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    code: data.code,
+    name: data.name,
+    contactEmail: data.contact_email
+  };
+}

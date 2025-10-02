@@ -27,22 +27,8 @@ export function UploadForm() {
             required
           />
           <p className="text-xs text-slate-500">
-            フォーマット: order_number,line_item_id,tracking_number,carrier
+            フォーマット: order_number,sku,tracking_number,carrier
           </p>
-        </div>
-
-        <div className="grid gap-2 text-sm text-slate-600">
-          <label htmlFor="vendorId" className="font-medium text-foreground">
-            ベンダーID (任意)
-          </label>
-          <input
-            id="vendorId"
-            name="vendorId"
-            type="number"
-            inputMode="numeric"
-            placeholder="1"
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/70"
-          />
         </div>
 
         <div className="flex justify-end">
@@ -68,7 +54,7 @@ export function UploadForm() {
             <TableHeader>
               <TableRow>
                 <TableHead>注文番号</TableHead>
-                <TableHead>Line Item ID</TableHead>
+                <TableHead>SKU</TableHead>
                 <TableHead>追跡番号</TableHead>
                 <TableHead>配送業者</TableHead>
               </TableRow>
@@ -77,7 +63,7 @@ export function UploadForm() {
               {state.preview.map((row, index) => (
                 <TableRow key={`${row.orderNumber}-${index}`}>
                   <TableCell>{row.orderNumber}</TableCell>
-                  <TableCell>{row.lineItemId}</TableCell>
+                  <TableCell>{row.sku}</TableCell>
                   <TableCell>{row.trackingNumber}</TableCell>
                   <TableCell className="capitalize">{row.carrier}</TableCell>
                 </TableRow>

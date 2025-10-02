@@ -1,0 +1,93 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { approveVendorApplication, rejectVendorApplication } from '@/lib/data/vendors';
+import { requireAuthContext, assertAdmin } from '@/lib/auth';
+
+export type AdminActionState = {
+  status: 'idle' | 'success' | 'error';
+  message: string | null;
+};
+
+export const initialAdminActionState: AdminActionState = {
+  status: 'idle',
+  message: null
+};
+
+export async function approveApplicationAction(
+  _prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const applicationId = Number(formData.get('applicationId'));
+  const notes = (formData.get('notes') as string | null)?.trim() ?? null;
+
+  if (!Number.isFinite(applicationId) || applicationId <= 0) {
+    return { status: 'error', message: '申請IDが無効です' };
+  }
+
+  const auth = await requireAuthContext();
+  assertAdmin(auth);
+
+  try {
+    const result = await approveVendorApplication({
+      applicationId,
+      reviewerId: auth.user.id,
+      reviewerEmail: auth.user.email ?? null,
+      notes
+    });
+
+    revalidatePath('/admin/applications');
+
+    return {
+      status: 'success',
+      message: `申請を承認しました。ベンダーコード: ${result.vendorCode}`
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      message:
+        error instanceof Error
+          ? error.message
+          : '申請の承認中にエラーが発生しました'
+    };
+  }
+}
+
+export async function rejectApplicationAction(
+  _prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const applicationId = Number(formData.get('applicationId'));
+  const reason = (formData.get('reason') as string | null)?.trim() ?? null;
+
+  if (!Number.isFinite(applicationId) || applicationId <= 0) {
+    return { status: 'error', message: '申請IDが無効です' };
+  }
+
+  const auth = await requireAuthContext();
+  assertAdmin(auth);
+
+  try {
+    await rejectVendorApplication({
+      applicationId,
+      reviewerId: auth.user.id,
+      reviewerEmail: auth.user.email ?? null,
+      reason
+    });
+
+    revalidatePath('/admin/applications');
+
+    return {
+      status: 'success',
+      message: '申請を却下しました'
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      message:
+        error instanceof Error
+          ? error.message
+          : '申請の却下中にエラーが発生しました'
+    };
+  }
+}

@@ -1,8 +1,16 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UploadForm } from './upload-form';
+import { getAuthContext } from '@/lib/auth';
 
-export default function ImportPage() {
+export default async function ImportPage() {
+  const auth = await getAuthContext();
+
+  if (!auth || auth.vendorId === null) {
+    redirect('/sign-in?redirectTo=/import');
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Link href="/orders" className="text-sm text-slate-500 hover:text-foreground">

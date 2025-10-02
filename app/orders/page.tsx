@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrderFilters } from '@/components/orders/order-filters';
 import { OrderTable } from '@/components/orders/order-table';
 import { getOrders } from '@/lib/data/orders';
+import { getAuthContext } from '@/lib/auth';
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -24,13 +26,38 @@ function filterOrders(
   });
 }
 
+function buildRedirectTarget(searchParams: SearchParams) {
+  const nextParams = new URLSearchParams();
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => {
+        if (typeof entry === 'string') {
+          nextParams.append(key, entry);
+        }
+      });
+    } else if (typeof value === 'string') {
+      nextParams.set(key, value);
+    }
+  });
+
+  const query = nextParams.toString();
+  return query ? `/orders?${query}` : '/orders';
+}
+
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
+  const redirectTarget = buildRedirectTarget(searchParams);
+  const auth = await getAuthContext();
+
+  if (!auth || auth.vendorId === null) {
+    redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
+  }
+
   const params = {
     q: Array.isArray(searchParams.q) ? searchParams.q[0] : searchParams.q,
     status: Array.isArray(searchParams.status) ? searchParams.status[0] : searchParams.status
   };
 
-  const orders = await getOrders();
+  const orders = await getOrders(auth.vendorId);
   const filtered = filterOrders(orders, params);
 
   return (

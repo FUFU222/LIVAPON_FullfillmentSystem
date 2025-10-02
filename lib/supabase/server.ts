@@ -1,9 +1,11 @@
 import { cookies } from 'next/headers';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createServerComponentClient, createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import type { Database } from './types';
 
-export function getServerClient() {
-  return createServerComponentClient<Database>({
-    cookies
-  });
+export function getServerComponentClient() {
+  return createServerComponentClient<Database>({ cookies });
+}
+
+export function getServerActionClient() {
+  return createServerActionClient<Database>({ cookies });
 }

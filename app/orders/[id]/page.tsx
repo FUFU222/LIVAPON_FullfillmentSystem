@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/orders/status-badge';
-import { ShipmentEditor } from '@/components/orders/shipment-editor';
 import { OrderStatusController } from '@/components/orders/order-status-controller';
+import { ShipmentManager } from '@/components/orders/shipment-manager';
 import { getOrderDetail } from '@/lib/data/orders';
+import { getAuthContext } from '@/lib/auth';
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const orderId = Number(params.id);
@@ -13,7 +14,14 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     notFound();
   }
 
-  const order = await getOrderDetail(orderId);
+  const redirectTarget = `/orders/${params.id}`;
+  const auth = await getAuthContext();
+
+  if (!auth || auth.vendorId === null) {
+    redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
+  }
+
+  const order = await getOrderDetail(auth.vendorId, orderId);
 
   if (!order) {
     notFound();
@@ -37,23 +45,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </div>
         </CardHeader>
         <CardContent className="gap-6">
-          <div className="flex flex-col gap-6">
-            {order.lineItems.map((item) => (
-              <div key={item.id} className="rounded-lg border border-slate-200 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-base font-medium text-foreground">{item.productName}</p>
-                    <p className="text-sm text-slate-500">
-                      数量: {item.quantity} / 発送済: {item.fulfilledQuantity ?? 0}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <ShipmentEditor orderId={order.id} lineItem={item} />
-                </div>
-              </div>
-            ))}
-          </div>
+          <ShipmentManager orderId={order.id} lineItems={order.lineItems} shipments={order.shipments} />
         </CardContent>
       </Card>
     </div>

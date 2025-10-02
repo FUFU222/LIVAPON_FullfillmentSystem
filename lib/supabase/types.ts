@@ -12,18 +12,21 @@ export interface Database {
       vendors: {
         Row: {
           id: number;
+          code: string | null;
           name: string;
           contact_email: string | null;
           created_at: string | null;
         };
         Insert: {
           id?: number;
+          code?: string | null;
           name: string;
           contact_email?: string | null;
           created_at?: string | null;
         };
         Update: {
           id?: number;
+          code?: string | null;
           name?: string;
           contact_email?: string | null;
           created_at?: string | null;
@@ -70,11 +73,72 @@ export interface Database {
           }
         ];
       };
+      vendor_applications: {
+        Row: {
+          id: number;
+          vendor_code: string | null;
+          company_name: string;
+          contact_name: string | null;
+          contact_email: string;
+          message: string | null;
+          status: string | null;
+          notes: string | null;
+          vendor_id: number | null;
+          reviewer_id: string | null;
+          reviewer_email: string | null;
+          reviewed_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          vendor_code?: string | null;
+          company_name: string;
+          contact_name?: string | null;
+          contact_email: string;
+          message?: string | null;
+          status?: string | null;
+          notes?: string | null;
+          vendor_id?: number | null;
+          reviewer_id?: string | null;
+          reviewer_email?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          vendor_code?: string | null;
+          company_name?: string;
+          contact_name?: string | null;
+          contact_email?: string;
+          message?: string | null;
+          status?: string | null;
+          notes?: string | null;
+          vendor_id?: number | null;
+          reviewer_id?: string | null;
+          reviewer_email?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'vendor_applications_vendor_id_fkey';
+            columns: ['vendor_id'];
+            referencedRelation: 'vendors';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       line_items: {
         Row: {
           id: number;
           order_id: number | null;
+          vendor_id: number | null;
+          vendor_sku_id: number | null;
           shopify_line_item_id: number;
+          sku: string | null;
           product_name: string;
           quantity: number;
           fulfilled_quantity: number | null;
@@ -83,7 +147,10 @@ export interface Database {
         Insert: {
           id?: number;
           order_id?: number | null;
+          vendor_id?: number | null;
+          vendor_sku_id?: number | null;
           shopify_line_item_id: number;
+          sku?: string | null;
           product_name: string;
           quantity: number;
           fulfilled_quantity?: number | null;
@@ -92,7 +159,10 @@ export interface Database {
         Update: {
           id?: number;
           order_id?: number | null;
+          vendor_id?: number | null;
+          vendor_sku_id?: number | null;
           shopify_line_item_id?: number;
+          sku?: string | null;
           product_name?: string;
           quantity?: number;
           fulfilled_quantity?: number | null;
@@ -104,13 +174,68 @@ export interface Database {
             columns: ['order_id'];
             referencedRelation: 'orders';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_items_vendor_id_fkey';
+            columns: ['vendor_id'];
+            referencedRelation: 'vendors';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_items_vendor_sku_id_fkey';
+            columns: ['vendor_sku_id'];
+            referencedRelation: 'vendor_skus';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      vendor_skus: {
+        Row: {
+          id: number;
+          vendor_id: number | null;
+          sku: string;
+          product_number: number;
+          variation_number: number;
+          shopify_product_id: number | null;
+          shopify_variant_id: number | null;
+          attributes: Json | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          vendor_id?: number | null;
+          sku: string;
+          product_number: number;
+          variation_number: number;
+          shopify_product_id?: number | null;
+          shopify_variant_id?: number | null;
+          attributes?: Json | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          vendor_id?: number | null;
+          sku?: string;
+          product_number?: number;
+          variation_number?: number;
+          shopify_product_id?: number | null;
+          shopify_variant_id?: number | null;
+          attributes?: Json | null;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'vendor_skus_vendor_id_fkey';
+            columns: ['vendor_id'];
+            referencedRelation: 'vendors';
+            referencedColumns: ['id'];
           }
         ];
       };
       shipments: {
         Row: {
           id: number;
-          line_item_id: number | null;
+          vendor_id: number | null;
           tracking_number: string | null;
           carrier: string | null;
           status: string | null;
@@ -119,7 +244,7 @@ export interface Database {
         };
         Insert: {
           id?: number;
-          line_item_id?: number | null;
+          vendor_id?: number | null;
           tracking_number?: string | null;
           carrier?: string | null;
           status?: string | null;
@@ -128,7 +253,7 @@ export interface Database {
         };
         Update: {
           id?: number;
-          line_item_id?: number | null;
+          vendor_id?: number | null;
           tracking_number?: string | null;
           carrier?: string | null;
           status?: string | null;
@@ -137,9 +262,40 @@ export interface Database {
         };
         Relationships: [
           {
-            foreignKeyName: 'shipments_line_item_id_fkey';
+            foreignKeyName: 'shipments_vendor_id_fkey';
+            columns: ['vendor_id'];
+            referencedRelation: 'vendors';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      shipment_line_items: {
+        Row: {
+          shipment_id: number;
+          line_item_id: number;
+          quantity: number | null;
+        };
+        Insert: {
+          shipment_id: number;
+          line_item_id: number;
+          quantity?: number | null;
+        };
+        Update: {
+          shipment_id?: number;
+          line_item_id?: number;
+          quantity?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'shipment_line_items_line_item_id_fkey';
             columns: ['line_item_id'];
             referencedRelation: 'line_items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shipment_line_items_shipment_id_fkey';
+            columns: ['shipment_id'];
+            referencedRelation: 'shipments';
             referencedColumns: ['id'];
           }
         ];

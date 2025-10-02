@@ -37,7 +37,7 @@ CHAIRMAN 向けに、Shopify 注文データを同期し、メーカー（ベン
 ### 3. CSV インポート
 
 - CSV フォーマット：  
-  `order_number, line_item_id, tracking_number, carrier`
+  `order_number, sku, tracking_number, carrier`
 - UI：ファイル選択 + アップロードボタン
 - アップロード後にプレビューを表示（先頭数行）
 - 成功/失敗をアラート表示（失敗は理由付き）

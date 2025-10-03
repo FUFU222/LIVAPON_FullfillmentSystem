@@ -18,27 +18,28 @@ export function OrderFilters() {
   const [isPending, startTransition] = useTransition();
 
   function updateParam(key: string, value: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(params?.toString() ?? '');
     if (value) {
       next.set(key, value);
     } else {
       next.delete(key);
     }
     startTransition(() => {
-      router.replace(`/orders?${next.toString()}`);
+      const query = next.toString();
+      router.replace(query ? `/orders?${query}` : '/orders');
     });
   }
 
   return (
     <div className="grid gap-4 sm:grid-cols-[1fr_240px]">
       <Input
-        defaultValue={params.get('q') ?? ''}
+        defaultValue={params?.get('q') ?? ''}
         placeholder="注文番号・顧客名で検索"
         onChange={(event) => updateParam('q', event.target.value)}
         disabled={isPending}
       />
       <Select
-        defaultValue={params.get('status') ?? ''}
+        defaultValue={params?.get('status') ?? ''}
         onChange={(event) => updateParam('status', event.target.value)}
         disabled={isPending}
       >

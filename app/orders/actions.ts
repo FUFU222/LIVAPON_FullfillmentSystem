@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { upsertShipment, updateOrderStatus } from '@/lib/data/orders';
 import { requireAuthContext, assertAuthorizedVendor } from '@/lib/auth';
 import { getServerActionClient } from '@/lib/supabase/server';
+import type { Database } from '@/lib/supabase/types';
 
 export type ShipmentActionState = {
   status: 'idle' | 'success' | 'error';
@@ -46,10 +47,12 @@ export async function saveShipment(
     }
 
     const supabase = getServerActionClient();
+    type ShipmentPivot = Pick<Database['public']['Tables']['shipment_line_items']['Row'], 'line_item_id'>;
     const { data: existing, error: existingError } = await supabase
       .from('shipment_line_items')
       .select('line_item_id')
-      .eq('shipment_id', shipmentId);
+      .eq('shipment_id', shipmentId)
+      .returns<ShipmentPivot[]>();
 
     if (existingError) {
       console.error('Failed to load shipment line items', existingError);

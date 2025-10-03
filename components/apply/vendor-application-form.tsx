@@ -57,7 +57,9 @@ export function VendorApplicationForm() {
             inputMode="numeric"
           />
           <p className="text-xs text-slate-500">4桁の数字で入力してください。未発行の場合は空欄で構いません。</p>
-          {state.errors.vendorCode ? <span className="text-xs text-red-500">{state.errors.vendorCode}</span> : null}
+          {state.errors?.vendorCode ? (
+            <span className="text-xs text-red-500">{state.errors?.vendorCode}</span>
+          ) : null}
         </div>
 
         <div className="grid gap-2 text-sm text-slate-600">
@@ -65,7 +67,9 @@ export function VendorApplicationForm() {
             会社名
           </label>
           <Input id="companyName" name="companyName" required placeholder="株式会社サンプル" />
-          {state.errors.companyName ? <span className="text-xs text-red-500">{state.errors.companyName}</span> : null}
+          {state.errors?.companyName ? (
+            <span className="text-xs text-red-500">{state.errors?.companyName}</span>
+          ) : null}
         </div>
 
         <div className="grid gap-2 text-sm text-slate-600">
@@ -86,7 +90,9 @@ export function VendorApplicationForm() {
             required
             placeholder="contact@example.com"
           />
-          {state.errors.contactEmail ? <span className="text-xs text-red-500">{state.errors.contactEmail}</span> : null}
+          {state.errors?.contactEmail ? (
+            <span className="text-xs text-red-500">{state.errors?.contactEmail}</span>
+          ) : null}
         </div>
 
         <div className="grid gap-2 text-sm text-slate-600">

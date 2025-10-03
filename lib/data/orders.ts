@@ -1,11 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
 import type { Database } from '@/lib/supabase/types';
 
 const serviceUrl = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const serviceClient = serviceUrl && serviceKey
+const serviceClient: SupabaseClient<Database> | null = serviceUrl && serviceKey
   ? createClient<Database>(serviceUrl, serviceKey, {
       auth: {
         persistSession: false
@@ -385,7 +385,7 @@ export async function upsertShipment(
     throw new Error('A valid vendorId is required to update shipments');
   }
 
-  const client = serviceClient;
+  const client: SupabaseClient<Database> = serviceClient;
 
   if (!Array.isArray(shipment.lineItemIds) || shipment.lineItemIds.length === 0) {
     throw new Error('lineItemIds must contain at least one item');
@@ -409,7 +409,7 @@ export async function upsertShipment(
     throw new Error('Unauthorized line items included in shipment');
   }
 
-  const payload = {
+  const payload: Database['public']['Tables']['shipments']['Insert'] = {
     tracking_number: shipment.trackingNumber,
     carrier: shipment.carrier,
     status: shipment.status,
@@ -451,13 +451,15 @@ export async function upsertShipment(
     shipmentId = insertData.id;
   }
 
-  const pivotInserts = shipment.lineItemIds.map((lineItemId) => ({
+  const pivotInserts: Database['public']['Tables']['shipment_line_items']['Insert'][] = shipment.lineItemIds.map((lineItemId) => ({
     shipment_id: shipmentId as number,
     line_item_id: lineItemId,
     quantity: null
   }));
 
-  const { error: pivotError } = await client.from('shipment_line_items').insert(pivotInserts);
+  const { error: pivotError } = await client
+    .from('shipment_line_items')
+    .insert(pivotInserts);
 
   if (pivotError) {
     throw pivotError;

@@ -20,7 +20,11 @@ function SubmitButton({ children, pendingLabel, variant = 'default' }: { childre
 
 function ActionMessage({ state }: { state: AdminActionState }) {
   if (state.status === 'success' && state.message) {
-    return <Alert variant="success">{state.message}</Alert>;
+    return (
+      <Alert variant="success" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+        <span className="font-semibold">{state.message}</span>
+      </Alert>
+    );
   }
   if (state.status === 'error' && state.message) {
     return <Alert variant="destructive">{state.message}</Alert>;
@@ -64,6 +68,23 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
       <div className="grid gap-3 sm:grid-cols-2">
         <form action={approveAction} className="grid gap-3 rounded-md border border-slate-200 p-3">
           <input type="hidden" name="applicationId" value={application.id} />
+          <div className="grid gap-1 text-xs text-slate-600">
+            <label htmlFor={`vendor-code-${application.id}`} className="font-medium text-foreground">
+              ベンダーコード (4 桁)
+            </label>
+            <Input
+              id={`vendor-code-${application.id}`}
+              name="vendorCode"
+              defaultValue={application.vendorCode ?? ''}
+              inputMode="numeric"
+              pattern="\d{4}"
+              maxLength={4}
+              placeholder="空欄の場合は承認時に自動採番"
+            />
+            <p className="text-xs text-slate-500">
+              Shopify 側のコードが決まっていれば入力してください。未入力ならシステムが次のコードを割り当てます。
+            </p>
+          </div>
           <div className="grid gap-1 text-xs text-slate-600">
             <label htmlFor={`notes-${application.id}`} className="font-medium text-foreground">
               メモ (任意)

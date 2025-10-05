@@ -144,6 +144,12 @@ async function ensureVendor(
     }
 
     if (existingVendor) {
+      if (params.vendorId && existingVendor.id !== params.vendorId) {
+        throw new Error('指定したベンダーコードは既に別のベンダーで使用されています');
+      }
+      if (!params.vendorId) {
+        throw new Error('指定したベンダーコードは既に使用されています');
+      }
       return existingVendor;
     }
 
@@ -272,6 +278,7 @@ export async function approveVendorApplication(params: {
   applicationId: number;
   reviewerId: string;
   reviewerEmail: string | null;
+  vendorCode?: string | null;
   notes?: string | null;
 }): Promise<{ vendorId: number; vendorCode: string }> {
   const client = assertServiceClient();
@@ -294,9 +301,11 @@ export async function approveVendorApplication(params: {
     throw new Error('この申請は既に処理済みです');
   }
 
+  const vendorCodeInput = sanitizeVendorCode(params.vendorCode ?? application.vendor_code);
+
   const vendor = await ensureVendor(client, {
     vendorId: application.vendor_id,
-    vendorCode: application.vendor_code,
+    vendorCode: vendorCodeInput ?? application.vendor_code,
     companyName: application.company_name,
     contactEmail: application.contact_email
   });

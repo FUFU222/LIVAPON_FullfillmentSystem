@@ -3,16 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { approveVendorApplication, rejectVendorApplication } from '@/lib/data/vendors';
 import { requireAuthContext, assertAdmin } from '@/lib/auth';
-
-export type AdminActionState = {
-  status: 'idle' | 'success' | 'error';
-  message: string | null;
-};
-
-export const initialAdminActionState: AdminActionState = {
-  status: 'idle',
-  message: null
-};
+import type { AdminActionState } from './state';
 
 export async function approveApplicationAction(
   _prevState: AdminActionState,

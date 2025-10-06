@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { AdminActionState, approveApplicationAction, initialAdminActionState, rejectApplicationAction } from '@/app/admin/applications/actions';
+import { approveApplicationAction, rejectApplicationAction } from '@/app/admin/applications/actions';
+import { initialAdminActionState, type AdminActionState } from '@/app/admin/applications/state';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

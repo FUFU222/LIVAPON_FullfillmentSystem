@@ -294,7 +294,7 @@ export async function getRecentOrdersForAdmin(limit = 5): Promise<AdminOrderPrev
       `id, order_number, customer_name, status, updated_at,
        vendor:vendor_id ( id, code, name )`
     )
-    .order('updated_at', { ascending: false, nullsLast: true })
+    .order('updated_at', { ascending: false })
     .limit(limit);
 
   if (error) {

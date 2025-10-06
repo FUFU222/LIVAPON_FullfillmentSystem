@@ -442,7 +442,7 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select('id, code, name, contact_email, created_at')
-    .order('created_at', { ascending: false, nullsLast: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) {

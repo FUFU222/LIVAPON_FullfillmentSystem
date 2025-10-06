@@ -3,18 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createVendorApplication } from '@/lib/data/vendors';
 import { getServerActionClient } from '@/lib/supabase/server';
-
-export type ApplyFormState = {
-  status: 'idle' | 'success' | 'error';
-  message: string | null;
-  errors: Record<string, string>;
-};
-
-const initialState: ApplyFormState = {
-  status: 'idle',
-  message: null,
-  errors: {}
-};
+import type { ApplyFormState } from './state';
 
 function validateEmail(value: string) {
   return /.+@.+\..+/.test(value);
@@ -82,5 +71,3 @@ export async function submitVendorApplication(
     };
   }
 }
-
-export { initialState as initialApplyFormState };

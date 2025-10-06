@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { submitVendorApplication, initialApplyFormState } from '@/app/(public)/apply/actions';
+import { submitVendorApplication } from '@/app/(public)/apply/actions';
+import { initialApplyFormState } from '@/app/(public)/apply/state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

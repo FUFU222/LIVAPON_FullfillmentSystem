@@ -17,7 +17,15 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const redirectTarget = `/orders/${params.id}`;
   const auth = await getAuthContext();
 
-  if (!auth || auth.vendorId === null) {
+  if (!auth) {
+    redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
+  }
+
+  if (auth.role === 'pending_vendor') {
+    redirect('/pending');
+  }
+
+  if (auth.vendorId === null) {
     redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
   }
 

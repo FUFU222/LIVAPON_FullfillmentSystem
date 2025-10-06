@@ -20,6 +20,7 @@ const adminNavItems = [
 ];
 
 const publicNavItems = [{ href: '/apply', label: '利用申請' }];
+const pendingNavItems = [{ href: '/pending', label: '審査状況' }];
 
 function parseVendorId(meta: Record<string, unknown> | undefined): number | null {
   if (!meta) {
@@ -122,22 +123,46 @@ export function AppShell({ children }: { children: ReactNode }) {
       return publicNavItems;
     }
 
-    if (vendorId) {
-      return navItems;
-    }
-
     if (role === 'admin') {
       return adminNavItems;
     }
 
+    if (role === 'pending_vendor') {
+      return pendingNavItems;
+    }
+
+    if (vendorId) {
+      return navItems;
+    }
+
     return publicNavItems;
+  })();
+
+  const brandHref = (() => {
+    if (status !== 'signed-in') {
+      return '/apply';
+    }
+
+    if (role === 'admin') {
+      return '/admin';
+    }
+
+    if (role === 'pending_vendor') {
+      return '/pending';
+    }
+
+    if (vendorId) {
+      return '/orders';
+    }
+
+    return '/apply';
   })();
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
-          <Link href="/orders" className="text-lg font-semibold tracking-tight text-foreground">
+          <Link href={brandHref} className="text-lg font-semibold tracking-tight text-foreground">
             LIVAPON Fulfillment
           </Link>
           <div className="flex items-center gap-4 text-sm">
@@ -198,6 +223,7 @@ function AuthControls({
         <span className="hidden text-xs text-slate-500 sm:inline">
           {email}
           {role === 'admin' ? '（管理者）' : null}
+          {role === 'pending_vendor' ? '（審査中）' : null}
         </span>
       ) : null}
       <SignOutButton />

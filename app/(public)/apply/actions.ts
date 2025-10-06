@@ -18,6 +18,9 @@ export async function submitVendorApplication(
   const contactName = (formData.get('contactName') as string | null)?.trim() ?? '';
   const contactEmail = (formData.get('contactEmail') as string | null)?.trim() ?? '';
   const message = (formData.get('message') as string | null)?.trim() ?? '';
+  const password = (formData.get('password') as string | null) ?? '';
+  const passwordConfirm = (formData.get('passwordConfirm') as string | null) ?? '';
+  const acceptTerms = formData.get('acceptTerms') === 'on';
 
   const errors: ApplyFormState['errors'] = {};
 
@@ -33,6 +36,18 @@ export async function submitVendorApplication(
     errors.contactEmail = '有効なメールアドレスを入力してください';
   }
 
+  if (password.length < 8) {
+    errors.password = 'パスワードは8文字以上で入力してください';
+  }
+
+  if (password !== passwordConfirm) {
+    errors.passwordConfirm = '確認用パスワードが一致しません';
+  }
+
+  if (!acceptTerms) {
+    errors.acceptTerms = '利用規約への同意が必要です';
+  }
+
   if (Object.keys(errors).length > 0) {
     return {
       status: 'error',
@@ -44,19 +59,48 @@ export async function submitVendorApplication(
   try {
     const supabase = getServerActionClient();
 
-    await createVendorApplication({
-      vendorCode,
-      companyName,
-      contactName,
-      contactEmail,
-      message
-    }, supabase);
+    const signUpResult = await supabase.auth.signUp({
+      email: contactEmail,
+      password,
+      options: {
+        data: {
+          role: 'pending_vendor',
+          company_name: companyName,
+          vendor_code: vendorCode || null,
+          contact_name: contactName || null
+        }
+      }
+    });
+
+    if (signUpResult.error) {
+      return {
+        status: 'error',
+        message:
+          signUpResult.error.message ?? 'アカウントの作成に失敗しました。時間をおいて再度お試しください。',
+        errors: {}
+      };
+    }
+
+    const authUserId = signUpResult.data.user?.id ?? null;
+
+    await createVendorApplication(
+      {
+        vendorCode,
+        companyName,
+        contactName,
+        contactEmail,
+        message,
+        authUserId
+      },
+      supabase
+    );
 
     revalidatePath('/admin/applications');
 
     return {
       status: 'success',
-      message: '利用申請を受け付けました。審査完了までお待ちください。',
+      message:
+        '利用申請とアカウント登録を受け付けました。確認メールをご確認の上、承認完了までお待ちください。',
       errors: {}
     };
   } catch (error) {

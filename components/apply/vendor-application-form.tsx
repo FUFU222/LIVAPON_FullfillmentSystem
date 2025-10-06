@@ -33,7 +33,7 @@ export function VendorApplicationForm() {
       <div className="flex flex-col gap-2 text-center">
         <h1 className="text-2xl font-semibold text-foreground">ベンダー利用申請</h1>
         <p className="text-sm text-slate-500">
-          既定のベンダーコードと会社情報を入力し、利用申請を送信してください。承認後にログイン情報をお送りします。
+          アカウント情報と会社情報を入力し、利用申請を送信してください。メール確認後すぐにサインインできますが、承認完了までベンダー機能はロックされています。
         </p>
       </div>
 
@@ -97,6 +97,43 @@ export function VendorApplicationForm() {
         </div>
 
         <div className="grid gap-2 text-sm text-slate-600">
+          <label htmlFor="password" className="font-medium text-foreground">
+            パスワード
+          </label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            placeholder="8文字以上で入力"
+          />
+          {state.errors?.password ? (
+            <span className="text-xs text-red-500">{state.errors?.password}</span>
+          ) : (
+            <p className="text-xs text-slate-500">半角英数字を含む8文字以上のパスワードを設定してください。</p>
+          )}
+        </div>
+
+        <div className="grid gap-2 text-sm text-slate-600">
+          <label htmlFor="passwordConfirm" className="font-medium text-foreground">
+            パスワード（確認）
+          </label>
+          <Input
+            id="passwordConfirm"
+            name="passwordConfirm"
+            type="password"
+            required
+            autoComplete="new-password"
+            placeholder="確認のため再入力"
+          />
+          {state.errors?.passwordConfirm ? (
+            <span className="text-xs text-red-500">{state.errors?.passwordConfirm}</span>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2 text-sm text-slate-600">
           <label htmlFor="message" className="font-medium text-foreground">
             備考 (任意)
           </label>
@@ -107,6 +144,18 @@ export function VendorApplicationForm() {
             placeholder="サービスの利用目的や補足事項があればご記入ください。"
           />
         </div>
+
+        <label className="flex items-start gap-3 text-sm text-slate-600">
+          <input type="checkbox" name="acceptTerms" className="mt-1" required />
+          <span>
+            <span className="font-medium text-foreground">利用規約への同意</span>
+            <br />
+            送信をもって当サービスの利用規約とプライバシーポリシーに同意したものとみなします。
+          </span>
+        </label>
+        {state.errors?.acceptTerms ? (
+          <span className="text-xs text-red-500">{state.errors?.acceptTerms}</span>
+        ) : null}
 
         <div className="flex justify-end">
           <SubmitButton pendingLabel="送信中...">申請する</SubmitButton>

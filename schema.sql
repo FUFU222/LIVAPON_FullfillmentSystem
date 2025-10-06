@@ -14,6 +14,7 @@ CREATE TABLE vendors (
 -- ベンダー利用申請
 CREATE TABLE vendor_applications (
   id SERIAL PRIMARY KEY,
+  auth_user_id UUID,
   vendor_code CHAR(4),
   company_name VARCHAR(255) NOT NULL,
   contact_name VARCHAR(255),

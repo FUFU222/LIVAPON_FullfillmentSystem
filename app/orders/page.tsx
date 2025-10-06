@@ -48,7 +48,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const redirectTarget = buildRedirectTarget(searchParams);
   const auth = await getAuthContext();
 
-  if (!auth || auth.vendorId === null) {
+  if (!auth) {
+    redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
+  }
+
+  if (auth.role === 'pending_vendor') {
+    redirect('/pending');
+  }
+
+  if (auth.vendorId === null) {
     redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
   }
 

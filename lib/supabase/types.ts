@@ -249,6 +249,7 @@ export type Database = {
       }
       vendor_applications: {
         Row: {
+          auth_user_id: string | null
           company_name: string
           contact_email: string
           contact_name: string | null
@@ -265,6 +266,7 @@ export type Database = {
           vendor_id: number | null
         }
         Insert: {
+          auth_user_id?: string | null
           company_name: string
           contact_email: string
           contact_name?: string | null
@@ -281,6 +283,7 @@ export type Database = {
           vendor_id?: number | null
         }
         Update: {
+          auth_user_id?: string | null
           company_name?: string
           contact_email?: string
           contact_name?: string | null

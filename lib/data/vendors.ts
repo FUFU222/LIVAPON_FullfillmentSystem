@@ -37,6 +37,7 @@ export type VendorListEntry = VendorProfile & {
 };
 
 export type VendorApplication = {
+  authUserId: string | null;
   id: number;
   vendorCode: string | null;
   companyName: string;
@@ -73,6 +74,7 @@ function sanitizeVendorCode(code: string | null | undefined): string | null {
 
 function toVendorApplication(record: VendorApplicationRecord): VendorApplication {
   return {
+    authUserId: record.auth_user_id,
     id: record.id,
     vendorCode: record.vendor_code,
     companyName: record.company_name,
@@ -205,6 +207,7 @@ export async function createVendorApplication(
   contactName?: string;
   contactEmail: string;
   message?: string;
+  authUserId?: string | null;
   },
   clientOverride?: AnySupabaseClient
 ): Promise<VendorApplication> {
@@ -229,6 +232,7 @@ export async function createVendorApplication(
   }
 
   const insertPayload: Database['public']['Tables']['vendor_applications']['Insert'] = {
+    auth_user_id: input.authUserId ?? null,
     vendor_code: normalizedVendorCode,
     company_name: input.companyName.trim(),
     contact_name: input.contactName?.trim() ?? null,
@@ -319,6 +323,23 @@ export async function approveVendorApplication(params: {
     contactEmail: application.contact_email
   });
 
+  if (application.auth_user_id) {
+    try {
+      await client.auth.admin.updateUserById(application.auth_user_id, {
+        app_metadata: {
+          role: 'vendor',
+          vendor_id: vendor.id
+        },
+        user_metadata: {
+          vendor_id: vendor.id
+        }
+      });
+    } catch (updateAuthError) {
+      console.error('Failed to update user metadata for vendor approval', updateAuthError);
+      throw new Error('ユーザー情報の更新に失敗しました。時間をおいて再度お試しください。');
+    }
+  }
+
   const { error: updateApplicationError } = await client
     .from('vendor_applications')
     .update({
@@ -347,19 +368,6 @@ export async function approveVendorApplication(params: {
 
   if (updateVendorError) {
     throw updateVendorError;
-  }
-
-  if (serviceKey) {
-    try {
-      await client.auth.admin.inviteUserByEmail(application.contact_email, {
-        data: {
-          vendor_id: vendor.id,
-          role: 'vendor'
-        }
-      });
-    } catch (error) {
-      console.error('Failed to invite vendor user', error);
-    }
   }
 
   return {

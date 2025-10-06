@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation';
 import { Alert } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getVendors, type VendorListEntry } from '@/lib/data/vendors';
-import { deleteVendorAction } from './actions';
+import { VendorDeleteButton } from '@/components/admin/vendor-delete-button';
 
 function toDisplayDate(value: string | null): string {
   if (!value) {
@@ -79,20 +78,7 @@ export default async function AdminVendorsPage({
                     <td className="px-3 py-2">{vendor.contactEmail ?? '-'}</td>
                     <td className="px-3 py-2 text-xs">{toDisplayDate(vendor.createdAt)}</td>
                     <td className="px-3 py-2 text-right">
-                      <form
-                        action={deleteVendorAction}
-                        className="flex justify-end"
-                      >
-                        <input type="hidden" name="vendorId" value={vendor.id} />
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          className="border-red-200 text-red-600 hover:bg-red-50"
-                          title="ベンダーを削除"
-                        >
-                          削除
-                        </Button>
-                      </form>
+                      <VendorDeleteButton vendorId={vendor.id} vendorName={vendor.name} />
                     </td>
                   </tr>
                 ))}

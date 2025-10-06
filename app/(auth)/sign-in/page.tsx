@@ -28,6 +28,10 @@ export default async function SignInPage({
   const auth = await getAuthContext();
 
   if (auth) {
+    if (auth.role === 'admin') {
+      redirect('/admin');
+    }
+
     redirect(redirectTo);
   }
 

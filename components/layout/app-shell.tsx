@@ -12,7 +12,12 @@ const navItems = [
   { href: '/import', label: 'CSVインポート' }
 ];
 
-const adminNavItems = [{ href: '/admin/applications', label: '申請審査' }];
+const adminNavItems = [
+  { href: '/admin', label: 'ダッシュボード' },
+  { href: '/admin/applications', label: '申請審査' },
+  { href: '/admin/orders', label: '注文' },
+  { href: '/admin/vendors', label: 'ベンダー' }
+];
 
 const publicNavItems = [{ href: '/apply', label: '利用申請' }];
 
@@ -47,6 +52,26 @@ function parseRole(meta: Record<string, unknown> | undefined): string | null {
   }
 
   return null;
+}
+
+function isNavActive(pathname: string | null, href: string) {
+  if (!pathname) {
+    return false;
+  }
+
+  if (href === '/') {
+    return pathname === '/';
+  }
+
+  if (href === '/admin') {
+    return pathname === '/admin';
+  }
+
+  if (pathname === href) {
+    return true;
+  }
+
+  return pathname.startsWith(`${href}/`);
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -123,7 +148,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   href={item.href}
                   className={cn(
                     'rounded-md px-3 py-2 transition-colors',
-                    pathname?.startsWith(item.href)
+                    isNavActive(pathname ?? null, item.href)
                       ? 'bg-foreground text-white'
                       : 'text-foreground/70 hover:bg-muted'
                   )}

@@ -55,6 +55,17 @@ export type OrderSummary = {
   updatedAt: string | null;
 };
 
+export type AdminOrderPreview = {
+  id: number;
+  orderNumber: string;
+  vendorId: number | null;
+  vendorCode: string | null;
+  vendorName: string | null;
+  customerName: string | null;
+  status: string | null;
+  updatedAt: string | null;
+};
+
 const demoOrders: OrderDetail[] = [
   {
     id: 1,
@@ -270,6 +281,41 @@ function toOrderDetailFromRecord(record: RawOrderRecord, vendorId: number): Orde
     shipments,
     lineItems
   };
+}
+
+export async function getRecentOrdersForAdmin(limit = 5): Promise<AdminOrderPreview[]> {
+  if (!serviceClient) {
+    return [];
+  }
+
+  const { data, error } = await serviceClient
+    .from('orders')
+    .select(
+      `id, order_number, customer_name, status, updated_at,
+       vendor:vendor_id ( id, code, name )`
+    )
+    .order('updated_at', { ascending: false, nullsLast: true })
+    .limit(limit);
+
+  if (error) {
+    console.error('Failed to load recent orders for admin', error);
+    return [];
+  }
+
+  return (data ?? []).map((order: any) => {
+    const vendor = order.vendor ?? null;
+
+    return {
+      id: order.id as number,
+      orderNumber: order.order_number as string,
+      vendorId: vendor?.id ?? null,
+      vendorCode: vendor?.code ?? null,
+      vendorName: vendor?.name ?? null,
+      customerName: (order.customer_name ?? null) as string | null,
+      status: (order.status ?? null) as string | null,
+      updatedAt: (order.updated_at ?? null) as string | null
+    } satisfies AdminOrderPreview;
+  });
 }
 
 function toOrderDetailFromDemo(order: OrderDetail, vendorId: number): OrderDetail | null {

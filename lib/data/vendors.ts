@@ -32,6 +32,10 @@ export type VendorProfile = {
   contactEmail: string | null;
 };
 
+export type VendorListEntry = VendorProfile & {
+  createdAt: string | null;
+};
+
 export type VendorApplication = {
   id: number;
   vendorCode: string | null;
@@ -430,4 +434,48 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
     name: data.name,
     contactEmail: data.contact_email
   };
+}
+
+export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
+  const client = assertServiceClient();
+
+  const { data, error } = await client
+    .from('vendors')
+    .select('id, code, name, contact_email, created_at')
+    .order('created_at', { ascending: false, nullsLast: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((vendor) => ({
+    id: vendor.id,
+    code: vendor.code,
+    name: vendor.name,
+    contactEmail: vendor.contact_email,
+    createdAt: vendor.created_at
+  }));
+}
+
+export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
+  const client = assertServiceClient();
+
+  const { data, error } = await client
+    .from('vendors')
+    .select('id, code, name, contact_email, created_at')
+    .order('name', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((vendor) => ({
+    id: vendor.id,
+    code: vendor.code,
+    name: vendor.name,
+    contactEmail: vendor.contact_email,
+    createdAt: vendor.created_at
+  }));
 }

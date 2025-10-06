@@ -479,3 +479,29 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
     createdAt: vendor.created_at
   }));
 }
+
+export async function deleteVendor(vendorId: number): Promise<void> {
+  if (!Number.isInteger(vendorId) || vendorId <= 0) {
+    throw new Error('有効なベンダーIDが必要です');
+  }
+
+  const client = assertServiceClient();
+
+  const { data, error } = await client
+    .from('vendors')
+    .delete()
+    .eq('id', vendorId)
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    if (typeof error.code === 'string' && error.code === '23503') {
+      throw new Error('関連する注文やデータが残っているため削除できません。先に依存データを整理してください。');
+    }
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error('指定したベンダーが見つかりません。');
+  }
+}

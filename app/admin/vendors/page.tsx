@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getVendors, type VendorListEntry } from '@/lib/data/vendors';
+import { deleteVendorAction } from './actions';
 
 function toDisplayDate(value: string | null): string {
   if (!value) {
@@ -15,7 +17,11 @@ function toDisplayDate(value: string | null): string {
   });
 }
 
-export default async function AdminVendorsPage() {
+export default async function AdminVendorsPage({
+  searchParams
+}: {
+  searchParams?: { status?: string; error?: string };
+}) {
   const auth = await getAuthContext();
 
   if (!auth) {
@@ -36,13 +42,19 @@ export default async function AdminVendorsPage() {
     hasError = true;
   }
 
+  const statusMessage = searchParams?.status === 'deleted' ? 'ベンダーを削除しました。' : null;
+  const errorMessage = typeof searchParams?.error === 'string' ? searchParams.error : null;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">ベンダー一覧</CardTitle>
         <p className="text-sm text-slate-500">最新 100 件のベンダーを表示しています。</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-4">
+        {statusMessage ? <Alert variant="success">{statusMessage}</Alert> : null}
+        {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
+
         {hasError ? (
           <Alert variant="destructive">ベンダー情報の取得に失敗しました。</Alert>
         ) : vendors.length === 0 ? (
@@ -56,6 +68,7 @@ export default async function AdminVendorsPage() {
                   <th className="px-3 py-2">コード</th>
                   <th className="px-3 py-2">メール</th>
                   <th className="px-3 py-2">登録日</th>
+                  <th className="px-3 py-2 text-right">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -65,6 +78,22 @@ export default async function AdminVendorsPage() {
                     <td className="px-3 py-2">{vendor.code ?? '----'}</td>
                     <td className="px-3 py-2">{vendor.contactEmail ?? '-'}</td>
                     <td className="px-3 py-2 text-xs">{toDisplayDate(vendor.createdAt)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <form
+                        action={deleteVendorAction}
+                        className="flex justify-end"
+                      >
+                        <input type="hidden" name="vendorId" value={vendor.id} />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          title="ベンダーを削除"
+                        >
+                          削除
+                        </Button>
+                      </form>
+                    </td>
                   </tr>
                 ))}
               </tbody>

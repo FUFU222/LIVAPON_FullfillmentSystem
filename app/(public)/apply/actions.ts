@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createVendorApplication } from '@/lib/data/vendors';
+import { getServerActionClient } from '@/lib/supabase/server';
 
 export type ApplyFormState = {
   status: 'idle' | 'success' | 'error';
@@ -52,13 +53,15 @@ export async function submitVendorApplication(
   }
 
   try {
+    const supabase = getServerActionClient();
+
     await createVendorApplication({
       vendorCode,
       companyName,
       contactName,
       contactEmail,
       message
-    });
+    }, supabase);
 
     revalidatePath('/admin/applications');
 
@@ -68,6 +71,7 @@ export async function submitVendorApplication(
       errors: {}
     };
   } catch (error) {
+    console.error('Failed to submit vendor application', error);
     return {
       status: 'error',
       message:

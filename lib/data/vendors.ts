@@ -4,7 +4,9 @@ import type { Database } from '@/lib/supabase/types';
 const serviceUrl = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const serviceClient: SupabaseClient<Database> | null = serviceUrl && serviceKey
+type AnySupabaseClient = SupabaseClient<Database, any, any>;
+
+const serviceClient: AnySupabaseClient | null = serviceUrl && serviceKey
   ? createClient<Database>(serviceUrl, serviceKey, {
       auth: {
         persistSession: false
@@ -47,7 +49,7 @@ export type VendorApplication = {
   updatedAt: string | null;
 };
 
-function assertServiceClient(): SupabaseClient {
+function assertServiceClient(): AnySupabaseClient {
   if (!serviceClient) {
     throw new Error('Supabase service client is not configured');
   }
@@ -192,14 +194,17 @@ async function ensureVendor(
   return newVendor;
 }
 
-export async function createVendorApplication(input: {
+export async function createVendorApplication(
+  input: {
   vendorCode?: string;
   companyName: string;
   contactName?: string;
   contactEmail: string;
   message?: string;
-}): Promise<VendorApplication> {
-  const client = assertServiceClient();
+  },
+  clientOverride?: AnySupabaseClient
+): Promise<VendorApplication> {
+  const client = clientOverride ?? assertServiceClient();
 
   const normalizedVendorCode = sanitizeVendorCode(input.vendorCode ?? null);
   const normalizedEmail = input.contactEmail.trim().toLowerCase();

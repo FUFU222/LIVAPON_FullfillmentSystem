@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useFormState, useFormStatus } from 'react-dom';
 import { submitVendorApplication } from '@/app/(public)/apply/actions';
@@ -23,6 +24,7 @@ export function VendorApplicationForm() {
   const [state, formAction] = useFormState(submitVendorApplication, initialApplyFormState);
   const formRef = useRef<HTMLFormElement>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (state.status === 'success') {
@@ -147,6 +149,10 @@ export function VendorApplicationForm() {
       <SuccessModal
         open={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
+        onGoPending={() => {
+          setShowSuccessModal(false);
+          router.push('/pending');
+        }}
       />
     </div>
   );
@@ -174,7 +180,15 @@ function PendingModal() {
   );
 }
 
-function SuccessModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function SuccessModal({
+  open,
+  onClose,
+  onGoPending
+}: {
+  open: boolean;
+  onClose: () => void;
+  onGoPending: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -190,11 +204,14 @@ function SuccessModal({ open, onClose }: { open: boolean; onClose: () => void })
       <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
         <div className="space-y-3 text-sm text-slate-600">
           <h2 className="text-lg font-semibold text-foreground">申請を受け付けました</h2>
-          <p>利用申請とアカウント登録を受け付けました。確認メールをご確認の上、承認完了までお待ちください。</p>
+          <p>利用申請とアカウント登録を受け付けました。承認完了まで今しばらくお待ちください。</p>
         </div>
-        <div className="mt-5 flex justify-end">
-          <Button type="button" onClick={onClose}>
+        <div className="mt-5 flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
             閉じる
+          </Button>
+          <Button type="button" onClick={onGoPending}>
+            ベンダー画面に進む
           </Button>
         </div>
       </div>

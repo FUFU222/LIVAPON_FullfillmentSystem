@@ -39,13 +39,13 @@ function ActionMessage({ state }: { state: AdminActionState }) {
   return null;
 }
 
-function ApprovalCodeDialog({
+function ApprovalSuccessDialog({
   open,
   vendorCode,
   onClose
 }: {
   open: boolean;
-  vendorCode?: string;
+  vendorCode: string | null;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -55,15 +55,16 @@ function ApprovalCodeDialog({
     setMounted(true);
   }, []);
 
-  if (!mounted || !open || !vendorCode) {
+  if (!mounted || !open) {
     return null;
   }
 
-  const code = vendorCode;
-
   async function handleCopy() {
+    if (!vendorCode) {
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(vendorCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -75,18 +76,22 @@ function ApprovalCodeDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
         <div className="mb-4 flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-foreground">ベンダーを承認しました</h2>
+          <h2 className="text-lg font-semibold text-foreground">申請を承認しました</h2>
           <p className="text-sm text-slate-600">
-            割り当てたベンダーコードを Shopify 管理などに転記してください。
+            ベンダー向け機能が開放されました。必要に応じてベンダーへ通知してください。
           </p>
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-2xl font-mono font-semibold text-emerald-700">
-            {code}
-          </div>
+          {vendorCode ? (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-2xl font-mono font-semibold text-emerald-700">
+              {vendorCode}
+            </div>
+          ) : null}
         </div>
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={handleCopy}>
-            {copied ? 'コピーしました' : 'コードをコピー'}
-          </Button>
+          {vendorCode ? (
+            <Button type="button" variant="outline" onClick={handleCopy}>
+              {copied ? 'コピーしました' : 'コードをコピー'}
+            </Button>
+          ) : null}
           <Button type="button" onClick={onClose}>
             閉じる
           </Button>
@@ -101,16 +106,14 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
   const [approveState, approveAction] = useFormState(approveApplicationAction, initialAdminActionState);
   const [rejectState, rejectAction] = useFormState(rejectApplicationAction, initialAdminActionState);
   const rejectFormRef = useRef<HTMLFormElement>(null);
-  const [showCodeDialog, setShowCodeDialog] = useState(false);
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [latestCode, setLatestCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (approveState.status === 'success') {
       rejectFormRef.current?.reset();
-      if (approveState.details?.vendorCode) {
-        setLatestCode(approveState.details.vendorCode);
-        setShowCodeDialog(true);
-      }
+      setLatestCode(approveState.details?.vendorCode ?? null);
+      setShowApprovalDialog(true);
     }
   }, [approveState.status, approveState.details]);
 
@@ -184,10 +187,10 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <p>{application.message}</p>
         </div>
       ) : null}
-      <ApprovalCodeDialog
-        open={showCodeDialog && Boolean(latestCode)}
-        vendorCode={latestCode ?? ''}
-        onClose={() => setShowCodeDialog(false)}
+      <ApprovalSuccessDialog
+        open={showApprovalDialog}
+        vendorCode={latestCode}
+        onClose={() => setShowApprovalDialog(false)}
       />
     </div>
   );

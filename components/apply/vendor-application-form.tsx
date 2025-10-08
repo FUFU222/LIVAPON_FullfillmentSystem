@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFormState, useFormStatus } from 'react-dom';
 import { submitVendorApplication } from '@/app/(public)/apply/actions';
 import { initialApplyFormState } from '@/app/(public)/apply/state';
@@ -21,10 +22,12 @@ function SubmitButton({ pendingLabel, children }: { pendingLabel: string; childr
 export function VendorApplicationForm() {
   const [state, formAction] = useFormState(submitVendorApplication, initialApplyFormState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (state.status === 'success') {
       formRef.current?.reset();
+      setShowSuccessModal(true);
     }
   }, [state.status]);
 
@@ -33,19 +36,16 @@ export function VendorApplicationForm() {
       <div className="flex flex-col gap-2 text-center">
         <h1 className="text-2xl font-semibold text-foreground">ベンダー利用申請</h1>
         <p className="text-sm text-slate-500">
-          アカウント情報と会社情報を入力し、利用申請を送信してください。メール確認後すぐにサインインできますが、承認完了までベンダー機能はロックされています。ベンダーコードは承認時に運営が割り当てます。
+          アカウント情報と会社情報を入力し、利用申請を送信してください。
         </p>
       </div>
-
-      {state.status === 'success' && state.message ? (
-        <Alert variant="success">{state.message}</Alert>
-      ) : null}
 
       {state.status === 'error' && state.message ? (
         <Alert variant="destructive">{state.message}</Alert>
       ) : null}
 
       <form ref={formRef} action={formAction} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <PendingModal />
         <div className="grid gap-2 text-sm text-slate-600">
           <label htmlFor="companyName" className="font-medium text-foreground">
             会社名
@@ -144,6 +144,61 @@ export function VendorApplicationForm() {
           <SubmitButton pendingLabel="送信中...">申請する</SubmitButton>
         </div>
       </form>
+      <SuccessModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+      />
     </div>
+  );
+}
+
+function PendingModal() {
+  const { pending } = useFormStatus();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !pending) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 text-center shadow-lg">
+        <p className="text-sm text-slate-500">申請を送信しています。しばらくお待ちください…</p>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function SuccessModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !open) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
+        <div className="space-y-3 text-sm text-slate-600">
+          <h2 className="text-lg font-semibold text-foreground">申請を受け付けました</h2>
+          <p>利用申請とアカウント登録を受け付けました。確認メールをご確認の上、承認完了までお待ちください。</p>
+        </div>
+        <div className="mt-5 flex justify-end">
+          <Button type="button" onClick={onClose}>
+            閉じる
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

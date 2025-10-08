@@ -1,0 +1,11 @@
+{
+  "providers": {
+    "supabase": {
+      "type": "supabase",
+      "projectRef": "odrsecyucsdhquskwkqo",
+      "schema": "./schema.sql",
+      "types": "./lib/supabase/types.ts",
+      "env": ".env.local"
+    }
+  }
+}

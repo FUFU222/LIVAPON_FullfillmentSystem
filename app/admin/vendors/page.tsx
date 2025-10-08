@@ -1,24 +1,11 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getVendors, type VendorListEntry } from '@/lib/data/vendors';
-import { VendorDeleteButton } from '@/components/admin/vendor-delete-button';
-import { bulkDeleteVendorsAction } from '@/app/admin/vendors/actions';
-
-function toDisplayDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-  return new Date(value).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
+import { VendorBulkDeleteForm } from '@/components/admin/vendor-bulk-delete-form';
 
 export default async function AdminVendorsPage({
   searchParams
@@ -48,8 +35,6 @@ export default async function AdminVendorsPage({
   const statusMessage = searchParams?.status === 'deleted' ? 'ベンダーを削除しました。' : null;
   const errorMessage = typeof searchParams?.error === 'string' ? searchParams.error : null;
 
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-
   return (
     <Card>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -72,70 +57,7 @@ export default async function AdminVendorsPage({
         ) : vendors.length === 0 ? (
           <Alert variant="success">表示できるベンダーがありません。</Alert>
         ) : (
-          <form action={bulkDeleteVendorsAction} className="grid gap-3">
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className={buttonClasses('outline', 'text-sm text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed')}
-                disabled={selectedIds.length === 0}
-              >
-                選択したベンダーを削除
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto text-left text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-3 py-2">選択</th>
-                    <th className="px-3 py-2">ベンダー名</th>
-                    <th className="px-3 py-2">コード</th>
-                    <th className="px-3 py-2">アカウント</th>
-                    <th className="px-3 py-2">メール</th>
-                    <th className="px-3 py-2">登録日</th>
-                    <th className="px-3 py-2 text-right">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vendors.map((vendor) => (
-                    <tr key={vendor.id} className="border-b border-slate-100 text-slate-600">
-                      <td className="px-3 py-2 align-middle">
-                        <input
-                          type="checkbox"
-                          name="vendorIds"
-                          value={vendor.id}
-                          className="size-4"
-                          checked={selectedIds.includes(vendor.id)}
-                          onChange={(event) => {
-                            setSelectedIds((current) =>
-                              event.target.checked
-                                ? [...current, vendor.id]
-                                : current.filter((id) => id !== vendor.id)
-                            );
-                          }}
-                        />
-                      </td>
-                      <td className="px-3 py-2 font-medium text-foreground">{vendor.name}</td>
-                      <td className="px-3 py-2">{vendor.code ?? '----'}</td>
-                      <td className="px-3 py-2">
-                        {vendor.hasAuthAccount ? (
-                          <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700">連携済み</Badge>
-                        ) : vendor.authUserId ? (
-                          <Badge className="border-amber-300 bg-amber-50 text-amber-700">アカウント削除済み</Badge>
-                        ) : (
-                          <Badge className="border-slate-200 bg-slate-50 text-slate-600">未連携</Badge>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">{vendor.contactEmail ?? '-'}</td>
-                      <td className="px-3 py-2 text-xs">{toDisplayDate(vendor.createdAt)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <VendorDeleteButton vendorId={vendor.id} vendorName={vendor.name} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </form>
+          <VendorBulkDeleteForm vendors={vendors} />
         )}
       </CardContent>
     </Card>

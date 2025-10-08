@@ -33,3 +33,52 @@ export async function deleteVendorAction(formData: FormData) {
   revalidatePath('/admin');
   redirect(`${BASE_PATH}?status=deleted`);
 }
+
+export async function bulkDeleteVendorsAction(formData: FormData) {
+  const ids = formData.getAll('vendorIds').map((value) => Number(value));
+
+  if (ids.length === 0) {
+    redirect(`${BASE_PATH}?error=${encodeURIComponent('削除するベンダーを選択してください。')}`);
+  }
+
+  const auth = await requireAuthContext();
+  assertAdmin(auth);
+
+  const successes: number[] = [];
+  const failures: Array<{ id: number; message: string }> = [];
+
+  for (const id of ids) {
+    if (!Number.isInteger(id) || id <= 0) {
+      failures.push({ id, message: 'ベンダーIDが不正です' });
+      continue;
+    }
+    try {
+      await deleteVendor(id);
+      successes.push(id);
+    } catch (error) {
+      failures.push({
+        id,
+        message:
+          error instanceof Error
+            ? error.message
+            : '削除に失敗しました。時間を空けて再度お試しください。'
+      });
+    }
+  }
+
+  revalidatePath(BASE_PATH);
+  revalidatePath('/admin');
+
+  if (failures.length > 0) {
+    const message = failures
+      .map((entry) => `ID ${entry.id}: ${entry.message}`)
+      .join(' / ');
+    redirect(`${BASE_PATH}?error=${encodeURIComponent(message)}`);
+  }
+
+  if (successes.length > 0) {
+    redirect(`${BASE_PATH}?status=deleted`);
+  }
+
+  redirect(`${BASE_PATH}`);
+}

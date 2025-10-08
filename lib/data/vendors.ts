@@ -542,12 +542,12 @@ export async function deleteVendor(vendorId: number): Promise<void> {
 
   const client = assertServiceClient();
 
-  const relatedTables: Array<{ table: keyof Database['public']['Tables']; label: string }> = [
-    { table: 'orders', label: '注文' },
-    { table: 'line_items', label: 'ラインアイテム' },
-    { table: 'shipments', label: '出荷' },
-    { table: 'vendor_skus', label: 'SKU' },
-    { table: 'import_logs', label: 'インポートログ' }
+  const relatedTables: Array<{ table: keyof Database['public']['Tables']; label: string; strategy: 'block' | 'purge' }> = [
+    { table: 'orders', label: '注文', strategy: 'block' },
+    { table: 'line_items', label: 'ラインアイテム', strategy: 'block' },
+    { table: 'shipments', label: '出荷', strategy: 'block' },
+    { table: 'vendor_skus', label: 'SKU', strategy: 'block' },
+    { table: 'import_logs', label: 'インポートログ', strategy: 'purge' }
   ];
 
   for (const entry of relatedTables) {
@@ -560,7 +560,22 @@ export async function deleteVendor(vendorId: number): Promise<void> {
       throw error;
     }
 
-    if ((count ?? 0) > 0) {
+    const total = count ?? 0;
+
+    if (total === 0) {
+      continue;
+    }
+
+    if (entry.strategy === 'purge') {
+      const { error: purgeError } = await client
+        .from(entry.table)
+        .delete()
+        .eq('vendor_id', vendorId);
+
+      if (purgeError) {
+        throw purgeError;
+      }
+    } else {
       throw new Error(`${entry.label}に関連データが存在するため削除できません。`);
     }
   }

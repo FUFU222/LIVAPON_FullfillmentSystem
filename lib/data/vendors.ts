@@ -209,18 +209,16 @@ async function ensureVendor(
 
 export async function createVendorApplication(
   input: {
-  vendorCode?: string;
-  companyName: string;
-  contactName?: string;
-  contactEmail: string;
-  message?: string;
-  authUserId?: string | null;
+    companyName: string;
+    contactName?: string;
+    contactEmail: string;
+    message?: string;
+    authUserId?: string | null;
   },
   clientOverride?: AnySupabaseClient
 ): Promise<VendorApplication> {
   const client = clientOverride ?? assertServiceClient();
 
-  const normalizedVendorCode = sanitizeVendorCode(input.vendorCode ?? null);
   const normalizedEmail = input.contactEmail.trim().toLowerCase();
 
   const { data: existingPending, error: existingError } = await client
@@ -240,7 +238,7 @@ export async function createVendorApplication(
 
   const insertPayload: Database['public']['Tables']['vendor_applications']['Insert'] = {
     auth_user_id: input.authUserId ?? null,
-    vendor_code: normalizedVendorCode,
+    vendor_code: null,
     company_name: input.companyName.trim(),
     contact_name: input.contactName?.trim() ?? null,
     contact_email: normalizedEmail,

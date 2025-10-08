@@ -33,7 +33,7 @@ export function VendorApplicationForm() {
       <div className="flex flex-col gap-2 text-center">
         <h1 className="text-2xl font-semibold text-foreground">ベンダー利用申請</h1>
         <p className="text-sm text-slate-500">
-          アカウント情報と会社情報を入力し、利用申請を送信してください。メール確認後すぐにサインインできますが、承認完了までベンダー機能はロックされています。
+          アカウント情報と会社情報を入力し、利用申請を送信してください。メール確認後すぐにサインインできますが、承認完了までベンダー機能はロックされています。ベンダーコードは承認時に運営が割り当てます。
         </p>
       </div>
 
@@ -46,23 +46,6 @@ export function VendorApplicationForm() {
       ) : null}
 
       <form ref={formRef} action={formAction} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="grid gap-2 text-sm text-slate-600">
-          <label htmlFor="vendorCode" className="font-medium text-foreground">
-            ベンダーコード (任意)
-          </label>
-          <Input
-            id="vendorCode"
-            name="vendorCode"
-            pattern="\d{4}"
-            placeholder="0001"
-            inputMode="numeric"
-          />
-          <p className="text-xs text-slate-500">4桁の数字で入力してください。未発行の場合は空欄で構いません。</p>
-          {state.errors?.vendorCode ? (
-            <span className="text-xs text-red-500">{state.errors?.vendorCode}</span>
-          ) : null}
-        </div>
-
         <div className="grid gap-2 text-sm text-slate-600">
           <label htmlFor="companyName" className="font-medium text-foreground">
             会社名

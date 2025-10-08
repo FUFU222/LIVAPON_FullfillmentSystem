@@ -122,7 +122,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <span className="text-xs uppercase tracking-wide text-slate-500">ID: {application.id}</span>
         </div>
         <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-          <span>ベンダーコード: {application.vendorCode ?? '未割り当て'}</span>
+          <span>ベンダーコード: {application.vendorCode ?? '承認時に自動割り当て'}</span>
           <span>担当者: {application.contactName ?? '-'}</span>
           <span>メール: {application.contactEmail}</span>
         </div>
@@ -141,7 +141,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <input type="hidden" name="applicationId" value={application.id} />
           <div className="grid gap-1 text-xs text-slate-600">
             <label htmlFor={`vendor-code-${application.id}`} className="font-medium text-foreground">
-              ベンダーコード (4 桁)
+              ベンダーコード (4 桁・必要な場合のみ)
             </label>
             <Input
               id={`vendor-code-${application.id}`}
@@ -153,7 +153,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
               placeholder="空欄の場合は承認時に自動採番"
             />
             <p className="text-xs text-slate-500">
-              Shopify 側のコードが決まっていれば入力してください。未入力ならシステムが次のコードを割り当てます。
+              Shopify 側で指定がある場合のみ入力してください。未入力なら承認時に自動採番されます。
             </p>
           </div>
           <div className="grid gap-1 text-xs text-slate-600">

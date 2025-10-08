@@ -15,15 +15,15 @@ export async function approveApplicationAction(
 
   if (!Number.isFinite(applicationId) || applicationId <= 0) {
     return { status: 'error', message: '申請IDが無効です', details: null };
-}
+  }
 
-if (vendorCodeRaw && !/^\d{4}$/.test(vendorCodeRaw)) {
+  if (vendorCodeRaw && !/^\d{4}$/.test(vendorCodeRaw)) {
     return {
       status: 'error',
       message: 'ベンダーコードは4桁の数字で入力してください',
       details: null
     };
-}
+  }
 
   const auth = await requireAuthContext();
   assertAdmin(auth);
@@ -41,7 +41,7 @@ if (vendorCodeRaw && !/^\d{4}$/.test(vendorCodeRaw)) {
 
     return {
       status: 'success',
-      message: '申請を承認しました。',
+      message: `申請を承認しました（ベンダーコード: ${result.vendorCode}）`,
       details: {
         vendorCode: result.vendorCode
       }

@@ -3,17 +3,13 @@
 import { revalidatePath } from 'next/cache';
 import { createVendorApplication } from '@/lib/data/vendors';
 import { getServerActionClient } from '@/lib/supabase/server';
+import { validateVendorApplicationInput } from '@/lib/apply/validation';
 import type { ApplyFormState } from './state';
-
-function validateEmail(value: string) {
-  return /.+@.+\..+/.test(value);
-}
 
 export async function submitVendorApplication(
   _prevState: ApplyFormState,
   formData: FormData
 ): Promise<ApplyFormState> {
-  const vendorCode = (formData.get('vendorCode') as string | null)?.trim() ?? '';
   const companyName = (formData.get('companyName') as string | null)?.trim() ?? '';
   const contactName = (formData.get('contactName') as string | null)?.trim() ?? '';
   const contactEmail = (formData.get('contactEmail') as string | null)?.trim() ?? '';
@@ -22,31 +18,13 @@ export async function submitVendorApplication(
   const passwordConfirm = (formData.get('passwordConfirm') as string | null) ?? '';
   const acceptTerms = formData.get('acceptTerms') === 'on';
 
-  const errors: ApplyFormState['errors'] = {};
-
-  if (vendorCode && !/^\d{4}$/.test(vendorCode)) {
-    errors.vendorCode = 'ベンダーコードは4桁の数字で入力してください';
-  }
-
-  if (companyName.length === 0) {
-    errors.companyName = '会社名を入力してください';
-  }
-
-  if (contactEmail.length === 0 || !validateEmail(contactEmail)) {
-    errors.contactEmail = '有効なメールアドレスを入力してください';
-  }
-
-  if (password.length < 8) {
-    errors.password = 'パスワードは8文字以上で入力してください';
-  }
-
-  if (password !== passwordConfirm) {
-    errors.passwordConfirm = '確認用パスワードが一致しません';
-  }
-
-  if (!acceptTerms) {
-    errors.acceptTerms = '利用規約への同意が必要です';
-  }
+  const errors = validateVendorApplicationInput({
+    companyName,
+    contactEmail,
+    password,
+    passwordConfirm,
+    acceptTerms
+  });
 
   if (Object.keys(errors).length > 0) {
     return {
@@ -66,7 +44,6 @@ export async function submitVendorApplication(
         data: {
           role: 'pending_vendor',
           company_name: companyName,
-          vendor_code: vendorCode || null,
           contact_name: contactName || null
         }
       }
@@ -85,7 +62,6 @@ export async function submitVendorApplication(
 
     await createVendorApplication(
       {
-        vendorCode,
         companyName,
         contactName,
         contactEmail,

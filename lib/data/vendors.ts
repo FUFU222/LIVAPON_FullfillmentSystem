@@ -34,6 +34,13 @@ export type VendorProfile = {
 
 export type VendorListEntry = VendorProfile & {
   createdAt: string | null;
+  lastApplication?: {
+    id: number;
+    status: VendorApplication['status'];
+    reviewedAt: string | null;
+    reviewerEmail: string | null;
+    authUserId: string | null;
+  } | null;
 };
 
 export type VendorApplication = {
@@ -479,13 +486,51 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
     throw error;
   }
 
-  return (data ?? []).map((vendor) => ({
-    id: vendor.id,
-    code: vendor.code,
-    name: vendor.name,
-    contactEmail: vendor.contact_email,
-    createdAt: vendor.created_at
-  }));
+  const vendors = data ?? [];
+
+  if (vendors.length === 0) {
+    return [];
+  }
+
+  const vendorIds = vendors.map((vendor) => vendor.id);
+  const { data: applications, error: applicationsError } = await client
+    .from('vendor_applications')
+    .select('id, vendor_id, status, reviewed_at, reviewer_email, auth_user_id, created_at')
+    .in('vendor_id', vendorIds)
+    .order('reviewed_at', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (applicationsError) {
+    throw applicationsError;
+  }
+
+  const latestByVendor = new Map<number, NonNullable<typeof applications>[number]>();
+
+  (applications ?? []).forEach((application) => {
+    if (!latestByVendor.has(application.vendor_id)) {
+      latestByVendor.set(application.vendor_id, application);
+    }
+  });
+
+  return vendors.map((vendor) => {
+    const latest = latestByVendor.get(vendor.id);
+    return {
+      id: vendor.id,
+      code: vendor.code,
+      name: vendor.name,
+      contactEmail: vendor.contact_email,
+      createdAt: vendor.created_at,
+      lastApplication: latest
+        ? {
+            id: latest.id,
+            status: (latest.status as VendorApplication['status']) ?? 'pending',
+            reviewedAt: latest.reviewed_at,
+            reviewerEmail: latest.reviewer_email,
+            authUserId: latest.auth_user_id ?? null
+          }
+        : null
+    } satisfies VendorListEntry;
+  });
 }
 
 export async function deleteVendor(vendorId: number): Promise<void> {

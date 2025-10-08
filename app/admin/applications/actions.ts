@@ -14,12 +14,16 @@ export async function approveApplicationAction(
   const notes = (formData.get('notes') as string | null)?.trim() ?? null;
 
   if (!Number.isFinite(applicationId) || applicationId <= 0) {
-    return { status: 'error', message: '申請IDが無効です' };
-  }
+    return { status: 'error', message: '申請IDが無効です', details: null };
+}
 
-  if (vendorCodeRaw && !/^\d{4}$/.test(vendorCodeRaw)) {
-    return { status: 'error', message: 'ベンダーコードは4桁の数字で入力してください' };
-  }
+if (vendorCodeRaw && !/^\d{4}$/.test(vendorCodeRaw)) {
+    return {
+      status: 'error',
+      message: 'ベンダーコードは4桁の数字で入力してください',
+      details: null
+    };
+}
 
   const auth = await requireAuthContext();
   assertAdmin(auth);
@@ -37,7 +41,10 @@ export async function approveApplicationAction(
 
     return {
       status: 'success',
-      message: `申請を承認しました。ベンダーコード: ${result.vendorCode}`
+      message: '申請を承認しました。',
+      details: {
+        vendorCode: result.vendorCode
+      }
     };
   } catch (error) {
     return {
@@ -45,7 +52,8 @@ export async function approveApplicationAction(
       message:
         error instanceof Error
           ? error.message
-          : '申請の承認中にエラーが発生しました'
+          : '申請の承認中にエラーが発生しました',
+      details: null
     };
   }
 }
@@ -58,7 +66,7 @@ export async function rejectApplicationAction(
   const reason = (formData.get('reason') as string | null)?.trim() ?? null;
 
   if (!Number.isFinite(applicationId) || applicationId <= 0) {
-    return { status: 'error', message: '申請IDが無効です' };
+    return { status: 'error', message: '申請IDが無効です', details: null };
   }
 
   const auth = await requireAuthContext();
@@ -76,7 +84,8 @@ export async function rejectApplicationAction(
 
     return {
       status: 'success',
-      message: '申請を却下しました'
+      message: '申請を却下しました',
+      details: null
     };
   } catch (error) {
     return {
@@ -84,7 +93,8 @@ export async function rejectApplicationAction(
       message:
         error instanceof Error
           ? error.message
-          : '申請の却下中にエラーが発生しました'
+          : '申請の却下中にエラーが発生しました',
+      details: null
     };
   }
 }

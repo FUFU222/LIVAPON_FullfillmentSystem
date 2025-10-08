@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFormState, useFormStatus } from 'react-dom';
 import { approveApplicationAction, rejectApplicationAction } from '@/app/admin/applications/actions';
 import { initialAdminActionState, type AdminActionState } from '@/app/admin/applications/state';
@@ -23,7 +24,12 @@ function ActionMessage({ state }: { state: AdminActionState }) {
   if (state.status === 'success' && state.message) {
     return (
       <Alert variant="success" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-        <span className="font-semibold">{state.message}</span>
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">{state.message}</span>
+          {state.details?.vendorCode ? (
+            <span className="font-mono text-base">コード: {state.details.vendorCode}</span>
+          ) : null}
+        </div>
       </Alert>
     );
   }
@@ -33,16 +39,80 @@ function ActionMessage({ state }: { state: AdminActionState }) {
   return null;
 }
 
+function ApprovalCodeDialog({
+  open,
+  vendorCode,
+  onClose
+}: {
+  open: boolean;
+  vendorCode?: string;
+  onClose: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !open || !vendorCode) {
+    return null;
+  }
+
+  const code = vendorCode;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy vendor code', error);
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
+        <div className="mb-4 flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-foreground">ベンダーを承認しました</h2>
+          <p className="text-sm text-slate-600">
+            割り当てたベンダーコードを Shopify 管理などに転記してください。
+          </p>
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-2xl font-mono font-semibold text-emerald-700">
+            {code}
+          </div>
+        </div>
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={handleCopy}>
+            {copied ? 'コピーしました' : 'コードをコピー'}
+          </Button>
+          <Button type="button" onClick={onClose}>
+            閉じる
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export function VendorApplicationCard({ application }: { application: VendorApplication }) {
   const [approveState, approveAction] = useFormState(approveApplicationAction, initialAdminActionState);
   const [rejectState, rejectAction] = useFormState(rejectApplicationAction, initialAdminActionState);
   const rejectFormRef = useRef<HTMLFormElement>(null);
+  const [showCodeDialog, setShowCodeDialog] = useState(false);
+  const [latestCode, setLatestCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (approveState.status === 'success') {
       rejectFormRef.current?.reset();
+      if (approveState.details?.vendorCode) {
+        setLatestCode(approveState.details.vendorCode);
+        setShowCodeDialog(true);
+      }
     }
-  }, [approveState.status]);
+  }, [approveState.status, approveState.details]);
 
   return (
     <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -117,6 +187,11 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           </div>
         </form>
       </div>
+      <ApprovalCodeDialog
+        open={showCodeDialog && Boolean(latestCode)}
+        vendorCode={latestCode ?? ''}
+        onClose={() => setShowCodeDialog(false)}
+      />
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getVendors, type VendorListEntry } from '@/lib/data/vendors';
@@ -46,9 +49,16 @@ export default async function AdminVendorsPage({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl font-semibold">ベンダー一覧</CardTitle>
-        <p className="text-sm text-slate-500">最新 100 件のベンダーを表示しています。</p>
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <CardTitle className="text-2xl font-semibold">ベンダー一覧</CardTitle>
+          <p className="text-sm text-slate-500">最新 100 件のベンダーを表示しています。</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/admin/vendors/export" className={buttonClasses('outline')}>
+            CSVダウンロード
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="grid gap-4">
         {statusMessage ? <Alert variant="success">{statusMessage}</Alert> : null}
@@ -65,6 +75,9 @@ export default async function AdminVendorsPage({
                 <tr>
                   <th className="px-3 py-2">ベンダー名</th>
                   <th className="px-3 py-2">コード</th>
+                  <th className="px-3 py-2">審査状況</th>
+                  <th className="px-3 py-2">最終審査</th>
+                  <th className="px-3 py-2">ユーザー</th>
                   <th className="px-3 py-2">メール</th>
                   <th className="px-3 py-2">登録日</th>
                   <th className="px-3 py-2 text-right">操作</th>
@@ -75,6 +88,39 @@ export default async function AdminVendorsPage({
                   <tr key={vendor.id} className="border-b border-slate-100 text-slate-600">
                     <td className="px-3 py-2 font-medium text-foreground">{vendor.name}</td>
                     <td className="px-3 py-2">{vendor.code ?? '----'}</td>
+                    <td className="px-3 py-2">
+                      {vendor.lastApplication ? (
+                        <Badge
+                          className={
+                            vendor.lastApplication.status === 'approved'
+                              ? 'border-emerald-500/40 bg-emerald-50 text-emerald-700'
+                              : vendor.lastApplication.status === 'rejected'
+                                ? 'border-red-500/40 bg-red-50 text-red-600'
+                                : 'border-slate-200 bg-slate-50 text-slate-700'
+                          }
+                        >
+                          {vendor.lastApplication.status === 'approved'
+                            ? '承認済み'
+                            : vendor.lastApplication.status === 'rejected'
+                              ? '却下'
+                              : '審査中'}
+                        </Badge>
+                      ) : (
+                        <Badge className="border-slate-200 bg-slate-50 text-slate-600">審査情報なし</Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {vendor.lastApplication?.reviewedAt
+                        ? new Date(vendor.lastApplication.reviewedAt).toLocaleString('ja-JP')
+                        : '-'}
+                    </td>
+                    <td className="px-3 py-2">
+                      {vendor.lastApplication?.authUserId ? (
+                        <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700">連携済み</Badge>
+                      ) : (
+                        <Badge className="border-slate-200 bg-slate-50 text-slate-600">未連携</Badge>
+                      )}
+                    </td>
                     <td className="px-3 py-2">{vendor.contactEmail ?? '-'}</td>
                     <td className="px-3 py-2 text-xs">{toDisplayDate(vendor.createdAt)}</td>
                     <td className="px-3 py-2 text-right">

@@ -135,7 +135,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <input type="hidden" name="applicationId" value={application.id} />
           <div className="grid gap-1 text-xs text-slate-600">
             <label htmlFor={`vendor-code-${application.id}`} className="font-medium text-foreground">
-              ベンダーコード (4 桁・必要な場合のみ)
+              ベンダーコード (要確認)
             </label>
             <Input
               id={`vendor-code-${application.id}`}
@@ -146,9 +146,6 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
               maxLength={4}
               placeholder="空欄の場合は承認時に自動採番"
             />
-            <p className="text-xs text-slate-500">
-              Shopify 側で指定がある場合のみ入力してください。未入力なら承認時に自動採番されます。
-            </p>
           </div>
           <div className="grid gap-1 text-xs text-slate-600">
             <label htmlFor={`notes-${application.id}`} className="font-medium text-foreground">

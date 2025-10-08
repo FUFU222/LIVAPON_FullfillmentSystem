@@ -72,10 +72,7 @@ export default async function AdminDashboardPage() {
               <ul className="grid gap-2">
                 {pendingApplications.slice(0, 3).map((application) => (
                   <li key={application.id} className="rounded-md border border-slate-200 px-3 py-2">
-                    <div className="flex items-center justify-between text-sm font-medium text-foreground">
-                      <span>{application.companyName}</span>
-                      <span className="text-xs text-slate-500">ID: {application.id}</span>
-                    </div>
+                    <span className="text-sm font-medium text-foreground">{application.companyName}</span>
                     <p className="text-xs text-slate-500">{application.contactEmail}</p>
                     <p className="text-xs text-slate-400">申請日時: {toDisplayDate(application.createdAt)}</p>
                   </li>

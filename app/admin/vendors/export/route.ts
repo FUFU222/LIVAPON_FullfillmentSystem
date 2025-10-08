@@ -28,9 +28,7 @@ export async function GET() {
     'code',
     'name',
     'contact_email',
-    'status',
-    'reviewed_at',
-    'reviewer_email',
+    'auth_status',
     'auth_user_id',
     'created_at'
   ];
@@ -40,10 +38,8 @@ export async function GET() {
     vendor.code ?? '',
     vendor.name,
     vendor.contactEmail ?? '',
-    vendor.lastApplication?.status ?? '',
-    vendor.lastApplication?.reviewedAt ?? '',
-    vendor.lastApplication?.reviewerEmail ?? '',
-    vendor.lastApplication?.authUserId ?? '',
+    vendor.hasAuthAccount ? '連携済み' : vendor.authUserId ? 'アカウント削除済み' : '未連携',
+    vendor.authUserId ?? '',
     vendor.createdAt ?? ''
   ]);
 

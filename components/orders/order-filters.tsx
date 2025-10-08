@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 
 const statusOptions = [
-  { value: '', label: '全てのステータス' },
+  { value: '', label: '全ての注文' },
   { value: 'unfulfilled', label: '未発送' },
   { value: 'partially_fulfilled', label: '一部発送済' },
   { value: 'fulfilled', label: '発送済' }

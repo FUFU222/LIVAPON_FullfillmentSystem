@@ -73,7 +73,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
-          <p className="text-sm text-slate-500">最新のShopify注文を確認し、発送状況を更新できます。</p>
+          <p className="text-sm text-slate-500">最新の注文を確認し、発送状況を更新できます。</p>
         </div>
         <Link href="/import" className={buttonClasses()}>
           CSVインポート

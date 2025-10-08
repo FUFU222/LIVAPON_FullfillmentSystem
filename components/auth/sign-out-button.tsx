@@ -15,13 +15,14 @@ export function SignOutButton() {
     setIsSigningOut(true);
 
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) {
         console.error('Failed to sign out', error);
       }
     } finally {
-      router.push('/sign-in');
+      router.replace('/sign-in');
       router.refresh();
+      setIsSigningOut(false);
     }
   }
 

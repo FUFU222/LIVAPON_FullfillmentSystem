@@ -34,13 +34,8 @@ export type VendorProfile = {
 
 export type VendorListEntry = VendorProfile & {
   createdAt: string | null;
-  lastApplication?: {
-    id: number;
-    status: VendorApplication['status'];
-    reviewedAt: string | null;
-    reviewerEmail: string | null;
-    authUserId: string | null;
-  } | null;
+  authUserId: string | null;
+  hasAuthAccount: boolean;
 };
 
 export type VendorApplication = {
@@ -449,12 +444,67 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
   };
 }
 
+async function resolveAuthStatus(
+  client: AnySupabaseClient,
+  vendors: Array<{
+    id: number;
+    code: string | null;
+    name: string;
+    contact_email: string | null;
+    created_at: string | null;
+    applications?: Array<{ auth_user_id: string | null }>;
+  }>
+): Promise<VendorListEntry[]> {
+  return Promise.all(
+    (vendors ?? []).map(async (vendor) => {
+      const authUserId = Array.isArray(vendor.applications)
+        ? vendor.applications.find((app) => app?.auth_user_id)?.auth_user_id ?? null
+        : null;
+
+      if (!authUserId) {
+        return {
+          id: vendor.id,
+          code: vendor.code,
+          name: vendor.name,
+          contactEmail: vendor.contact_email,
+          createdAt: vendor.created_at,
+          authUserId: null,
+          hasAuthAccount: false
+        } satisfies VendorListEntry;
+      }
+
+      try {
+        await client.auth.admin.getUserById(authUserId);
+        return {
+          id: vendor.id,
+          code: vendor.code,
+          name: vendor.name,
+          contactEmail: vendor.contact_email,
+          createdAt: vendor.created_at,
+          authUserId,
+          hasAuthAccount: true
+        } satisfies VendorListEntry;
+      } catch (_error) {
+        return {
+          id: vendor.id,
+          code: vendor.code,
+          name: vendor.name,
+          contactEmail: vendor.contact_email,
+          createdAt: vendor.created_at,
+          authUserId,
+          hasAuthAccount: false
+        } satisfies VendorListEntry;
+      }
+    })
+  );
+}
+
 export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
   const client = assertServiceClient();
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email, created_at')
+    .select('id, code, name, contact_email, created_at, applications:vendor_applications(auth_user_id)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -462,13 +512,7 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
     throw error;
   }
 
-  return (data ?? []).map((vendor) => ({
-    id: vendor.id,
-    code: vendor.code,
-    name: vendor.name,
-    contactEmail: vendor.contact_email,
-    createdAt: vendor.created_at
-  }));
+  return resolveAuthStatus(client, data ?? []);
 }
 
 export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
@@ -476,7 +520,7 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email, created_at')
+    .select('id, code, name, contact_email, created_at, applications:vendor_applications(auth_user_id)')
     .order('name', { ascending: true })
     .limit(limit);
 
@@ -484,51 +528,11 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
     throw error;
   }
 
-  const vendors = data ?? [];
-
-  if (vendors.length === 0) {
+  if (!data || data.length === 0) {
     return [];
   }
 
-  const vendorIds = vendors.map((vendor) => vendor.id);
-  const { data: applications, error: applicationsError } = await client
-    .from('vendor_applications')
-    .select('id, vendor_id, status, reviewed_at, reviewer_email, auth_user_id, created_at')
-    .in('vendor_id', vendorIds)
-    .order('reviewed_at', { ascending: false })
-    .order('created_at', { ascending: false });
-
-  if (applicationsError) {
-    throw applicationsError;
-  }
-
-  const latestByVendor = new Map<number, NonNullable<typeof applications>[number]>();
-
-  (applications ?? []).forEach((application) => {
-    if (!latestByVendor.has(application.vendor_id)) {
-      latestByVendor.set(application.vendor_id, application);
-    }
-  });
-
-  return vendors.map((vendor) => {
-    const latest = latestByVendor.get(vendor.id);
-    return {
-      id: vendor.id,
-      code: vendor.code,
-      name: vendor.name,
-      contactEmail: vendor.contact_email,
-      createdAt: vendor.created_at,
-      lastApplication: latest
-        ? {
-            id: latest.id,
-            status: (latest.status as VendorApplication['status']) ?? 'pending',
-            reviewedAt: latest.reviewed_at,
-            reviewerEmail: latest.reviewer_email,
-            authUserId: latest.auth_user_id ?? null
-          }
-        : null
-    } satisfies VendorListEntry;
-  });
+  return resolveAuthStatus(client, data);
 }
 
 export async function deleteVendor(vendorId: number): Promise<void> {
@@ -538,6 +542,38 @@ export async function deleteVendor(vendorId: number): Promise<void> {
 
   const client = assertServiceClient();
 
+  const relatedTables: Array<{ table: keyof Database['public']['Tables']; label: string }> = [
+    { table: 'orders', label: '注文' },
+    { table: 'line_items', label: 'ラインアイテム' },
+    { table: 'shipments', label: '出荷' },
+    { table: 'vendor_skus', label: 'SKU' },
+    { table: 'import_logs', label: 'インポートログ' }
+  ];
+
+  for (const entry of relatedTables) {
+    const { count, error } = await client
+      .from(entry.table)
+      .select('id', { head: true, count: 'exact' })
+      .eq('vendor_id', vendorId);
+
+    if (error) {
+      throw error;
+    }
+
+    if ((count ?? 0) > 0) {
+      throw new Error(`${entry.label}に関連データが存在するため削除できません。`);
+    }
+  }
+
+  const { error: detachApplicationsError } = await client
+    .from('vendor_applications')
+    .update({ vendor_id: null, vendor_code: null })
+    .eq('vendor_id', vendorId);
+
+  if (detachApplicationsError) {
+    throw detachApplicationsError;
+  }
+
   const { data, error } = await client
     .from('vendors')
     .delete()
@@ -546,9 +582,6 @@ export async function deleteVendor(vendorId: number): Promise<void> {
     .maybeSingle();
 
   if (error) {
-    if (typeof error.code === 'string' && error.code === '23503') {
-      throw new Error('関連する注文やデータが残っているため削除できません。先に依存データを整理してください。');
-    }
     throw error;
   }
 

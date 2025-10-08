@@ -48,6 +48,8 @@ export default async function AdminVendorsPage({
   const statusMessage = searchParams?.status === 'deleted' ? 'ベンダーを削除しました。' : null;
   const errorMessage = typeof searchParams?.error === 'string' ? searchParams.error : null;
 
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -74,7 +76,8 @@ export default async function AdminVendorsPage({
             <div className="flex justify-end">
               <button
                 type="submit"
-                className={buttonClasses('outline', 'text-sm text-red-600 border-red-200 hover:bg-red-50')}
+                className={buttonClasses('outline', 'text-sm text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed')}
+                disabled={selectedIds.length === 0}
               >
                 選択したベンダーを削除
               </button>
@@ -96,7 +99,20 @@ export default async function AdminVendorsPage({
                   {vendors.map((vendor) => (
                     <tr key={vendor.id} className="border-b border-slate-100 text-slate-600">
                       <td className="px-3 py-2 align-middle">
-                        <input type="checkbox" name="vendorIds" value={vendor.id} className="size-4" />
+                        <input
+                          type="checkbox"
+                          name="vendorIds"
+                          value={vendor.id}
+                          className="size-4"
+                          checked={selectedIds.includes(vendor.id)}
+                          onChange={(event) => {
+                            setSelectedIds((current) =>
+                              event.target.checked
+                                ? [...current, vendor.id]
+                                : current.filter((id) => id !== vendor.id)
+                            );
+                          }}
+                        />
                       </td>
                       <td className="px-3 py-2 font-medium text-foreground">{vendor.name}</td>
                       <td className="px-3 py-2">{vendor.code ?? '----'}</td>

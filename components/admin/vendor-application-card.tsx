@@ -117,18 +117,12 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
   return (
     <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="grid gap-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-semibold text-foreground">{application.companyName}</h3>
-          <span className="text-xs uppercase tracking-wide text-slate-500">ID: {application.id}</span>
-        </div>
+        <h3 className="text-lg font-semibold text-foreground">{application.companyName}</h3>
         <div className="flex flex-wrap gap-3 text-sm text-slate-500">
           <span>ベンダーコード: {application.vendorCode ?? '承認時に自動割り当て'}</span>
           <span>担当者: {application.contactName ?? '-'}</span>
           <span>メール: {application.contactEmail}</span>
         </div>
-        {application.message ? (
-          <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">{application.message}</p>
-        ) : null}
       </div>
 
       <div className="grid gap-3">
@@ -187,6 +181,12 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           </div>
         </form>
       </div>
+      {application.message ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">メモ</span>
+          <p>{application.message}</p>
+        </div>
+      ) : null}
       <ApprovalCodeDialog
         open={showCodeDialog && Boolean(latestCode)}
         vendorCode={latestCode ?? ''}

@@ -30,8 +30,8 @@ export default async function PendingStatusPage() {
         <p>
           緊急のご要望や追加のご連絡が必要な場合は
           {' '}
-          <a href="mailto:support@example.com" className="text-foreground underline">
-            support@example.com
+          <a href="mailto:a.tanaka@chairman.jp" className="text-foreground underline">
+            a.tanaka@chairman.jp
           </a>
           {' '}までお問い合わせください。
         </p>

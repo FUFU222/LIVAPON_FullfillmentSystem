@@ -34,8 +34,14 @@ export type VendorProfile = {
 
 export type VendorListEntry = VendorProfile & {
   createdAt: string | null;
-  authUserId: string | null;
-  hasAuthAccount: boolean;
+  lastApplication: {
+    id: number;
+    status: VendorApplication['status'];
+    reviewedAt: string | null;
+    reviewerEmail: string | null;
+    authUserId: string | null;
+    companyName: string | null;
+  } | null;
 };
 
 export type VendorApplication = {
@@ -444,59 +450,75 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
   };
 }
 
-async function resolveAuthStatus(
-  client: AnySupabaseClient,
-  vendors: Array<{
+type VendorWithApplications = {
+  id: number;
+  code: string | null;
+  name: string;
+  contact_email: string | null;
+  created_at: string | null;
+  vendor_applications?: Array<{
     id: number;
-    code: string | null;
-    name: string;
-    contact_email: string | null;
+    status: string | null;
+    reviewed_at: string | null;
+    reviewer_email: string | null;
+    auth_user_id: string | null;
+    company_name: string | null;
     created_at: string | null;
-    applications?: Array<{ auth_user_id: string | null }>;
-  }>
-): Promise<VendorListEntry[]> {
-  return Promise.all(
-    (vendors ?? []).map(async (vendor) => {
-      const authUserId = Array.isArray(vendor.applications)
-        ? vendor.applications.find((app) => app?.auth_user_id)?.auth_user_id ?? null
-        : null;
+  }>;
+};
 
-      if (!authUserId) {
-        return {
-          id: vendor.id,
-          code: vendor.code,
-          name: vendor.name,
-          contactEmail: vendor.contact_email,
-          createdAt: vendor.created_at,
-          authUserId: null,
-          hasAuthAccount: false
-        } satisfies VendorListEntry;
-      }
+function pickLatestApplication(
+  applications: VendorWithApplications['vendor_applications']
+): VendorListEntry['lastApplication'] {
+  if (!Array.isArray(applications) || applications.length === 0) {
+    return null;
+  }
 
-      try {
-        await client.auth.admin.getUserById(authUserId);
-        return {
-          id: vendor.id,
-          code: vendor.code,
-          name: vendor.name,
-          contactEmail: vendor.contact_email,
-          createdAt: vendor.created_at,
-          authUserId,
-          hasAuthAccount: true
-        } satisfies VendorListEntry;
-      } catch (_error) {
-        return {
-          id: vendor.id,
-          code: vendor.code,
-          name: vendor.name,
-          contactEmail: vendor.contact_email,
-          createdAt: vendor.created_at,
-          authUserId,
-          hasAuthAccount: false
-        } satisfies VendorListEntry;
-      }
-    })
-  );
+  let latest = applications[0] ?? null;
+
+  for (let index = 1; index < applications.length; index += 1) {
+    const current = applications[index];
+    if (!current) {
+      continue;
+    }
+
+    const latestTimestamp = latest?.reviewed_at ?? latest?.created_at ?? '';
+    const currentTimestamp = current.reviewed_at ?? current.created_at ?? '';
+
+    if (currentTimestamp > latestTimestamp) {
+      latest = current;
+    }
+  }
+
+  if (!latest) {
+    return null;
+  }
+
+  return {
+    id: latest.id,
+    status: (latest.status as VendorApplication['status']) ?? 'pending',
+    reviewedAt: latest.reviewed_at,
+    reviewerEmail: latest.reviewer_email,
+    authUserId: latest.auth_user_id,
+    companyName: latest.company_name
+  } satisfies VendorListEntry['lastApplication'];
+}
+
+function mapVendorsWithApplications(
+  rows: VendorWithApplications[]
+): VendorListEntry[] {
+  return (rows ?? []).map((vendor) => {
+    const lastApplication = pickLatestApplication(vendor.vendor_applications);
+
+    return {
+      id: vendor.id,
+      code: vendor.code,
+      name: lastApplication?.companyName ?? vendor.name,
+      contactEmail: vendor.contact_email,
+      createdAt: vendor.created_at,
+      lastApplication
+    } satisfies VendorListEntry;
+  });
 }
 
 export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
@@ -504,7 +526,12 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email, created_at, applications:vendor_applications(auth_user_id)')
+    .select(
+      `id, code, name, contact_email, created_at,
+       vendor_applications:vendor_applications(
+         id, status, reviewed_at, reviewer_email, auth_user_id, company_name, created_at
+       )`
+    )
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -512,7 +539,7 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
     throw error;
   }
 
-  return resolveAuthStatus(client, data ?? []);
+  return mapVendorsWithApplications((data as VendorWithApplications[]) ?? []);
 }
 
 export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
@@ -520,7 +547,12 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email, created_at, applications:vendor_applications(auth_user_id)')
+    .select(
+      `id, code, name, contact_email, created_at,
+       vendor_applications:vendor_applications(
+         id, status, reviewed_at, reviewer_email, auth_user_id, company_name, created_at
+       )`
+    )
     .order('name', { ascending: true })
     .limit(limit);
 
@@ -528,11 +560,7 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
     throw error;
   }
 
-  if (!data || data.length === 0) {
-    return [];
-  }
-
-  return resolveAuthStatus(client, data);
+  return mapVendorsWithApplications((data as VendorWithApplications[]) ?? []);
 }
 
 export async function deleteVendor(vendorId: number): Promise<void> {

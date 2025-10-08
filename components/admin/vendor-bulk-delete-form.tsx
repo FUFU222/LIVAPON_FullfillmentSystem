@@ -40,7 +40,8 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
               <th className="px-3 py-2">選択</th>
               <th className="px-3 py-2">ベンダー名</th>
               <th className="px-3 py-2">コード</th>
-              <th className="px-3 py-2">アカウント</th>
+              <th className="px-3 py-2">ステータス</th>
+              <th className="px-3 py-2">Auth</th>
               <th className="px-3 py-2">メール</th>
               <th className="px-3 py-2">登録日</th>
               <th className="px-3 py-2 text-right">操作</th>
@@ -66,10 +67,29 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
                 <td className="px-3 py-2 font-medium text-foreground">{vendor.name}</td>
                 <td className="px-3 py-2">{vendor.code ?? '----'}</td>
                 <td className="px-3 py-2">
-                  {vendor.hasAuthAccount ? (
+                  {vendor.lastApplication ? (
+                    <Badge
+                      className={
+                        vendor.lastApplication.status === 'approved'
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                          : vendor.lastApplication.status === 'rejected'
+                            ? 'border-red-300 bg-red-50 text-red-600'
+                            : 'border-slate-200 bg-slate-50 text-slate-600'
+                      }
+                    >
+                      {vendor.lastApplication.status === 'approved'
+                        ? '承認済み'
+                        : vendor.lastApplication.status === 'rejected'
+                          ? '却下'
+                          : '審査中'}
+                    </Badge>
+                  ) : (
+                    <Badge className="border-slate-200 bg-slate-50 text-slate-600">審査情報なし</Badge>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  {vendor.lastApplication?.authUserId ? (
                     <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700">連携済み</Badge>
-                  ) : vendor.authUserId ? (
-                    <Badge className="border-amber-300 bg-amber-50 text-amber-700">アカウント削除済み</Badge>
                   ) : (
                     <Badge className="border-slate-200 bg-slate-50 text-slate-600">未連携</Badge>
                   )}

@@ -1,16 +1,31 @@
-import crypto from 'crypto';
-
 const SHOPIFY_HMAC_HEADER = 'x-shopify-hmac-sha256';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET ?? '';
 
-function timingSafeEqual(a: Buffer, b: Buffer) {
+const textEncoder = new TextEncoder();
+
+function timingSafeEqualString(a: string, b: string) {
   if (a.length !== b.length) {
     return false;
   }
-  return crypto.timingSafeEqual(a, b);
+
+  let result = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    result |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  }
+
+  return result === 0;
 }
 
-export function verifyShopifyWebhook(body: Buffer, headers: Headers): boolean {
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let index = 0; index < bytes.byteLength; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary);
+}
+
+export async function verifyShopifyWebhook(body: ArrayBuffer, headers: Headers): Promise<boolean> {
   if (!SHOPIFY_API_SECRET) {
     console.warn('SHOPIFY_API_SECRET is not set');
     return false;
@@ -22,10 +37,19 @@ export function verifyShopifyWebhook(body: Buffer, headers: Headers): boolean {
     return false;
   }
 
-  const digest = crypto.createHmac('sha256', SHOPIFY_API_SECRET).update(body).digest('base64');
-
   try {
-    return timingSafeEqual(Buffer.from(digest, 'utf-8'), Buffer.from(hmacHeader, 'utf-8'));
+    const key = await crypto.subtle.importKey(
+      'raw',
+      textEncoder.encode(SHOPIFY_API_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', key, body);
+    const digest = arrayBufferToBase64(signature);
+
+    return timingSafeEqualString(digest, hmacHeader);
   } catch (error) {
     console.error('Failed to verify Shopify webhook signature', error);
     return false;

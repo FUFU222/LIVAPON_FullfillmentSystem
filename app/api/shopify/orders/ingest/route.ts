@@ -6,15 +6,14 @@ export const runtime = 'edge';
 
 export async function POST(request: Request) {
   const bodyArrayBuffer = await request.arrayBuffer();
-  const bodyBuffer = Buffer.from(bodyArrayBuffer);
-
-  const isValid = verifyShopifyWebhook(bodyBuffer, request.headers);
+  const isValid = await verifyShopifyWebhook(bodyArrayBuffer, request.headers);
 
   if (!isValid) {
     return new NextResponse('Invalid signature', { status: 401 });
   }
 
-  const payload = JSON.parse(bodyBuffer.toString('utf-8'));
+  const payloadText = new TextDecoder().decode(bodyArrayBuffer);
+  const payload = JSON.parse(payloadText);
 
   try {
     await upsertShopifyOrder(payload);

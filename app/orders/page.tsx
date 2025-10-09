@@ -4,6 +4,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrderFilters } from '@/components/orders/order-filters';
 import { OrderTable } from '@/components/orders/order-table';
+import { OrdersRefreshButton } from '@/components/orders/orders-refresh-button';
 import { getOrders } from '@/lib/data/orders';
 import { getAuthContext } from '@/lib/auth';
 
@@ -75,9 +76,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
           <p className="text-sm text-slate-500">最新の注文を確認し、発送状況を更新できます。</p>
         </div>
-        <Link href="/import" className={buttonClasses()}>
-          CSVインポート
-        </Link>
+        <div className="flex gap-2">
+          <OrdersRefreshButton />
+          <Link href="/import" className={buttonClasses()}>
+            CSVインポート
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="gap-6">
         <OrderFilters />

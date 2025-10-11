@@ -74,6 +74,33 @@ export type Database = {
           },
         ]
       }
+      shopify_connections: {
+        Row: {
+          access_token: string
+          id: string
+          installed_at: string | null
+          scopes: string | null
+          shop: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          id?: string
+          installed_at?: string | null
+          scopes?: string | null
+          shop: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          id?: string
+          installed_at?: string | null
+          scopes?: string | null
+          shop?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       line_items: {
         Row: {
           created_at: string | null

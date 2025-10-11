@@ -104,13 +104,17 @@ Codex・人間いずれが開発しても破綻しない構造を維持します
 
 ### 環境変数
 
-`.env` 管理。  
-以下は必須：
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-SHOPIFY_ADMIN_TOKEN
-SHOPIFY_STORE_DOMAIN
+`.env.local`（ローカル）と Vercel の環境変数で管理する。  
+主なキーは次のとおり：
+
+| キー | 用途 |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | フロントエンドから Supabase を叩くための公開キー |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | サーバー（Webhook・OAuth など）で Supabase を操作するための秘密キー |
+| `SHOPIFY_STORE_DOMAIN` | Shopify ストアのドメイン（例: `example.myshopify.com`） |
+| `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | Shopify OAuth のクライアント ID / シークレット |
+| `SHOPIFY_SCOPES` | 承認時に要求するスコープ（カンマ区切り。未設定時は `read_orders,write_orders,read_products,read_customers`） |
+| `SHOPIFY_ADMIN_TOKEN` | 必要に応じて Shopify Admin API を直接操作する際のトークン（現状未使用だが将来の配送連携を想定） |
 
 ### デプロイフロー
 

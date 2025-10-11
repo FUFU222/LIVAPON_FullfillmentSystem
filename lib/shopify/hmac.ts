@@ -1,5 +1,5 @@
 const SHOPIFY_HMAC_HEADER = 'x-shopify-hmac-sha256';
-const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET ?? '';
+const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET ?? '';
 
 const textEncoder = new TextEncoder();
 
@@ -26,8 +26,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 export async function verifyShopifyWebhook(body: ArrayBuffer, headers: Headers): Promise<boolean> {
-  if (!SHOPIFY_API_SECRET) {
-    console.warn('SHOPIFY_API_SECRET is not set');
+  if (!SHOPIFY_WEBHOOK_SECRET) {
+    console.warn('SHOPIFY_WEBHOOK_SECRET is not set');
     return false;
   }
 
@@ -40,7 +40,7 @@ export async function verifyShopifyWebhook(body: ArrayBuffer, headers: Headers):
   try {
     const key = await crypto.subtle.importKey(
       'raw',
-      textEncoder.encode(SHOPIFY_API_SECRET),
+      textEncoder.encode(SHOPIFY_WEBHOOK_SECRET),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']

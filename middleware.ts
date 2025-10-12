@@ -7,7 +7,7 @@ export const config = {
 export function middleware(request: Request) {
   const url = new URL(request.url);
   if (url.pathname === '/api/shopify/orders/ingest') {
-    console.log('Middleware intercepted Shopify webhook', {
+    console.error('Shopify webhook received', {
       method: (request as any).method,
       headers: Object.fromEntries((request as any).headers)
     });

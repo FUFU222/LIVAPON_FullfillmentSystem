@@ -19,6 +19,31 @@ function assertServiceClient(): SupabaseClient<Database> {
   return serviceClient;
 }
 
+export function getShopifyServiceClient(): SupabaseClient<Database> {
+  return assertServiceClient();
+}
+
+export async function isRegisteredShopDomain(shopDomain: string): Promise<boolean> {
+  const normalized = shopDomain.trim().toLowerCase();
+
+  if (!normalized) {
+    return false;
+  }
+
+  const client = assertServiceClient();
+  const { data, error } = await client
+    .from('shopify_connections')
+    .select('id')
+    .eq('shop', normalized)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(data);
+}
+
 type ShopifyOrderPayload = {
   id: number;
   order_number: string;

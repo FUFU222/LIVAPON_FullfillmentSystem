@@ -3,9 +3,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { SignOutButton } from '@/components/auth/sign-out-button';
+
+export type AppShellInitialAuth = {
+  status: 'signed-in' | 'signed-out';
+  email: string | null;
+  vendorId: number | null;
+  role: string | null;
+};
 
 const navItems = [
   { href: '/orders', label: '注文一覧' },
@@ -75,17 +83,25 @@ function isNavActive(pathname: string | null, href: string) {
   return pathname.startsWith(`${href}/`);
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  initialAuth
+}: {
+  children: ReactNode;
+  initialAuth: AppShellInitialAuth;
+}) {
   const pathname = usePathname();
-  const [status, setStatus] = useState<'loading' | 'signed-in' | 'signed-out'>('loading');
-  const [email, setEmail] = useState<string | null>(null);
-  const [vendorId, setVendorId] = useState<number | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [status, setStatus] = useState<'loading' | 'signed-in' | 'signed-out'>(
+    initialAuth.status
+  );
+  const [email, setEmail] = useState<string | null>(initialAuth.email);
+  const [vendorId, setVendorId] = useState<number | null>(initialAuth.vendorId);
+  const [role, setRole] = useState<string | null>(initialAuth.role);
 
   useEffect(() => {
     const supabase = getBrowserClient();
 
-    function syncSession(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) {
+    function syncSession(session: Session | null) {
       if (session?.user) {
         setEmail(session.user.email ?? null);
         setVendorId(parseVendorId({ ...session.user.user_metadata, ...session.user.app_metadata }));
@@ -99,16 +115,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
     }
 
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        syncSession(data.session);
-      })
-      .catch((error) => {
-        console.error('Failed to fetch session', error);
-        setStatus('signed-out');
-      });
-
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       syncSession(session);
     });
@@ -117,6 +123,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    setStatus(initialAuth.status);
+    setEmail(initialAuth.email);
+    setVendorId(initialAuth.vendorId);
+    setRole(initialAuth.role);
+  }, [initialAuth.email, initialAuth.role, initialAuth.status, initialAuth.vendorId]);
 
   const links = (() => {
     if (status !== 'signed-in') {

@@ -74,9 +74,10 @@ export async function storeShopifyConnection(
   token: { access_token: string; scope: string }
 ) {
   const client = assertServiceClient();
+  const normalizedShop = shop.trim().toLowerCase();
 
   const payload: Database['public']['Tables']['shopify_connections']['Insert'] = {
-    shop,
+    shop: normalizedShop,
     access_token: token.access_token,
     scopes: token.scope,
     updated_at: new Date().toISOString()

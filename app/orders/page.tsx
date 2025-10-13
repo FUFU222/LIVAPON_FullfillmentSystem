@@ -71,13 +71,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
+      <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
+            <OrdersRefreshButton />
+          </div>
           <p className="text-sm text-slate-500">最新の注文を確認し、発送状況を更新できます。</p>
         </div>
         <div className="flex gap-2">
-          <OrdersRefreshButton />
           <Link href="/import" className={buttonClasses()}>
             CSVインポート
           </Link>

@@ -1,5 +1,6 @@
 const SHOPIFY_HMAC_HEADER = 'x-shopify-hmac-sha256';
 const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET ?? '';
+const SHOPIFY_WEBHOOK_TEST_MODE = process.env.SHOPIFY_WEBHOOK_TEST_MODE === 'true';
 
 const textEncoder = new TextEncoder();
 
@@ -27,6 +28,11 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 export async function verifyShopifyWebhook(body: ArrayBuffer, headers: Headers): Promise<boolean> {
   if (!SHOPIFY_WEBHOOK_SECRET) {
+    if (SHOPIFY_WEBHOOK_TEST_MODE && process.env.NODE_ENV !== 'production') {
+      console.warn('SHOPIFY_WEBHOOK_SECRET is not set; allowing webhook due to test mode');
+      return true;
+    }
+
     console.warn('SHOPIFY_WEBHOOK_SECRET is not set');
     return false;
   }

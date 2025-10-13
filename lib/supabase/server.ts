@@ -11,30 +11,42 @@ function ensureEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_ANON
   return value;
 }
 
-function createServerSupabaseClient(): SupabaseClient<Database> {
+type CookieWriteMode = 'allow-write' | 'read-only';
+
+function createServerSupabaseClient(mode: CookieWriteMode): SupabaseClient<Database> {
   const cookieStore = cookies();
+  type CookieSetterOptions = Parameters<typeof cookieStore.set>[2];
   const url = ensureEnv('NEXT_PUBLIC_SUPABASE_URL');
   const anonKey = ensureEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
-  return createServerClient<Database>(url, anonKey, {
-    cookies: {
-      get(name) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name, value, options) {
+  const cookieAdapter = {
+    get(name: string) {
+      return cookieStore.get(name)?.value;
+    },
+    set(name: string, value: string, options?: CookieSetterOptions) {
+      if (mode === 'allow-write') {
         cookieStore.set(name, value, options);
-      },
-      remove(name) {
+      }
+      // When mode is read-only, do nothing. Supabase may attempt to rotate
+      // session cookies during getSession(), but Next.js forbids writes in
+      // Server Components; suppressing the write prevents runtime crashes.
+    },
+    remove(name: string) {
+      if (mode === 'allow-write') {
         cookieStore.delete(name);
       }
     }
+  } as const;
+
+  return createServerClient<Database>(url, anonKey, {
+    cookies: cookieAdapter
   });
 }
 
 export function getServerComponentClient(): SupabaseClient<Database> {
-  return createServerSupabaseClient();
+  return createServerSupabaseClient('read-only');
 }
 
 export function getServerActionClient(): SupabaseClient<Database> {
-  return createServerSupabaseClient();
+  return createServerSupabaseClient('allow-write');
 }

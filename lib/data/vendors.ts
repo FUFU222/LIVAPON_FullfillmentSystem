@@ -69,6 +69,23 @@ function assertServiceClient(): AnySupabaseClient {
   return serviceClient;
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+async function deleteAuthUsers(client: AnySupabaseClient, authUserIds: string[]) {
+  const uniqueIds = Array.from(new Set(authUserIds.filter(isNonEmptyString)));
+
+  for (const userId of uniqueIds) {
+    const { error } = await client.auth.admin.deleteUser(userId);
+
+    if (error && error.status !== 404) {
+      console.error('Failed to delete Supabase auth user', { userId, error });
+      throw error;
+    }
+  }
+}
+
 function sanitizeVendorCode(code: string | null | undefined): string | null {
   if (!code) {
     return null;
@@ -570,11 +587,60 @@ export async function deleteVendor(vendorId: number): Promise<void> {
 
   const client = assertServiceClient();
 
+  const { data: vendorRecord, error: fetchVendorError } = await client
+    .from('vendors')
+    .select('id, code')
+    .eq('id', vendorId)
+    .maybeSingle();
+
+  if (fetchVendorError) {
+    throw fetchVendorError;
+  }
+
+  if (!vendorRecord) {
+    throw new Error('指定したベンダーが見つかりません。');
+  }
+
+  const applicationRows: Array<{ id: number; auth_user_id: string | null }> = [];
+
+  const { data: applicationsByVendor, error: applicationsByVendorError } = await client
+    .from('vendor_applications')
+    .select('id, auth_user_id')
+    .eq('vendor_id', vendorId);
+
+  if (applicationsByVendorError) {
+    throw applicationsByVendorError;
+  }
+
+  if (applicationsByVendor) {
+    applicationRows.push(...applicationsByVendor);
+  }
+
+  if (isNonEmptyString(vendorRecord.code)) {
+    const { data: applicationsByCode, error: applicationsByCodeError } = await client
+      .from('vendor_applications')
+      .select('id, auth_user_id')
+      .eq('vendor_code', vendorRecord.code);
+
+    if (applicationsByCodeError) {
+      throw applicationsByCodeError;
+    }
+
+    if (applicationsByCode) {
+      applicationRows.push(...applicationsByCode);
+    }
+  }
+
+  const applicationIds = Array.from(new Set(applicationRows.map((row) => row.id)));
+  const authUserIds = applicationRows
+    .map((row) => row.auth_user_id)
+    .filter(isNonEmptyString);
+
   const relatedTables: Array<{ table: keyof Database['public']['Tables']; label: string; strategy: 'block' | 'purge' }> = [
     { table: 'orders', label: '注文', strategy: 'block' },
     { table: 'line_items', label: 'ラインアイテム', strategy: 'block' },
     { table: 'shipments', label: '出荷', strategy: 'block' },
-    { table: 'vendor_skus', label: 'SKU', strategy: 'block' },
+    { table: 'vendor_skus', label: 'SKU', strategy: 'purge' },
     { table: 'import_logs', label: 'インポートログ', strategy: 'purge' }
   ];
 
@@ -608,13 +674,19 @@ export async function deleteVendor(vendorId: number): Promise<void> {
     }
   }
 
-  const { error: detachApplicationsError } = await client
-    .from('vendor_applications')
-    .update({ vendor_id: null, vendor_code: null })
-    .eq('vendor_id', vendorId);
+  if (authUserIds.length > 0) {
+    await deleteAuthUsers(client, authUserIds);
+  }
 
-  if (detachApplicationsError) {
-    throw detachApplicationsError;
+  if (applicationIds.length > 0) {
+    const { error: deleteApplicationsError } = await client
+      .from('vendor_applications')
+      .delete()
+      .in('id', applicationIds);
+
+    if (deleteApplicationsError) {
+      throw deleteApplicationsError;
+    }
   }
 
   const { data, error } = await client

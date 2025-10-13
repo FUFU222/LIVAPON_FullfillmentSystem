@@ -91,6 +91,43 @@ export function ConfirmDialog({
       return undefined;
     }
 
+    const root = document.getElementById('__next');
+    const previousAriaHidden = root?.getAttribute('aria-hidden');
+    const hadInert = root?.hasAttribute('inert') ?? false;
+    if (root) {
+      root.setAttribute('aria-hidden', 'true');
+      if (!hadInert) {
+        root.setAttribute('inert', '');
+      }
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+
+      if (root) {
+        if (previousAriaHidden !== null) {
+          root.setAttribute('aria-hidden', previousAriaHidden);
+        } else {
+          root.removeAttribute('aria-hidden');
+        }
+
+        if (!hadInert) {
+          root.removeAttribute('inert');
+        } else {
+          root.setAttribute('inert', '');
+        }
+      }
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
     const dialog = dialogRef.current;
     if (dialog) {
       dialog.focus();

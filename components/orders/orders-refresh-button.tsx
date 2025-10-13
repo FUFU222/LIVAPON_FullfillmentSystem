@@ -18,6 +18,7 @@ export function OrdersRefreshButton() {
     }
 
     const toastId = showToast({
+      id: 'orders-refresh-progress',
       title: '注文情報を更新中…',
       description: '最新の注文データを取得しています。',
       duration: Infinity,
@@ -38,6 +39,7 @@ export function OrdersRefreshButton() {
       refreshToastRef.current = null;
 
       showToast({
+        id: 'orders-refresh-complete',
         title: '注文情報を更新しました',
         description: '一覧が最新の状態になりました。',
         variant: 'success',

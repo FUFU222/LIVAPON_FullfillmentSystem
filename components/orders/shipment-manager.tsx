@@ -92,10 +92,8 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
                   />
                 </th>
                 <th className="px-3 py-2">商品名</th>
-                <th className="px-3 py-2">SKU</th>
                 <th className="px-3 py-2">数量</th>
-                <th className="px-3 py-2">発送済</th>
-                <th className="px-3 py-2">紐づく配送</th>
+                <th className="px-3 py-2">お届け先</th>
               </tr>
             </thead>
             <tbody>
@@ -115,11 +113,9 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
                       <span className="text-xs text-slate-500">#{item.id}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-xs text-slate-500">{item.sku ?? '-'}</td>
                   <td className="px-3 py-3">{item.quantity}</td>
-                  <td className="px-3 py-3">{item.fulfilledQuantity ?? 0}</td>
-                  <td className="px-3 py-3">
-                    <LineItemShipmentList shipments={item.shipments} />
+                  <td className="px-3 py-3 text-xs text-slate-500">
+                    <AddressSummary shipments={item.shipments} />
                   </td>
                 </tr>
               ))}
@@ -205,20 +201,39 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
   );
 }
 
-function LineItemShipmentList({ shipments }: { shipments: LineItemShipment[] }) {
-  if (shipments.length === 0) {
-    return <span className="text-xs text-slate-400">未割当</span>;
+function getPrimaryShipment(shipments: LineItemShipment[]): LineItemShipment | null {
+  return shipments.find((shipment) => shipment.status === 'delivered') ?? shipments[0] ?? null;
+}
+
+function formatAddress(shipment: LineItemShipment | null) {
+  if (!shipment || !shipment.trackingNumber) {
+    return null;
   }
 
-  return (
-    <div className="flex flex-col gap-1 text-xs">
-      {shipments.map((shipment) => (
-        <span key={shipment.id} className="rounded bg-slate-100 px-2 py-1 text-slate-600">
-          {shipment.trackingNumber ?? '-'} / {shipment.status ?? '-'}
-        </span>
-      ))}
-    </div>
-  );
+  if (!shipment.memo || typeof shipment.memo !== 'object') {
+    return null;
+  }
+
+  const { address } = shipment.memo as { address?: string };
+  if (typeof address !== 'string' || address.trim().length === 0) {
+    return null;
+  }
+  return address.trim();
+}
+
+function AddressSummary({ shipments }: { shipments: LineItemShipment[] }) {
+  if (!shipments || shipments.length === 0) {
+    return <span className="text-xs text-slate-400">住所情報なし</span>;
+  }
+
+  const shipment = getPrimaryShipment(shipments);
+  const address = formatAddress(shipment ?? null);
+
+  if (!address) {
+    return <span className="text-xs text-slate-400">住所情報なし</span>;
+  }
+
+  return <span>{address}</span>;
 }
 
 function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProps) {

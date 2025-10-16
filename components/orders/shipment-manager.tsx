@@ -201,39 +201,12 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
   );
 }
 
-function getPrimaryShipment(shipments: LineItemShipment[]): LineItemShipment | null {
-  return shipments.find((shipment) => shipment.status === 'delivered') ?? shipments[0] ?? null;
-}
-
-function formatAddress(shipment: LineItemShipment | null) {
-  if (!shipment || !shipment.trackingNumber) {
-    return null;
-  }
-
-  if (!shipment.memo || typeof shipment.memo !== 'object') {
-    return null;
-  }
-
-  const { address } = shipment.memo as { address?: string };
-  if (typeof address !== 'string' || address.trim().length === 0) {
-    return null;
-  }
-  return address.trim();
-}
-
 function AddressSummary({ shipments }: { shipments: LineItemShipment[] }) {
   if (!shipments || shipments.length === 0) {
     return <span className="text-xs text-slate-400">住所情報なし</span>;
   }
 
-  const shipment = getPrimaryShipment(shipments);
-  const address = formatAddress(shipment ?? null);
-
-  if (!address) {
-    return <span className="text-xs text-slate-400">住所情報なし</span>;
-  }
-
-  return <span>{address}</span>;
+  return <span className="text-xs text-slate-400">住所情報は現在未連携です</span>;
 }
 
 function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProps) {

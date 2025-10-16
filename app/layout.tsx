@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { AppShell, type AppShellInitialAuth } from '@/components/layout/app-shell';
 import { ToastProvider } from '@/components/ui/toast-provider';
 import { getAuthContext } from '@/lib/auth';
+import { getVendorProfile } from '@/lib/data/vendors';
 
 export const metadata: Metadata = {
   title: 'LIVAPON Fulfillment Console',
@@ -14,18 +15,31 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const auth = await getAuthContext().catch(() => null);
 
+  let companyName: string | null = null;
+
+  if (auth && typeof auth.vendorId === 'number') {
+    try {
+      const profile = await getVendorProfile(auth.vendorId);
+      companyName = profile?.name ?? null;
+    } catch (error) {
+      console.error('Failed to load vendor profile for layout', error);
+    }
+  }
+
   const initialAuth: AppShellInitialAuth = auth
     ? {
         status: 'signed-in',
         email: auth.user.email ?? null,
         vendorId: auth.vendorId,
-        role: auth.role
+        role: auth.role,
+        companyName
       }
     : {
         status: 'signed-out',
         email: null,
         vendorId: null,
-        role: null
+        role: null,
+        companyName: null
       };
 
   return (

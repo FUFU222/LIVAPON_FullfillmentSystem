@@ -13,6 +13,7 @@ export type AppShellInitialAuth = {
   email: string | null;
   vendorId: number | null;
   role: string | null;
+  companyName: string | null;
 };
 
 const navItems = [
@@ -97,21 +98,48 @@ export function AppShell({
   const [email, setEmail] = useState<string | null>(initialAuth.email);
   const [vendorId, setVendorId] = useState<number | null>(initialAuth.vendorId);
   const [role, setRole] = useState<string | null>(initialAuth.role);
+  const [companyName, setCompanyName] = useState<string | null>(initialAuth.companyName);
 
   useEffect(() => {
     const supabase = getBrowserClient();
 
+    async function loadCompanyName(vendorIdToLoad: number | null) {
+      if (typeof vendorIdToLoad !== 'number') {
+        setCompanyName(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('name')
+        .eq('id', vendorIdToLoad)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Failed to load vendor name', error);
+        return;
+      }
+
+      setCompanyName(data?.name ?? null);
+    }
+
     function syncSession(session: Session | null) {
       if (session?.user) {
         setEmail(session.user.email ?? null);
-        setVendorId(parseVendorId({ ...session.user.user_metadata, ...session.user.app_metadata }));
+        const nextVendorId = parseVendorId({
+          ...session.user.user_metadata,
+          ...session.user.app_metadata
+        });
+        setVendorId(nextVendorId);
         setRole(parseRole({ ...session.user.user_metadata, ...session.user.app_metadata }));
         setStatus('signed-in');
+        void loadCompanyName(nextVendorId);
       } else {
         setEmail(null);
         setVendorId(null);
         setRole(null);
         setStatus('signed-out');
+        setCompanyName(null);
       }
     }
 
@@ -129,7 +157,51 @@ export function AppShell({
     setEmail(initialAuth.email);
     setVendorId(initialAuth.vendorId);
     setRole(initialAuth.role);
-  }, [initialAuth.email, initialAuth.role, initialAuth.status, initialAuth.vendorId]);
+    setCompanyName(initialAuth.companyName);
+  }, [
+    initialAuth.companyName,
+    initialAuth.email,
+    initialAuth.role,
+    initialAuth.status,
+    initialAuth.vendorId
+  ]);
+
+  useEffect(() => {
+    if (status !== 'signed-in') {
+      return;
+    }
+
+    if (typeof vendorId !== 'number') {
+      setCompanyName(null);
+      return;
+    }
+
+    if (companyName && companyName.length > 0) {
+      return;
+    }
+
+    let isCancelled = false;
+    const supabase = getBrowserClient();
+
+    supabase
+      .from('vendors')
+      .select('name')
+      .eq('id', vendorId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (isCancelled || error) {
+          if (error) {
+            console.warn('Failed to refresh vendor name', error);
+          }
+          return;
+        }
+        setCompanyName(data?.name ?? null);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [companyName, status, vendorId]);
 
   const links = (() => {
     if (status !== 'signed-in') {
@@ -177,7 +249,12 @@ export function AppShell({
                 </Link>
               ))}
             </nav>
-            <AuthControls status={status} email={email} role={role} />
+            <AuthControls
+              status={status}
+              email={email}
+              role={role}
+              companyName={companyName}
+            />
           </div>
         </div>
       </header>
@@ -194,11 +271,13 @@ export function AppShell({
 function AuthControls({
   status,
   email,
-  role
+  role,
+  companyName
 }: {
   status: 'loading' | 'signed-in' | 'signed-out';
   email: string | null;
   role: string | null;
+  companyName: string | null;
 }) {
   if (status === 'loading') {
     return null;
@@ -212,13 +291,21 @@ function AuthControls({
     );
   }
 
+  const displayLabel = companyName ?? email;
+  const suffix = !companyName
+    ? role === 'admin'
+      ? '（管理者）'
+      : role === 'pending_vendor'
+        ? '（審査中）'
+        : null
+    : null;
+
   return (
     <div className="flex items-center gap-2">
-      {email ? (
+      {displayLabel ? (
         <span className="hidden text-xs text-slate-500 sm:inline">
-          {email}
-          {role === 'admin' ? '（管理者）' : null}
-          {role === 'pending_vendor' ? '（審査中）' : null}
+          {displayLabel}
+          {suffix}
         </span>
       ) : null}
       <SignOutButton />

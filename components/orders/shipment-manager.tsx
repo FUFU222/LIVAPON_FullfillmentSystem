@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFormState } from 'react-dom';
 import { saveShipment, initialShipmentActionState } from '@/app/orders/actions';
+import { changeOrderStatus } from '@/app/orders/actions';
 import type { LineItemShipment, OrderDetail, OrderShipment } from '@/lib/data/orders';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,9 +185,11 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
       </section>
 
       <section className="grid gap-4">
-        <h3 className="text-sm font-semibold text-foreground">既存の配送</h3>
+        <h3 className="text-sm font-semibold text-foreground">登録済みの発送</h3>
         {shipments.length === 0 ? (
-          <p className="text-sm text-slate-500">登録済みの配送はありません。</p>
+          <p className="text-sm text-slate-500">
+            登録済みの発送はありません。発送登録を行うとこちらに表示されます。
+          </p>
         ) : (
           shipments.map((shipment) => (
             <ShipmentUpdateCard
@@ -220,6 +223,7 @@ function LineItemShipmentList({ shipments }: { shipments: LineItemShipment[] }) 
 
 function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProps) {
   const [state, formAction] = useFormState(saveShipment, initialShipmentActionState);
+  const [isMarkingUnfulfilled, setMarkingUnfulfilled] = useState(false);
 
   const linkedLineItems = shipment.lineItemIds
     .map((id) => ({ id, meta: lineItems.get(id) }))
@@ -290,8 +294,22 @@ function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProp
             ))}
           </Select>
         </div>
-        <div className="flex items-end justify-end">
-          <Button type="submit">更新</Button>
+        <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="submit" className="sm:order-2">
+            更新
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isMarkingUnfulfilled}
+            onClick={() => {
+              setMarkingUnfulfilled(true);
+              void changeOrderStatus(orderId, 'unfulfilled').finally(() => setMarkingUnfulfilled(false));
+            }}
+            className="text-xs sm:order-1"
+          >
+            発送状態を未発送に戻す
+          </Button>
         </div>
       </form>
     </div>

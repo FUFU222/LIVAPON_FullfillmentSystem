@@ -92,7 +92,7 @@ export function ConfirmDialog({
     }
 
     const root = document.getElementById('__next');
-    const previousAriaHidden = root?.getAttribute('aria-hidden');
+    const previousAriaHidden = root?.getAttribute('aria-hidden') ?? null;
     const hadInert = root?.hasAttribute('inert') ?? false;
     if (root) {
       root.setAttribute('aria-hidden', 'true');

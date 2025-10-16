@@ -151,25 +151,7 @@ export function AppShell({
     return publicNavItems;
   })();
 
-  const brandHref = (() => {
-    if (status !== 'signed-in') {
-      return '/apply';
-    }
-
-    if (role === 'admin') {
-      return '/admin';
-    }
-
-    if (role === 'pending_vendor') {
-      return '/pending';
-    }
-
-    if (vendorId) {
-      return '/orders';
-    }
-
-    return '/apply';
-  })();
+  const brandHref = '/';
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

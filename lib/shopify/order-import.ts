@@ -36,7 +36,7 @@ export async function isRegisteredShopDomain(shopDomain: string): Promise<boolea
     .select('id')
     .eq('shop', normalized)
     .maybeSingle();
-
+    console.log('🔍 Supabase domain check:', { shop: normalized, found: !!data, error });
   if (error) {
     throw error;
   }

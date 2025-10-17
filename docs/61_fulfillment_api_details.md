@@ -1,17 +1,17 @@
-# 61 Fulfillment API Details
+# 61 Fulfillment API 詳細
 
-## Required OAuth Scopes
-- `write_merchant_managed_fulfillment_orders` — mandatory for merchant-managed locations.
-- Optional: `write_third_party_fulfillment_orders` if we ever act on third-party fulfillment services.
-- Still request `read_orders` / `write_orders` for compatibility; add `read_fulfillments` if webhooks or lookups require it.
+## 必要な OAuth スコープ
+- `write_merchant_managed_fulfillment_orders`：マーチャント管理ロケーションの FO を操作するために必須。
+- 将来的に外部フルフィルメントサービスを扱う場合は `write_third_party_fulfillment_orders` も検討。
+- これまで通り `read_orders` / `write_orders` は保持し、Webhook 利用時などに `read_fulfillments` も必要なら付与する。
 
-## REST Endpoints (2025-10)
-- **List FO for an order**: `GET /admin/api/{version}/orders/{order_id}/fulfillment_orders.json`.
-- **Create a fulfillment**: `POST /admin/api/{version}/fulfillments.json` with `line_items_by_fulfillment_order` payload.
-- **Cancel (revert to unfulfilled)**: `POST /admin/api/{version}/fulfillments/{fulfillment_id}/cancel.json`.
-- **Update tracking**: `POST /admin/api/{version}/fulfillments/{fulfillment_id}/update_tracking.json` (for late edits).
+## REST エンドポイント（2025-10 時点）
+- **FO 一覧取得**：`GET /admin/api/{version}/orders/{order_id}/fulfillment_orders.json`
+- **Fulfillment 作成**：`POST /admin/api/{version}/fulfillments.json`
+- **Fulfillment 取消（未発送に戻す）**：`POST /admin/api/{version}/fulfillments/{fulfillment_id}/cancel.json`
+- **追跡情報更新**：`POST /admin/api/{version}/fulfillments/{fulfillment_id}/update_tracking.json`
 
-### Example payload
+### リクエスト例（REST）
 ```json
 POST /admin/api/2025-10/fulfillments.json
 {
@@ -32,11 +32,11 @@ POST /admin/api/2025-10/fulfillments.json
   }
 }
 ```
-- Use Shopify’s canonical carrier strings (`"Sagawa (JA)"`, `"Yamato (JA)"`, `"Japan Post (JA)"`).
-- If the carrier is unsupported, populate `tracking_info.url` manually.
+- 配送会社は Shopify の公式名称を使用（例：`Sagawa (JA)`、`Yamato (JA)`、`Japan Post (JA)`）。
+- 未サポートの運送会社では `tracking_info.url` に追跡ページ URL を指定。
 
-## Notes on GraphQL Admin API
-- `fulfillmentCreate` mutation handles multiple tracking numbers in one call.
-- REST still limits one tracking number per fulfillment; repeated `update_tracking` calls needed otherwise.
-- Keep API abstraction such that switching to GraphQL later only affects the service layer.
+## GraphQL Admin API について
+- `fulfillmentCreate` ミューテーションで複数追跡番号を一度に登録可能。
+- 旧 REST の制約（追跡番号 1 件まで）を避けられるので、中長期的には移行を検討。
+- どちらの API でも共通するロジック（FO ID の取得・数量指定など）はサービス層で抽象化しておく。
 

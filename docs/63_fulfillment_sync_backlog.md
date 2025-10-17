@@ -1,20 +1,20 @@
-# 63 Fulfillment Sync Implementation Backlog
+# 63 Fulfillment Sync 実装バックログ
 
-## Immediate Tasks
-- Build a service to fetch Fulfillment Orders by Shopify order ID and cache FO/FO line item IDs in Supabase.
-- Implement fulfillment creation + cancellation calls with robust error handling and logging.
-- Extend Supabase schema (if必要) に「同期状態」「最終同期日時」などのフィールドを追加。
-- Update UI to display “未同期”ステータスと再送ボタン。
+## 直近で実施するタスク
+- Shopify の Fulfillment Order / FO ラインアイテム ID を取得・キャッシュするサービス層を実装する。
+- Fulfillment 作成／取消エンドポイントの呼び出しとエラーハンドリングを整備する。
+- Supabase スキーマに「同期状態」「最終同期日時」などのカラムを追加し、UI で判別できるようにする。
+- UI に「未同期」「再送信」ステータスを表示し、失敗時にリトライできる仕組みを組み込む。
 
-## Operational Considerations
-- Decide on location strategy (単一ロケーション vs ベンダーごとのロケーション)。上限を超えないか確認。
-- Register OAuth scopes (`write_merchant_managed_fulfillment_orders` 等) and update app onboarding docs.
-- Define carrier string map (Shopify公式リストをサポート)。
-- Instrument logging/alerting for 401/403/422/429 responses。
+## 運用面での検討項目
+- ロケーション戦略を決める（ベンダー数と Shopify プランの上限を考慮）。
+- OAuth スコープ設定を更新し、アプリ連携手順書にも反映する。
+- 運送会社コードのマッピング表を保持し、メンテナンス手順を決める。
+- 401/403/422/429 などのエラーを監視ログに残し、必要に応じてアラート化する。
 
-## Future Enhancements
-- Evaluate GraphQL `fulfillmentCreate` for multi-tracking shipments。
-- Automate queue-based retries (Supabase triggers + Edge Functions) when order volume grows。
-- Consider customer notification settings (`notify_customer`)と店舗ポリシーのすり合わせ。
-- Monitor API rate usage; if CSV一括同期が増える場合はバックグラウンド処理に移行。
+## 将来拡張の候補
+- GraphQL `fulfillmentCreate` への切り替えにより複数追跡番号の同時登録を検討する。
+- バックグラウンド処理／キュー方式（Supabase Triggers + Edge Functions）への移行。
+- `notify_customer` の扱いなど、店舗ポリシーと通知設定の整合性を確認する。
+- 大量処理時のバックグラウンド進捗表示やダッシュボード整備。
 

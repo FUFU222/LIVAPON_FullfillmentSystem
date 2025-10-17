@@ -35,7 +35,6 @@ export default async function AdminOrdersPage() {
     <Card>
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">全注文一覧</CardTitle>
-        <p className="text-sm text-slate-500">最新 50 件の注文を表示しています。全件は Supabase Studio から確認できます。</p>
       </CardHeader>
       <CardContent>
         {orders.length === 0 ? (

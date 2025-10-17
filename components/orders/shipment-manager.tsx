@@ -1,21 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { saveShipment, cancelShipmentAction } from "@/app/orders/actions";
+import { saveShipment } from "@/app/orders/actions";
 import type { ShipmentActionState } from "@/app/orders/actions";
-import type {
-  LineItemShipment,
-  OrderDetail,
-  OrderShipment,
-} from "@/lib/data/orders";
-import { Button } from "@/components/ui/button";
+import type { OrderDetail } from "@/lib/data/orders";
+import { Alert } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Alert } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ComponentProps } from "react";
+import { Button } from "@/components/ui/button";
 
 const carrierOptions = [
   { value: "yamato", label: "ヤマト運輸" },
@@ -25,14 +21,7 @@ const carrierOptions = [
   { value: "fedex", label: "FedEx" },
 ];
 
-const statusLabelMap: Record<string, string> = {
-  shipped: "発送済み",
-  in_transit: "輸送中",
-  delivered: "配達済み",
-  returned: "返品",
-};
-
-type ButtonProps = ComponentProps<typeof Button>;
+type ButtonProps = React.ComponentProps<typeof Button>;
 
 const INITIAL_SHIPMENT_ACTION_STATE: ShipmentActionState = {
   status: "idle",
@@ -74,20 +63,24 @@ function FormSubmitButton({
 type Props = {
   orderId: number;
   lineItems: OrderDetail["lineItems"];
-  shipments: OrderDetail["shipments"];
 };
 
-type ShipmentUpdateProps = {
-  orderId: number;
-  shipment: OrderShipment;
-  lineItems: Map<number, { productName: string; sku: string | null }>;
-};
-
-export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
+export function ShipmentManager({ orderId, lineItems }: Props) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [state, formAction] = useFormState(
     saveShipment,
     INITIAL_SHIPMENT_ACTION_STATE,
+  );
+
+  const selectableItems = useMemo(
+    () =>
+      lineItems.map((item) => ({
+        id: item.id,
+        productName: item.productName,
+        quantity: item.quantity,
+        sku: item.sku,
+      })),
+    [lineItems],
   );
 
   useEffect(() => {
@@ -95,20 +88,6 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
       setSelectedIds([]);
     }
   }, [state.status]);
-
-  const lineItemMap = useMemo(
-    () =>
-      new Map(
-        lineItems.map((item) => [
-          item.id,
-          {
-            productName: item.productName,
-            sku: item.sku,
-          },
-        ]),
-      ),
-    [lineItems],
-  );
 
   const toggleSelection = (lineItemId: number) => {
     setSelectedIds((prev) =>
@@ -119,13 +98,13 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
   };
 
   const allSelected =
-    selectedIds.length === lineItems.length && lineItems.length > 0;
+    selectedIds.length === selectableItems.length && selectableItems.length > 0;
 
   const toggleAll = () => {
     if (allSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(lineItems.map((item) => item.id));
+      setSelectedIds(selectableItems.map((item) => item.id));
     }
   };
 
@@ -146,11 +125,10 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
                 </th>
                 <th className="px-3 py-2">商品名</th>
                 <th className="px-3 py-2">数量</th>
-                <th className="px-3 py-2">お届け先</th>
               </tr>
             </thead>
             <tbody>
-              {lineItems.map((item) => (
+              {selectableItems.map((item) => (
                 <tr key={item.id} className="border-b border-slate-100">
                   <td className="px-3 py-3">
                     <input
@@ -165,13 +143,12 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
                       <span className="font-medium text-foreground">
                         {item.productName}
                       </span>
-                      <span className="text-xs text-slate-500">#{item.id}</span>
+                      <span className="text-xs text-slate-500">
+                        SKU: {item.sku ?? "未設定"}
+                      </span>
                     </div>
                   </td>
                   <td className="px-3 py-3">{item.quantity}</td>
-                  <td className="px-3 py-3 text-xs text-slate-500">
-                    <AddressSummary shipments={item.shipments} />
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -180,7 +157,7 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
 
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <h3 className="mb-4 text-sm font-semibold text-foreground">
-            配送を新規作成
+            選択した明細を発送登録
           </h3>
           {state.status === "error" && state.message ? (
             <Alert variant="destructive" className="mb-4">
@@ -237,164 +214,22 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
                 pendingLabel="登録中…"
                 disabled={selectedIds.length === 0}
               >
-                選択した明細をまとめて発送登録
+                発送登録する
               </FormSubmitButton>
             </div>
           </form>
-        </div>
-      </section>
-
-      <section className="grid gap-4">
-        <h3 className="text-sm font-semibold text-foreground">
-          登録済みの発送
-        </h3>
-        {shipments.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            登録済みの発送はありません。発送登録を行うとこちらに表示されます。
-          </p>
-        ) : (
-          shipments.map((shipment) => (
-            <ShipmentUpdateCard
-              key={shipment.id}
-              orderId={orderId}
-              shipment={shipment}
-              lineItems={lineItemMap}
-            />
-          ))
-        )}
-      </section>
-    </div>
-  );
-}
-
-function AddressSummary({ shipments }: { shipments: LineItemShipment[] }) {
-  if (!shipments || shipments.length === 0) {
-    return <span className="text-xs text-slate-400">住所情報なし</span>;
-  }
-
-  return (
-    <span className="text-xs text-slate-400">住所情報は現在未連携です</span>
-  );
-}
-
-function ShipmentUpdateCard({
-  orderId,
-  shipment,
-  lineItems,
-}: ShipmentUpdateProps) {
-  const [state, formAction] = useFormState(
-    saveShipment,
-    INITIAL_SHIPMENT_ACTION_STATE,
-  );
-  const [cancelState, cancelFormAction] = useFormState(
-    cancelShipmentAction,
-    INITIAL_SHIPMENT_ACTION_STATE,
-  );
-
-  const linkedLineItems = shipment.lineItemIds
-    .map((id) => ({ id, meta: lineItems.get(id) }))
-    .filter((item) => item.meta !== undefined);
-
-  const statusLabel =
-    statusLabelMap[shipment.status ?? ""] ?? shipment.status ?? "-";
-
-  return (
-    <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold text-foreground">
-            追跡番号: {shipment.trackingNumber ?? "-"}
-          </span>
-          <span className="text-xs text-slate-500">ID: {shipment.id}</span>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-          <span>配送業者: {shipment.carrier ?? "-"}</span>
-          <span>ステータス: {statusLabel}</span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1 text-xs text-slate-500">
-        <span className="font-medium text-foreground">対象の注文明細</span>
-        {linkedLineItems.length === 0 ? (
-          <span>該当なし</span>
-        ) : (
-          linkedLineItems.map(({ id, meta }) => (
-            <span key={id}>
-              #{id} {meta?.productName} ({meta?.sku ?? "SKUなし"})
-            </span>
-          ))
-        )}
-      </div>
-
-      {state.status === "error" && state.message ? (
-        <Alert variant="destructive">{state.message}</Alert>
-      ) : null}
-      {state.status === "success" && state.message ? (
-        <Alert variant="success">{state.message}</Alert>
-      ) : null}
-      {cancelState.status === "error" && cancelState.message ? (
-        <Alert variant="destructive">{cancelState.message}</Alert>
-      ) : null}
-      {cancelState.status === "success" && cancelState.message ? (
-        <Alert variant="success">{cancelState.message}</Alert>
-      ) : null}
-
-      <form action={formAction} className="grid gap-3 sm:grid-cols-2">
-        <input type="hidden" name="orderId" value={orderId} />
-        <input type="hidden" name="shipmentId" value={shipment.id} />
-        <input type="hidden" name="redirectTo" value={`/orders/${orderId}`} />
-        {shipment.lineItemIds.map((id) => (
-          <input key={id} type="hidden" name="lineItemIds" value={id} />
-        ))}
-
-        <div className="grid gap-2">
-          <label className="text-xs font-medium text-foreground">
-            追跡番号
-          </label>
-          <Input
-            name="trackingNumber"
-            defaultValue={shipment.trackingNumber ?? ""}
-            required
-          />
-        </div>
-        <div className="grid gap-2">
-          <label className="text-xs font-medium text-foreground">
-            配送業者
-          </label>
-          <Select
-            name="carrier"
-            defaultValue={shipment.carrier ?? carrierOptions[0]?.value ?? ""}
-            required
-          >
-            {carrierOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-          <FormSubmitButton className="sm:order-2" pendingLabel="更新中…">
-            更新
-          </FormSubmitButton>
-          <form action={cancelFormAction} className="sm:order-1">
-            <input type="hidden" name="orderId" value={orderId} />
-            <input type="hidden" name="shipmentId" value={shipment.id} />
-            <input
-              type="hidden"
-              name="redirectTo"
-              value={`/orders/${orderId}`}
-            />
-            <FormSubmitButton
-              variant="outline"
-              className="text-xs"
-              pendingLabel="取消中…"
+          <p className="mt-4 text-xs text-slate-500">
+            過去の発送履歴は「
+            <Link
+              href="/orders/shipments"
+              className="text-foreground underline-offset-2 hover:underline"
             >
-              発送状態を未発送に戻す
-            </FormSubmitButton>
-          </form>
+              発送履歴一覧
+            </Link>
+            」から確認・取消できます。
+          </p>
         </div>
-      </form>
+      </section>
     </div>
   );
 }

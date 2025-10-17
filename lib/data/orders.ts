@@ -71,6 +71,17 @@ export type AdminOrderPreview = {
   updatedAt: string | null;
 };
 
+export type ShipmentHistoryEntry = {
+  id: number;
+  orderId: number | null;
+  orderNumber: string;
+  orderStatus: string | null;
+  trackingNumber: string | null;
+  carrier: string | null;
+  shippedAt: string | null;
+  syncStatus: string | null;
+};
+
 const demoOrders: OrderDetail[] = [
   {
     id: 1,
@@ -657,4 +668,59 @@ export async function cancelShipment(shipmentId: number, vendorId: number) {
       throw updateOrderError;
     }
   }
+}
+
+export async function getShipmentHistory(vendorId: number): Promise<ShipmentHistoryEntry[]> {
+  if (!Number.isInteger(vendorId)) {
+    throw new Error('A valid vendorId is required to load shipments');
+  }
+
+  if (!serviceClient) {
+    return demoOrders
+      .flatMap((order) =>
+        order.shipments.map((shipment) => ({
+          id: shipment.id,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          orderStatus: order.status,
+          trackingNumber: shipment.trackingNumber ?? null,
+          carrier: shipment.carrier ?? null,
+          shippedAt: shipment.shippedAt ?? null,
+          syncStatus: shipment.status ?? null
+        }))
+      )
+      .filter((entry) => {
+        const matchingOrder = demoOrders.find((order) => order.id === entry.orderId);
+        return matchingOrder?.lineItems.some((item) => item.vendorId === vendorId) ?? false;
+      })
+      .sort((a, b) => (b.shippedAt ?? '').localeCompare(a.shippedAt ?? ''));
+  }
+
+  const { data, error } = await serviceClient
+    .from('shipments')
+    .select(
+      `id, tracking_number, carrier, shipped_at, sync_status, status, order_id,
+       order:orders(id, order_number, status)`
+    )
+    .eq('vendor_id', vendorId)
+    .order('shipped_at', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to load shipment history', error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id as number,
+    orderId: row.order_id ?? row.order?.id ?? null,
+    orderNumber:
+      (row.order?.order_number as string | undefined) ??
+      (row.order_id ? `#${row.order_id}` : '注文未取得'),
+    orderStatus: (row.order?.status ?? null) as string | null,
+    trackingNumber: (row.tracking_number ?? null) as string | null,
+    carrier: (row.carrier ?? null) as string | null,
+    shippedAt: (row.shipped_at ?? null) as string | null,
+    syncStatus: (row.sync_status ?? row.status ?? null) as string | null
+  }));
 }

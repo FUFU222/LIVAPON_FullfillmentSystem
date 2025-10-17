@@ -80,6 +80,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           <p className="text-sm text-slate-500">最新の注文を確認し、発送状況を更新できます。</p>
         </div>
         <div className="flex gap-2">
+          <Link href="/orders/shipments" className={buttonClasses('outline')}>
+            発送履歴一覧
+          </Link>
           <Link href="/import" className={buttonClasses()}>
             CSVインポート
           </Link>

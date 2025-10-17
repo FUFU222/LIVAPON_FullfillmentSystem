@@ -101,7 +101,7 @@ describe('POST /api/shopify/orders/ingest', () => {
     const response = await POST(buildRequest(payload));
 
     expect(response.status).toBe(204);
-    expect(upsertShopifyOrder).toHaveBeenCalledWith(payload);
+    expect(upsertShopifyOrder).toHaveBeenCalledWith(payload, 'example.myshopify.com');
   });
 });
 jest.mock('next/server', () => {

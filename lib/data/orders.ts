@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
 import type { Database } from '@/lib/supabase/types';
+import { syncShipmentWithShopify } from '@/lib/shopify/fulfillment';
 
 const serviceUrl = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -439,7 +440,7 @@ export async function upsertShipment(
 
   const { data: lineItems, error: lineItemsError } = await client
     .from('line_items')
-    .select('id, vendor_id')
+    .select('id, vendor_id, order_id, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id, quantity')
     .in('id', shipment.lineItemIds);
 
   if (lineItemsError) {
@@ -455,12 +456,25 @@ export async function upsertShipment(
     throw new Error('Unauthorized line items included in shipment');
   }
 
+  const orderId = lineItems[0]?.order_id ?? null;
+  if (!orderId || lineItems.some((item) => item.order_id !== orderId)) {
+    throw new Error('Line items must belong to the same order');
+  }
+
+  const nowIso = new Date().toISOString();
+
   const payload: Database['public']['Tables']['shipments']['Insert'] = {
     tracking_number: shipment.trackingNumber,
     carrier: shipment.carrier,
     status: shipment.status,
-    shipped_at: shipment.shippedAt ?? new Date().toISOString(),
-    vendor_id: vendorId
+    shipped_at: shipment.shippedAt ?? nowIso,
+    vendor_id: vendorId,
+    order_id: orderId,
+    tracking_company: shipment.carrier,
+    sync_status: 'pending',
+    synced_at: null,
+    sync_error: null,
+    updated_at: nowIso
   } satisfies Database['public']['Tables']['shipments']['Insert'];
 
   let shipmentId = shipment.id ?? null;
@@ -497,11 +511,15 @@ export async function upsertShipment(
     shipmentId = insertData.id;
   }
 
-  const pivotInserts: Database['public']['Tables']['shipment_line_items']['Insert'][] = shipment.lineItemIds.map((lineItemId) => ({
-    shipment_id: shipmentId as number,
-    line_item_id: lineItemId,
-    quantity: null
-  }));
+  const pivotInserts: Database['public']['Tables']['shipment_line_items']['Insert'][] = shipment.lineItemIds.map((lineItemId) => {
+    const matching = lineItems.find((item) => item.id === lineItemId);
+    return {
+      shipment_id: shipmentId as number,
+      line_item_id: lineItemId,
+      quantity: matching?.fulfillable_quantity ?? matching?.quantity ?? null,
+      fulfillment_order_line_item_id: matching?.fulfillment_order_line_item_id ?? null
+    };
+  });
 
   const { error: pivotError } = await client
     .from('shipment_line_items')
@@ -511,7 +529,20 @@ export async function upsertShipment(
     throw pivotError;
   }
 
-  await notifyShopifyShipmentUpdate(shipmentId as number);
+  try {
+    await syncShipmentWithShopify(shipmentId as number);
+  } catch (error) {
+    await client
+      .from('shipments')
+      .update({
+        sync_status: 'error',
+        sync_error: error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', shipmentId as number);
+
+    throw error;
+  }
 }
 
 export async function updateOrderStatus(orderId: number, status: string, vendorId: number) {
@@ -548,14 +579,5 @@ export async function updateOrderStatus(orderId: number, status: string, vendorI
 
   if (error) {
     throw error;
-  }
-}
-
-async function notifyShopifyShipmentUpdate(shipmentId: number) {
-  try {
-    console.info('Enqueued Shopify shipment sync', { shipmentId });
-    // TODO: enqueue background job to sync grouped shipment updates with Shopify Fulfillment API.
-  } catch (error) {
-    console.error('Failed to enqueue Shopify sync', error);
   }
 }

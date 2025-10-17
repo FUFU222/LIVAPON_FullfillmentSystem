@@ -67,6 +67,7 @@ type ShopifyOrderPayload = {
     sku: string | null;
     title: string;
     quantity: number;
+    fulfillable_quantity?: number;
     vendor?: string | null;
   }>;
   fulfillments?: Array<{
@@ -163,7 +164,8 @@ function buildCustomerName(payload: ShopifyOrderPayload): string | null {
 async function upsertOrderRecord(
   client: SupabaseClient<Database>,
   payload: ShopifyOrderPayload,
-  lineItemVendors: VendorResolution[]
+  lineItemVendors: VendorResolution[],
+  normalizedShopDomain: string | null
 ): Promise<number> {
   const uniqueVendorIds = Array.from(
     new Set(lineItemVendors.map(r => r.vendorId).filter((v): v is number => Number.isInteger(v)))
@@ -176,6 +178,7 @@ async function upsertOrderRecord(
     order_number: payload.name || payload.order_number,
     customer_name: buildCustomerName(payload),
     status: payload.fulfillment_status ?? 'unfulfilled',
+    shop_domain: normalizedShopDomain,
     created_at: payload.created_at,
     updated_at: payload.updated_at
   };
@@ -224,7 +227,8 @@ async function replaceLineItems(
       sku: item.sku ?? null,
       product_name: item.title,
       quantity: item.quantity,
-      fulfilled_quantity: 0
+      fulfilled_quantity: 0,
+      fulfillable_quantity: item.fulfillable_quantity ?? item.quantity
     })
   );
 
@@ -242,11 +246,22 @@ async function replaceLineItems(
 // ==========================
 // Main Entry: upsertShopifyOrder
 // ==========================
-export async function upsertShopifyOrder(payload: unknown) {
+function normalizeShopDomain(shopDomain: string | null | undefined): string | null {
+  if (!shopDomain) return null;
+  return shopDomain.replace(/^https?:\/\//i, '').trim().toLowerCase() || null;
+}
+
+export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
   const order = payload as ShopifyOrderPayload;
   const client = assertServiceClient();
 
-  console.log('🚀 upsertShopifyOrder START:', { orderId: order?.id, lineItems: order?.line_items?.length });
+  const normalizedShopDomain = normalizeShopDomain(shopDomain);
+
+  console.log('🚀 upsertShopifyOrder START:', {
+    orderId: order?.id,
+    lineItems: order?.line_items?.length,
+    shopDomain: normalizedShopDomain
+  });
 
   if (!order?.id || !Array.isArray(order.line_items)) {
     console.error('❌ Invalid Shopify order payload:', payload);
@@ -260,7 +275,7 @@ export async function upsertShopifyOrder(payload: unknown) {
       lineItemVendors.push(resolution);
     }
 
-    const orderId = await upsertOrderRecord(client, order, lineItemVendors);
+    const orderId = await upsertOrderRecord(client, order, lineItemVendors, normalizedShopDomain);
     await replaceLineItems(client, orderId, order, lineItemVendors);
 
     console.log('✅ upsertShopifyOrder COMPLETE:', { orderId, lineItemCount: order.line_items.length });

@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await upsertShopifyOrder(payload);
+    await upsertShopifyOrder(payload, shopDomainHeader);
     console.info('Shopify webhook processed successfully', logContext);
   } catch (error) {
     console.error('Failed to upsert Shopify order', {

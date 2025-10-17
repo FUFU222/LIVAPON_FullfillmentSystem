@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
@@ -229,8 +230,15 @@ export function AppShell({
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
-          <Link href={brandHref} className="text-lg font-semibold tracking-tight text-foreground">
-            LIVAPON Fulfillment
+          <Link href={brandHref} className="flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground">
+            <Image
+              src="/LIVAPON_logo_horizontal.svg"
+              alt="LIVAPON Fulfillment"
+              width={160}
+              height={40}
+              priority
+              className="h-8 w-auto"
+            />
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <nav className="flex items-center gap-2">

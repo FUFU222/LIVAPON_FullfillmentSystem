@@ -22,9 +22,15 @@ type Props = {
   orders: OrderSummary[];
   selectedOrderIds: Set<number>;
   onClearSelection: () => void;
+  onRemoveOrder: (orderId: number) => void;
 };
 
-export function OrdersDispatchPanel({ orders, selectedOrderIds, onClearSelection }: Props) {
+export function OrdersDispatchPanel({
+  orders,
+  selectedOrderIds,
+  onClearSelection,
+  onRemoveOrder,
+}: Props) {
   const router = useRouter();
   const { showToast } = useToast();
 
@@ -115,8 +121,22 @@ export function OrdersDispatchPanel({ orders, selectedOrderIds, onClearSelection
             <span className="text-xs uppercase text-slate-400">選択中</span>
             <div className="flex flex-wrap gap-2">
               {selectedOrders.map((order) => (
-                <span key={order.id} className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                <span
+                  key={order.id}
+                  className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600"
+                >
                   {order.orderNumber}
+                  <button
+                    type="button"
+                    className="text-slate-400 transition hover:text-slate-600"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemoveOrder(order.id);
+                    }}
+                    aria-label={`${order.orderNumber} を選択から外す`}
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
                 </span>
               ))}
             </div>
@@ -131,8 +151,8 @@ export function OrdersDispatchPanel({ orders, selectedOrderIds, onClearSelection
           </button>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
-          <div className="flex flex-1 flex-col gap-1">
+        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex basis-full flex-col gap-1 sm:basis-2/3">
             <label className="text-xs font-medium text-foreground">追跡番号</label>
             <Input
               value={trackingNumber}
@@ -140,7 +160,7 @@ export function OrdersDispatchPanel({ orders, selectedOrderIds, onClearSelection
               placeholder="YT123456789JP"
             />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 sm:basis-1/3">
             <label className="text-xs font-medium text-foreground">配送業者</label>
             <Select value={carrier} onChange={(event) => setCarrier(event.target.value)}>
               {carrierOptions.map((option) => (

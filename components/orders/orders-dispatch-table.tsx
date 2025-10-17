@@ -73,7 +73,6 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
             <TableHead>商品数</TableHead>
             <TableHead>ステータス</TableHead>
             <TableHead>更新日</TableHead>
-            <TableHead className="w-48">発送操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -108,9 +107,6 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                   <StatusBadge status={order.status} />
                 </TableCell>
                 <TableCell>{formatUpdatedAt(order.updatedAt)}</TableCell>
-                <TableCell className="text-xs text-slate-500">
-                  チェックすると下部に発送登録フォームが表示されます。
-                </TableCell>
               </TableRow>
             );
           })}
@@ -121,6 +117,13 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
         orders={orders}
         selectedOrderIds={selectedOrders}
         onClearSelection={() => setSelectedOrders(new Set())}
+        onRemoveOrder={(orderId) =>
+          setSelectedOrders((prev) => {
+            const next = new Set(prev);
+            next.delete(orderId);
+            return next;
+          })
+        }
       />
     </>
   );

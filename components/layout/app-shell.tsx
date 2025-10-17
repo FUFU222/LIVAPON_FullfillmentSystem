@@ -233,12 +233,13 @@ export function AppShell({
           <Link href={brandHref} className="flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground">
             <Image
               src="/LIVAPON_logo_horizontal.svg"
-              alt="LIVAPON Fulfillment"
-              width={160}
-              height={40}
+              alt="LIVAPON"
+              width={156}
+              height={32}
               priority
-              className="h-8 w-auto"
+              className="h-7 w-auto"
             />
+            <span className="hidden text-sm font-medium text-slate-500 sm:inline">Fulfillment Console</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <nav className="flex items-center gap-2">

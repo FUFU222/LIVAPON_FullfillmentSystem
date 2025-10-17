@@ -36,16 +36,6 @@ export default function HomePage() {
         <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center gap-12 px-6 py-16">
           <div className="flex flex-col gap-10">
             <div className="flex flex-col gap-4 text-center sm:max-w-2xl sm:text-left">
-              <div className="flex justify-center sm:justify-start">
-                <Image
-                  src="/LIVAPON_logo_square.svg"
-                  alt="LIVAPON"
-                  width={56}
-                  height={56}
-                  priority
-                  className="h-12 w-12"
-                />
-              </div>
               <span className="inline-flex items-center gap-2 self-center rounded-full border border-black/10 bg-black/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#801010] sm:self-start">
                 Official Partner Access
               </span>

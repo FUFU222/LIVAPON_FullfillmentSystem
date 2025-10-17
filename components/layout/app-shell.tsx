@@ -234,12 +234,12 @@ export function AppShell({
             <Image
               src="/LIVAPON_logo_horizontal.svg"
               alt="LIVAPON"
-              width={156}
-              height={32}
+              width={192}
+              height={40}
               priority
-              className="h-7 w-auto"
+              className="h-9 w-auto"
             />
-            <span className="hidden text-sm font-medium text-slate-500 sm:inline">Fulfillment Console</span>
+            <span className="hidden text-sm font-semibold text-slate-500 sm:inline">Fulfillment Console</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <nav className="flex items-center gap-2">

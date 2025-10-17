@@ -237,7 +237,7 @@ export function AppShell({
               width={192}
               height={40}
               priority
-              className="h-9 w-auto"
+              className="h-[4.5rem] w-auto"
             />
             <span className="hidden text-sm font-semibold text-slate-500 sm:inline">Fulfillment Console</span>
           </Link>

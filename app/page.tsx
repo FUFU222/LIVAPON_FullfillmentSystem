@@ -31,7 +31,7 @@ const onboardingFlow = [
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-b from-white via-slate-50 to-white text-slate-900">
+    <main className="flex min-h-[68vh] flex-col bg-gradient-to-b from-white via-slate-50 to-white text-slate-900">
       <section className="relative flex flex-1 items-center overflow-hidden">
         <div className="relative mx-auto flex w-full max-w-5xl flex-col justify-center gap-8 px-6 py-8">
           <div className="flex flex-col gap-6">

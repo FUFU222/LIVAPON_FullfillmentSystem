@@ -2,11 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import {
-  saveShipment,
-  initialShipmentActionState,
-  cancelShipmentAction,
-} from "@/app/orders/actions";
+import { saveShipment, cancelShipmentAction } from "@/app/orders/actions";
+import type { ShipmentActionState } from "@/app/orders/actions";
 import type {
   LineItemShipment,
   OrderDetail,
@@ -36,6 +33,11 @@ const statusLabelMap: Record<string, string> = {
 };
 
 type ButtonProps = ComponentProps<typeof Button>;
+
+const INITIAL_SHIPMENT_ACTION_STATE: ShipmentActionState = {
+  status: "idle",
+  message: null,
+};
 
 function FormSubmitButton({
   pendingLabel = "処理中…",
@@ -85,7 +87,7 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [state, formAction] = useFormState(
     saveShipment,
-    initialShipmentActionState,
+    INITIAL_SHIPMENT_ACTION_STATE,
   );
 
   useEffect(() => {
@@ -282,11 +284,11 @@ function ShipmentUpdateCard({
 }: ShipmentUpdateProps) {
   const [state, formAction] = useFormState(
     saveShipment,
-    initialShipmentActionState,
+    INITIAL_SHIPMENT_ACTION_STATE,
   );
   const [cancelState, cancelFormAction] = useFormState(
     cancelShipmentAction,
-    initialShipmentActionState,
+    INITIAL_SHIPMENT_ACTION_STATE,
   );
 
   const linkedLineItems = shipment.lineItemIds

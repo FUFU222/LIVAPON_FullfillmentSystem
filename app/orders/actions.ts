@@ -11,11 +11,6 @@ export type ShipmentActionState = {
   message: string | null;
 };
 
-export const initialShipmentActionState: ShipmentActionState = {
-  status: "idle",
-  message: null,
-};
-
 export async function saveShipment(
   _prevState: ShipmentActionState,
   formData: FormData,

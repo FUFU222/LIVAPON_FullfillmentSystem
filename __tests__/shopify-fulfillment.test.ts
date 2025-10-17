@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { syncShipmentWithShopify } from '@/lib/shopify/fulfillment';
+import { cancelShopifyFulfillment, syncShipmentWithShopify } from '@/lib/shopify/fulfillment';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
 
@@ -245,5 +245,27 @@ describe('syncShipmentWithShopify', () => {
         quantity: 2
       }
     ]);
+  });
+});
+
+describe('cancelShopifyFulfillment', () => {
+  it('ShopifyのFulfillment取消エンドポイントを呼び出す', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      text: async () => ''
+    });
+
+    global.fetch = fetchMock as any;
+
+    await cancelShopifyFulfillment('example.myshopify.com', 'token', 123);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url.toString()).toBe(
+      'https://example.myshopify.com/admin/api/2025-10/fulfillments/123/cancel.json'
+    );
+    expect(init).toMatchObject({ method: 'POST' });
   });
 });

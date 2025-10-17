@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { saveShipment, initialShipmentActionState } from "@/app/orders/actions";
-import { changeOrderStatus } from "@/app/orders/actions";
+import {
+  saveShipment,
+  initialShipmentActionState,
+  cancelShipmentAction,
+} from "@/app/orders/actions";
 import type {
   LineItemShipment,
   OrderDetail,
@@ -281,7 +284,10 @@ function ShipmentUpdateCard({
     saveShipment,
     initialShipmentActionState,
   );
-  const [isMarkingUnfulfilled, setMarkingUnfulfilled] = useState(false);
+  const [cancelState, cancelFormAction] = useFormState(
+    cancelShipmentAction,
+    initialShipmentActionState,
+  );
 
   const linkedLineItems = shipment.lineItemIds
     .map((id) => ({ id, meta: lineItems.get(id) }))
@@ -324,6 +330,12 @@ function ShipmentUpdateCard({
       {state.status === "success" && state.message ? (
         <Alert variant="success">{state.message}</Alert>
       ) : null}
+      {cancelState.status === "error" && cancelState.message ? (
+        <Alert variant="destructive">{cancelState.message}</Alert>
+      ) : null}
+      {cancelState.status === "success" && cancelState.message ? (
+        <Alert variant="success">{cancelState.message}</Alert>
+      ) : null}
 
       <form action={formAction} className="grid gap-3 sm:grid-cols-2">
         <input type="hidden" name="orderId" value={orderId} />
@@ -363,20 +375,22 @@ function ShipmentUpdateCard({
           <FormSubmitButton className="sm:order-2" pendingLabel="更新中…">
             更新
           </FormSubmitButton>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isMarkingUnfulfilled}
-            onClick={() => {
-              setMarkingUnfulfilled(true);
-              void changeOrderStatus(orderId, "unfulfilled").finally(() =>
-                setMarkingUnfulfilled(false),
-              );
-            }}
-            className="text-xs sm:order-1"
-          >
-            発送状態を未発送に戻す
-          </Button>
+          <form action={cancelFormAction} className="sm:order-1">
+            <input type="hidden" name="orderId" value={orderId} />
+            <input type="hidden" name="shipmentId" value={shipment.id} />
+            <input
+              type="hidden"
+              name="redirectTo"
+              value={`/orders/${orderId}`}
+            />
+            <FormSubmitButton
+              variant="outline"
+              className="text-xs"
+              pendingLabel="取消中…"
+            >
+              発送状態を未発送に戻す
+            </FormSubmitButton>
+          </form>
         </div>
       </form>
     </div>

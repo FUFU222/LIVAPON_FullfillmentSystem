@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { upsertShipment, updateOrderStatus } from "@/lib/data/orders";
+import { cancelShipment, upsertShipment, updateOrderStatus } from "@/lib/data/orders";
 import { requireAuthContext, assertAuthorizedVendor } from "@/lib/auth";
 import { getServerActionClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
@@ -119,4 +119,49 @@ export async function changeOrderStatus(orderId: number, status: string) {
   await updateOrderStatus(orderId, status, vendorId);
   revalidatePath(`/orders/${orderId}`);
   revalidatePath("/orders");
+}
+
+export async function cancelShipmentAction(
+  _prevState: ShipmentActionState,
+  formData: FormData,
+): Promise<ShipmentActionState> {
+  const auth = await requireAuthContext();
+  const vendorId = auth.vendorId;
+  assertAuthorizedVendor(vendorId);
+
+  const orderId = Number(formData.get("orderId"));
+  const shipmentId = Number(formData.get("shipmentId"));
+  const redirectTo = String(formData.get("redirectTo") ?? "/orders");
+
+  if (!Number.isInteger(orderId) || !Number.isInteger(shipmentId)) {
+    return {
+      status: "error",
+      message: "発送情報の指定が正しくありません",
+    };
+  }
+
+  try {
+    await cancelShipment(shipmentId, vendorId);
+
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/orders");
+
+    if (redirectTo && redirectTo !== `/orders/${orderId}`) {
+      revalidatePath(redirectTo);
+    }
+
+    return {
+      status: "success",
+      message: "発送を未発送に戻しました",
+    };
+  } catch (error) {
+    console.error("Failed to cancel shipment", error);
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "発送を未発送に戻す処理でエラーが発生しました",
+    };
+  }
 }

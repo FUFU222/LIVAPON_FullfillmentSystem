@@ -1,7 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
 import type { Database } from '@/lib/supabase/types';
-import { syncShipmentWithShopify } from '@/lib/shopify/fulfillment';
+import {
+  cancelShopifyFulfillment,
+  loadShopifyAccessToken,
+  syncShipmentWithShopify
+} from '@/lib/shopify/fulfillment';
 
 const serviceUrl = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -579,5 +583,78 @@ export async function updateOrderStatus(orderId: number, status: string, vendorI
 
   if (error) {
     throw error;
+  }
+}
+
+export async function cancelShipment(shipmentId: number, vendorId: number) {
+  if (!serviceClient) {
+    throw new Error('Supabase service client is not configured');
+  }
+
+  if (!Number.isInteger(vendorId)) {
+    throw new Error('A valid vendorId is required to cancel shipments');
+  }
+
+  const client: SupabaseClient<Database> = serviceClient;
+
+  const { data: shipment, error: shipmentError } = await client
+    .from('shipments')
+    .select(
+      `id, vendor_id, order_id, shopify_fulfillment_id,
+       order:orders(id, shop_domain, shopify_order_id),
+       line_items:shipment_line_items(line_item_id)`
+    )
+    .eq('id', shipmentId)
+    .maybeSingle();
+
+  if (shipmentError) {
+    throw shipmentError;
+  }
+
+  if (!shipment) {
+    throw new Error('Shipment not found');
+  }
+
+  if (shipment.vendor_id !== vendorId) {
+    throw new Error('Unauthorized to cancel this shipment');
+  }
+
+  const order = shipment.order;
+  if (!order) {
+    throw new Error('Shipment missing related order');
+  }
+
+  if (shipment.shopify_fulfillment_id) {
+    const accessToken = await loadShopifyAccessToken(client, order.shop_domain ?? '');
+    await cancelShopifyFulfillment(
+      order.shop_domain ?? '',
+      accessToken,
+      shipment.shopify_fulfillment_id
+    );
+  }
+
+  const { error: deleteError } = await client
+    .from('shipments')
+    .delete()
+    .eq('id', shipment.id);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  const { count } = await client
+    .from('shipments')
+    .select('id', { count: 'exact', head: true })
+    .eq('order_id', order.id);
+
+  if (!count) {
+    const { error: updateOrderError } = await client
+      .from('orders')
+      .update({ status: 'unfulfilled', updated_at: new Date().toISOString() })
+      .eq('id', order.id);
+
+    if (updateOrderError) {
+      throw updateOrderError;
+    }
   }
 }

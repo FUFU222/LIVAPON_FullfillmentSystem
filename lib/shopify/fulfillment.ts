@@ -27,7 +27,10 @@ function mapCarrierToShopifyCompany(carrier: string | null): string | undefined 
   }
 }
 
-async function loadShopifyAccessToken(client: SupabaseClient<Database>, domain: string): Promise<string> {
+export async function loadShopifyAccessToken(
+  client: SupabaseClient<Database>,
+  domain: string
+): Promise<string> {
   const normalized = normalizeShopDomain(domain) ?? normalizeShopDomain(DEFAULT_SHOP_DOMAIN);
   if (!normalized) {
     throw new Error('Shopify shop domain is not configured');
@@ -402,4 +405,14 @@ export async function syncShipmentWithShopify(shipmentId: number) {
       .from('shipment_line_items')
       .upsert(pivotUpdates, { onConflict: 'shipment_id,line_item_id' });
   }
+}
+
+export async function cancelShopifyFulfillment(
+  shop: string,
+  accessToken: string,
+  fulfillmentId: number
+) {
+  await shopifyRequest(shop, accessToken, `fulfillments/${fulfillmentId}/cancel.json`, {
+    method: 'POST'
+  });
 }

@@ -56,6 +56,7 @@ export type OrderSummary = {
   customerName: string | null;
   lineItemCount: number;
   status: string | null;
+  shippingAddress: string | null;
   trackingNumbers: string[];
   updatedAt: string | null;
 };
@@ -185,6 +186,7 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     customerName: order.customerName,
     lineItemCount: order.lineItems.length,
     status: order.status,
+    shippingAddress: '住所情報は現在未連携です',
     trackingNumbers: Array.from(trackingNumbers),
     updatedAt: order.updatedAt
   };

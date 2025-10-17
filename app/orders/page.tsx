@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrderFilters } from '@/components/orders/order-filters';
-import { OrderTable } from '@/components/orders/order-table';
+import { OrdersDispatchTable } from '@/components/orders/orders-dispatch-table';
 import { OrdersRefreshButton } from '@/components/orders/orders-refresh-button';
 import { getOrders } from '@/lib/data/orders';
 import { getAuthContext } from '@/lib/auth';
@@ -90,7 +90,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       </CardHeader>
       <CardContent className="gap-6">
         <OrderFilters />
-        <OrderTable orders={filtered} />
+        <OrdersDispatchTable orders={filtered} />
       </CardContent>
     </Card>
   );

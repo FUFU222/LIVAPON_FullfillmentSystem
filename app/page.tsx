@@ -32,9 +32,9 @@ const onboardingFlow = [
 export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-white via-slate-50 to-white text-slate-900">
-      <section className="relative overflow-hidden">
-        <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center gap-12 px-6 py-16">
-          <div className="flex flex-col gap-10">
+      <section className="relative flex flex-1 items-center overflow-hidden">
+        <div className="relative mx-auto flex w-full max-w-5xl flex-col justify-center gap-10 px-6 py-12">
+          <div className="flex flex-col gap-8">
             <div className="flex flex-col gap-4 text-center sm:max-w-2xl sm:text-left">
               <span className="inline-flex items-center gap-2 self-center rounded-full border border-black/10 bg-black/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#801010] sm:self-start">
                 Official Partner Access
@@ -69,7 +69,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="flex flex-col items-center gap-4 rounded-2xl border border-black/10 bg-white p-6 text-center shadow-sm shadow-black/10 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-5 sm:text-left">
+            <div className="flex flex-col items-center gap-4 rounded-2xl border border-black/10 bg-white p-6 text-center shadow-sm shadow-black/10 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4 sm:text-left">
               {onboardingFlow.map((item, index) => (
                 <Fragment key={item.step}>
                   <div className="flex w-full max-w-xs flex-1 flex-col items-center gap-2 text-center sm:items-start sm:text-left">

@@ -34,6 +34,8 @@ CREATE TABLE vendor_applications (
 CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
   shopify_order_id BIGINT NOT NULL UNIQUE, -- Shopify側の注文ID
+  shopify_fulfillment_order_id BIGINT,
+  shop_domain TEXT,
   vendor_id INT REFERENCES vendors(id),
   order_number VARCHAR(50) NOT NULL, -- Shopifyの注文番号 (#1001 等)
   customer_name VARCHAR(255),
@@ -62,9 +64,11 @@ CREATE TABLE line_items (
   vendor_id INT REFERENCES vendors(id),
   vendor_sku_id INT REFERENCES vendor_skus(id),
   shopify_line_item_id BIGINT NOT NULL, -- Shopify側のLine Item ID
+  fulfillment_order_line_item_id BIGINT,
   sku VARCHAR(16),
   product_name VARCHAR(255) NOT NULL,
   quantity INT NOT NULL,
+  fulfillable_quantity INT DEFAULT 0,
   fulfilled_quantity INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -72,16 +76,35 @@ CREATE TABLE line_items (
 CREATE TABLE shipments (
   id SERIAL PRIMARY KEY,
   vendor_id INT REFERENCES vendors(id),
+  order_id INT REFERENCES orders(id) ON DELETE CASCADE,
   tracking_number VARCHAR(100),
   carrier VARCHAR(100),
+  tracking_company VARCHAR(100),
+  tracking_url TEXT,
+  shopify_fulfillment_id BIGINT,
   status VARCHAR(50) DEFAULT 'in_transit',
   shipped_at TIMESTAMP DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  sync_status VARCHAR(32) DEFAULT 'pending',
+  synced_at TIMESTAMPTZ,
+  sync_error TEXT
+);
+
+-- Shopify OAuth 接続情報
+CREATE TABLE shopify_connections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop TEXT NOT NULL UNIQUE,
+  access_token TEXT NOT NULL,
+  scopes TEXT,
+  installed_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE shipment_line_items (
   shipment_id INT REFERENCES shipments(id) ON DELETE CASCADE,
   line_item_id INT REFERENCES line_items(id) ON DELETE CASCADE,
+  fulfillment_order_line_item_id BIGINT,
   quantity INT DEFAULT 0,
   PRIMARY KEY (shipment_id, line_item_id)
 );
@@ -106,3 +129,10 @@ CREATE INDEX idx_vendor_applications_status ON vendor_applications(status);
 CREATE INDEX idx_vendor_applications_vendor_code ON vendor_applications(vendor_code);
 CREATE INDEX idx_shipments_vendor_id ON shipments(vendor_id);
 CREATE INDEX idx_shipment_line_items_line_item_id ON shipment_line_items(line_item_id);
+CREATE INDEX idx_orders_shop_domain ON orders(shop_domain);
+CREATE INDEX idx_orders_shopify_fo_id ON orders(shopify_fulfillment_order_id);
+CREATE INDEX idx_line_items_fo_line_item_id ON line_items(fulfillment_order_line_item_id);
+CREATE INDEX idx_shipments_order_id ON shipments(order_id);
+CREATE INDEX idx_shipments_shopify_fulfillment_id ON shipments(shopify_fulfillment_id);
+CREATE INDEX idx_shipments_sync_status ON shipments(sync_status);
+CREATE INDEX idx_shipment_line_items_fo_line_item_id ON shipment_line_items(fulfillment_order_line_item_id);

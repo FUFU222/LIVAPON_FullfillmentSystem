@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       import_logs: {
@@ -74,37 +49,12 @@ export type Database = {
           },
         ]
       }
-      shopify_connections: {
-        Row: {
-          access_token: string
-          id: string
-          installed_at: string | null
-          scopes: string | null
-          shop: string
-          updated_at: string | null
-        }
-        Insert: {
-          access_token: string
-          id?: string
-          installed_at?: string | null
-          scopes?: string | null
-          shop: string
-          updated_at?: string | null
-        }
-        Update: {
-          access_token?: string
-          id?: string
-          installed_at?: string | null
-          scopes?: string | null
-          shop?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       line_items: {
         Row: {
           created_at: string | null
+          fulfillable_quantity: number | null
           fulfilled_quantity: number | null
+          fulfillment_order_line_item_id: number | null
           id: number
           order_id: number | null
           product_name: string
@@ -116,7 +66,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          fulfillable_quantity?: number | null
           fulfilled_quantity?: number | null
+          fulfillment_order_line_item_id?: number | null
           id?: number
           order_id?: number | null
           product_name: string
@@ -128,7 +80,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          fulfillable_quantity?: number | null
           fulfilled_quantity?: number | null
+          fulfillment_order_line_item_id?: number | null
           id?: number
           order_id?: number | null
           product_name?: string
@@ -168,6 +122,8 @@ export type Database = {
           customer_name: string | null
           id: number
           order_number: string
+          shop_domain: string | null
+          shopify_fulfillment_order_id: number | null
           shopify_order_id: number
           status: string | null
           updated_at: string | null
@@ -178,6 +134,8 @@ export type Database = {
           customer_name?: string | null
           id?: number
           order_number: string
+          shop_domain?: string | null
+          shopify_fulfillment_order_id?: number | null
           shopify_order_id: number
           status?: string | null
           updated_at?: string | null
@@ -188,6 +146,8 @@ export type Database = {
           customer_name?: string | null
           id?: number
           order_number?: string
+          shop_domain?: string | null
+          shopify_fulfillment_order_id?: number | null
           shopify_order_id?: number
           status?: string | null
           updated_at?: string | null
@@ -205,16 +165,19 @@ export type Database = {
       }
       shipment_line_items: {
         Row: {
+          fulfillment_order_line_item_id: number | null
           line_item_id: number
           quantity: number | null
           shipment_id: number
         }
         Insert: {
+          fulfillment_order_line_item_id?: number | null
           line_item_id: number
           quantity?: number | null
           shipment_id: number
         }
         Update: {
+          fulfillment_order_line_item_id?: number | null
           line_item_id?: number
           quantity?: number | null
           shipment_id?: number
@@ -241,30 +204,61 @@ export type Database = {
           carrier: string | null
           created_at: string | null
           id: number
+          order_id: number | null
           shipped_at: string | null
+          shopify_fulfillment_id: number | null
           status: string | null
+          sync_error: string | null
+          sync_status: string | null
+          synced_at: string | null
+          tracking_company: string | null
           tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string | null
           vendor_id: number | null
         }
         Insert: {
           carrier?: string | null
           created_at?: string | null
           id?: number
+          order_id?: number | null
           shipped_at?: string | null
+          shopify_fulfillment_id?: number | null
           status?: string | null
+          sync_error?: string | null
+          sync_status?: string | null
+          synced_at?: string | null
+          tracking_company?: string | null
           tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
           vendor_id?: number | null
         }
         Update: {
           carrier?: string | null
           created_at?: string | null
           id?: number
+          order_id?: number | null
           shipped_at?: string | null
+          shopify_fulfillment_id?: number | null
           status?: string | null
+          sync_error?: string | null
+          sync_status?: string | null
+          synced_at?: string | null
+          tracking_company?: string | null
           tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
           vendor_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shipments_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -273,6 +267,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shopify_connections: {
+        Row: {
+          access_token: string
+          id: string
+          installed_at: string | null
+          scopes: string | null
+          shop: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          id?: string
+          installed_at?: string | null
+          scopes?: string | null
+          shop: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          id?: string
+          installed_at?: string | null
+          scopes?: string | null
+          shop?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       vendor_applications: {
         Row: {
@@ -538,9 +559,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

@@ -1,33 +1,75 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useFormState } from 'react-dom';
-import { saveShipment, initialShipmentActionState } from '@/app/orders/actions';
-import { changeOrderStatus } from '@/app/orders/actions';
-import type { LineItemShipment, OrderDetail, OrderShipment } from '@/lib/data/orders';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import { Alert } from '@/components/ui/alert';
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useFormState, useFormStatus } from "react-dom";
+import { saveShipment, initialShipmentActionState } from "@/app/orders/actions";
+import { changeOrderStatus } from "@/app/orders/actions";
+import type {
+  LineItemShipment,
+  OrderDetail,
+  OrderShipment,
+} from "@/lib/data/orders";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Alert } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { ComponentProps } from "react";
 
 const carrierOptions = [
-  { value: 'yamato', label: 'ヤマト運輸' },
-  { value: 'sagawa', label: '佐川急便' },
-  { value: 'japanpost', label: '日本郵便' },
-  { value: 'dhl', label: 'DHL' },
-  { value: 'fedex', label: 'FedEx' }
+  { value: "yamato", label: "ヤマト運輸" },
+  { value: "sagawa", label: "佐川急便" },
+  { value: "japanpost", label: "日本郵便" },
+  { value: "dhl", label: "DHL" },
+  { value: "fedex", label: "FedEx" },
 ];
 
-const statusOptions = [
-  { value: 'in_transit', label: '輸送中' },
-  { value: 'delivered', label: '配達済み' },
-  { value: 'returned', label: '返品' }
-];
+const statusLabelMap: Record<string, string> = {
+  shipped: "発送済み",
+  in_transit: "輸送中",
+  delivered: "配達済み",
+  returned: "返品",
+};
+
+type ButtonProps = ComponentProps<typeof Button>;
+
+function FormSubmitButton({
+  pendingLabel = "処理中…",
+  children,
+  className,
+  disabled,
+  ...buttonProps
+}: {
+  pendingLabel?: string;
+  children: ReactNode;
+} & ButtonProps) {
+  const { pending } = useFormStatus();
+  const isDisabled = disabled ?? pending;
+
+  return (
+    <Button
+      {...buttonProps}
+      type="submit"
+      disabled={isDisabled}
+      className={cn("gap-2", className)}
+    >
+      {pending ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          <span>{pendingLabel}</span>
+        </>
+      ) : (
+        children
+      )}
+    </Button>
+  );
+}
 
 type Props = {
   orderId: number;
-  lineItems: OrderDetail['lineItems'];
-  shipments: OrderDetail['shipments'];
+  lineItems: OrderDetail["lineItems"];
+  shipments: OrderDetail["shipments"];
 };
 
 type ShipmentUpdateProps = {
@@ -38,10 +80,13 @@ type ShipmentUpdateProps = {
 
 export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [state, formAction] = useFormState(saveShipment, initialShipmentActionState);
+  const [state, formAction] = useFormState(
+    saveShipment,
+    initialShipmentActionState,
+  );
 
   useEffect(() => {
-    if (state.status === 'success') {
+    if (state.status === "success") {
       setSelectedIds([]);
     }
   }, [state.status]);
@@ -53,20 +98,23 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
           item.id,
           {
             productName: item.productName,
-            sku: item.sku
-          }
-        ])
+            sku: item.sku,
+          },
+        ]),
       ),
-    [lineItems]
+    [lineItems],
   );
 
   const toggleSelection = (lineItemId: number) => {
     setSelectedIds((prev) =>
-      prev.includes(lineItemId) ? prev.filter((id) => id !== lineItemId) : [...prev, lineItemId]
+      prev.includes(lineItemId)
+        ? prev.filter((id) => id !== lineItemId)
+        : [...prev, lineItemId],
     );
   };
 
-  const allSelected = selectedIds.length === lineItems.length && lineItems.length > 0;
+  const allSelected =
+    selectedIds.length === lineItems.length && lineItems.length > 0;
 
   const toggleAll = () => {
     if (allSelected) {
@@ -109,7 +157,9 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-col">
-                      <span className="font-medium text-foreground">{item.productName}</span>
+                      <span className="font-medium text-foreground">
+                        {item.productName}
+                      </span>
                       <span className="text-xs text-slate-500">#{item.id}</span>
                     </div>
                   </td>
@@ -124,64 +174,75 @@ export function ShipmentManager({ orderId, lineItems, shipments }: Props) {
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-white p-6">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">配送を新規作成</h3>
-          {state.status === 'error' && state.message ? (
+          <h3 className="mb-4 text-sm font-semibold text-foreground">
+            配送を新規作成
+          </h3>
+          {state.status === "error" && state.message ? (
             <Alert variant="destructive" className="mb-4">
               {state.message}
             </Alert>
           ) : null}
-          {state.status === 'success' && state.message ? (
+          {state.status === "success" && state.message ? (
             <Alert variant="success" className="mb-4">
               {state.message}
             </Alert>
           ) : null}
           <form action={formAction} className="grid gap-4">
             <input type="hidden" name="orderId" value={orderId} />
-            <input type="hidden" name="redirectTo" value={`/orders/${orderId}`} />
+            <input
+              type="hidden"
+              name="redirectTo"
+              value={`/orders/${orderId}`}
+            />
             {selectedIds.map((id) => (
               <input key={id} type="hidden" name="lineItemIds" value={id} />
             ))}
 
             <div className="grid gap-2">
-              <label className="text-sm font-medium text-foreground">追跡番号</label>
-              <Input name="trackingNumber" placeholder="YT123456789JP" required />
+              <label className="text-sm font-medium text-foreground">
+                追跡番号
+              </label>
+              <Input
+                name="trackingNumber"
+                placeholder="YT123456789JP"
+                required
+              />
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-foreground">配送業者</label>
-                <Select name="carrier" defaultValue={carrierOptions[0]?.value ?? ''} required>
-                  {carrierOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-foreground">配送ステータス</label>
-                <Select name="status" defaultValue={statusOptions[0]?.value ?? 'in_transit'}>
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-foreground">
+                配送業者
+              </label>
+              <Select
+                name="carrier"
+                defaultValue={carrierOptions[0]?.value ?? ""}
+                required
+              >
+                {carrierOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>選択中: {selectedIds.length}件</span>
-              <Button type="submit" disabled={selectedIds.length === 0}>
+              <FormSubmitButton
+                pendingLabel="登録中…"
+                disabled={selectedIds.length === 0}
+              >
                 選択した明細をまとめて発送登録
-              </Button>
+              </FormSubmitButton>
             </div>
           </form>
         </div>
       </section>
 
       <section className="grid gap-4">
-        <h3 className="text-sm font-semibold text-foreground">登録済みの発送</h3>
+        <h3 className="text-sm font-semibold text-foreground">
+          登録済みの発送
+        </h3>
         {shipments.length === 0 ? (
           <p className="text-sm text-slate-500">
             登録済みの発送はありません。発送登録を行うとこちらに表示されます。
@@ -206,27 +267,41 @@ function AddressSummary({ shipments }: { shipments: LineItemShipment[] }) {
     return <span className="text-xs text-slate-400">住所情報なし</span>;
   }
 
-  return <span className="text-xs text-slate-400">住所情報は現在未連携です</span>;
+  return (
+    <span className="text-xs text-slate-400">住所情報は現在未連携です</span>
+  );
 }
 
-function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProps) {
-  const [state, formAction] = useFormState(saveShipment, initialShipmentActionState);
+function ShipmentUpdateCard({
+  orderId,
+  shipment,
+  lineItems,
+}: ShipmentUpdateProps) {
+  const [state, formAction] = useFormState(
+    saveShipment,
+    initialShipmentActionState,
+  );
   const [isMarkingUnfulfilled, setMarkingUnfulfilled] = useState(false);
 
   const linkedLineItems = shipment.lineItemIds
     .map((id) => ({ id, meta: lineItems.get(id) }))
     .filter((item) => item.meta !== undefined);
 
+  const statusLabel =
+    statusLabelMap[shipment.status ?? ""] ?? shipment.status ?? "-";
+
   return (
     <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-foreground">追跡番号: {shipment.trackingNumber ?? '-'}</span>
+          <span className="text-sm font-semibold text-foreground">
+            追跡番号: {shipment.trackingNumber ?? "-"}
+          </span>
           <span className="text-xs text-slate-500">ID: {shipment.id}</span>
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-          <span>配送業者: {shipment.carrier ?? '-'}</span>
-          <span>ステータス: {shipment.status ?? '-'}</span>
+          <span>配送業者: {shipment.carrier ?? "-"}</span>
+          <span>ステータス: {statusLabel}</span>
         </div>
       </div>
 
@@ -237,16 +312,16 @@ function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProp
         ) : (
           linkedLineItems.map(({ id, meta }) => (
             <span key={id}>
-              #{id} {meta?.productName} ({meta?.sku ?? 'SKUなし'})
+              #{id} {meta?.productName} ({meta?.sku ?? "SKUなし"})
             </span>
           ))
         )}
       </div>
 
-      {state.status === 'error' && state.message ? (
+      {state.status === "error" && state.message ? (
         <Alert variant="destructive">{state.message}</Alert>
       ) : null}
-      {state.status === 'success' && state.message ? (
+      {state.status === "success" && state.message ? (
         <Alert variant="success">{state.message}</Alert>
       ) : null}
 
@@ -259,12 +334,24 @@ function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProp
         ))}
 
         <div className="grid gap-2">
-          <label className="text-xs font-medium text-foreground">追跡番号</label>
-          <Input name="trackingNumber" defaultValue={shipment.trackingNumber ?? ''} required />
+          <label className="text-xs font-medium text-foreground">
+            追跡番号
+          </label>
+          <Input
+            name="trackingNumber"
+            defaultValue={shipment.trackingNumber ?? ""}
+            required
+          />
         </div>
         <div className="grid gap-2">
-          <label className="text-xs font-medium text-foreground">配送業者</label>
-          <Select name="carrier" defaultValue={shipment.carrier ?? carrierOptions[0]?.value ?? ''} required>
+          <label className="text-xs font-medium text-foreground">
+            配送業者
+          </label>
+          <Select
+            name="carrier"
+            defaultValue={shipment.carrier ?? carrierOptions[0]?.value ?? ""}
+            required
+          >
             {carrierOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -272,27 +359,19 @@ function ShipmentUpdateCard({ orderId, shipment, lineItems }: ShipmentUpdateProp
             ))}
           </Select>
         </div>
-        <div className="grid gap-2">
-          <label className="text-xs font-medium text-foreground">配送ステータス</label>
-          <Select name="status" defaultValue={shipment.status ?? statusOptions[0]?.value ?? 'in_transit'}>
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </div>
         <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="submit" className="sm:order-2">
+          <FormSubmitButton className="sm:order-2" pendingLabel="更新中…">
             更新
-          </Button>
+          </FormSubmitButton>
           <Button
             type="button"
             variant="outline"
             disabled={isMarkingUnfulfilled}
             onClick={() => {
               setMarkingUnfulfilled(true);
-              void changeOrderStatus(orderId, 'unfulfilled').finally(() => setMarkingUnfulfilled(false));
+              void changeOrderStatus(orderId, "unfulfilled").finally(() =>
+                setMarkingUnfulfilled(false),
+              );
             }}
             className="text-xs sm:order-1"
           >

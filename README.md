@@ -2,9 +2,10 @@
 
 Next.js + Supabase + shadcn/ui を用いた配送管理アプリの初期スキャフォールドです。`requirements.md` / `schema.sql` / `ui-wireframes.md` の要件を反映し、以下の画面と仕組みを提供します。
 
-- `/orders`: 注文一覧（検索・ステータスフィルタ・詳細導線）
-- `/orders/[id]`: 注文詳細（配送ステータス更新、line item ごとの追跡番号編集）
-- `/import`: CSV インポート（フォーマット検証とプレビュー）
+- `/`: ベンダー/管理者向けランディング。利用申請ステップと主要動線（サインイン / 申請フォーム）を案内。
+- `/orders`: 注文一覧（検索・ステータスフィルタ・詳細導線）。
+- `/orders/[id]`: 注文詳細（発送登録フォーム、発送済み/未発送の切り替え、既存発送の編集）。
+- `/import`: CSV インポート（フォーマット検証とプレビュー）。
 - Supabase 連携: `orders` / `line_items` / `shipments` / `import_logs` を取り扱うサービス層とサーバーアクション
 
 ## セットアップ手順
@@ -32,8 +33,8 @@ Next.js + Supabase + shadcn/ui を用いた配送管理アプリの初期スキ�
 
 ```
 app/
-  layout.tsx                ルートレイアウト（AppShell）
-  page.tsx                  / → /orders へリダイレクト
+  layout.tsx                ルートレイアウト（AppShell、会社名表示などを初期化）
+  page.tsx                  ランディングページ（利用フロー紹介）
   globals.css               Tailwind ベーススタイル
   orders/
     page.tsx                注文一覧ページ

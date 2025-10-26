@@ -43,6 +43,7 @@ export type OrderDetail = {
     sku: string | null;
     vendorId: number | null;
     vendorCode: string | null;
+    vendorName: string | null;
     productName: string;
     quantity: number;
     fulfilledQuantity: number | null;
@@ -106,6 +107,7 @@ const demoOrders: OrderDetail[] = [
         sku: '0001-001-01',
         vendorId: 1,
         vendorCode: '0001',
+        vendorName: 'デモベンダーA',
         productName: 'プレミアムチェア',
         quantity: 2,
         fulfilledQuantity: 1,
@@ -126,6 +128,7 @@ const demoOrders: OrderDetail[] = [
         sku: '0001-002-01',
         vendorId: 1,
         vendorCode: '0001',
+        vendorName: 'デモベンダーA',
         productName: '交換用クッション',
         quantity: 1,
         fulfilledQuantity: 0,
@@ -156,6 +159,7 @@ const demoOrders: OrderDetail[] = [
         sku: '0002-001-01',
         vendorId: 2,
         vendorCode: '0002',
+        vendorName: 'デモベンダーB',
         productName: 'デスクライト',
         quantity: 1,
         fulfilledQuantity: 0,
@@ -218,15 +222,27 @@ type RawOrderRecord = {
     quantity: number;
     fulfilled_quantity: number | null;
     shipments?: RawShipmentPivot[];
+    vendor?: {
+      id: number | null;
+      code: string | null;
+      name: string | null;
+    } | null;
   }>;
 };
 
-function toOrderDetailFromRecord(record: RawOrderRecord, vendorId: number): OrderDetail | null {
+function toOrderDetailFromRecord(
+  record: RawOrderRecord,
+  vendorId?: number | null
+): OrderDetail | null {
+  const shouldFilterByVendor = typeof vendorId === 'number' && Number.isInteger(vendorId);
+
   const rawLineItems = Array.isArray(record.line_items)
-    ? record.line_items.filter((item) => item.vendor_id === vendorId)
+    ? shouldFilterByVendor
+      ? record.line_items.filter((item) => item.vendor_id === vendorId)
+      : record.line_items
     : [];
 
-  if (rawLineItems.length === 0) {
+  if (shouldFilterByVendor && rawLineItems.length === 0) {
     return null;
   }
 
@@ -282,7 +298,8 @@ function toOrderDetailFromRecord(record: RawOrderRecord, vendorId: number): Orde
       id: item.id,
       sku: item.sku ?? null,
       vendorId: item.vendor_id ?? null,
-      vendorCode: deriveVendorCode(item.sku ?? null),
+      vendorCode: item.vendor?.code ?? deriveVendorCode(item.sku ?? null),
+      vendorName: item.vendor?.name ?? null,
       productName: item.product_name,
       quantity: item.quantity,
       fulfilledQuantity: item.fulfilled_quantity ?? null,
@@ -375,6 +392,7 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
       `id, order_number, customer_name, status, updated_at,
        line_items:line_items!inner(
          id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
+         vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
            shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at)
@@ -413,6 +431,7 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
       `id, order_number, customer_name, status, updated_at,
        line_items:line_items(
          id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
+         vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
            shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at)
@@ -428,6 +447,35 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
   }
 
   return toOrderDetailFromRecord(data as RawOrderRecord, vendorId);
+});
+
+export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDetail | null> => {
+  if (!serviceClient) {
+    return demoOrders.find((demo) => demo.id === id) ?? null;
+  }
+
+  const { data, error } = await serviceClient
+    .from('orders')
+    .select(
+      `id, order_number, customer_name, status, updated_at,
+       line_items:line_items(
+         id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
+         vendor:vendor_id(id, code, name),
+         shipments:shipment_line_items(
+           quantity,
+           shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at)
+         )
+       )`
+    )
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error('Failed to load admin order detail', error);
+    return null;
+  }
+
+  return toOrderDetailFromRecord(data as RawOrderRecord);
 });
 
 export async function upsertShipment(

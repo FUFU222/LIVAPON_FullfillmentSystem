@@ -3,11 +3,17 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
+import { Button, type ButtonVariant } from '@/components/ui/button';
+
+type SignOutButtonProps = {
+  variant?: ButtonVariant;
+  className?: string;
+  onSignedOut?: () => void;
+};
 
 const supabase = getBrowserClient();
 
-export function SignOutButton() {
+export function SignOutButton({ variant = 'ghost', className, onSignedOut }: SignOutButtonProps = {}) {
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -22,12 +28,19 @@ export function SignOutButton() {
     } finally {
       router.replace('/sign-in');
       router.refresh();
+      onSignedOut?.();
       setIsSigningOut(false);
     }
   }
 
   return (
-    <Button type="button" variant="ghost" onClick={handleSignOut} disabled={isSigningOut}>
+    <Button
+      type="button"
+      variant={variant}
+      className={className}
+      onClick={handleSignOut}
+      disabled={isSigningOut}
+    >
       {isSigningOut ? 'サインアウト中…' : 'サインアウト'}
     </Button>
   );

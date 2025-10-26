@@ -10,13 +10,13 @@ const variants = {
   ghost: 'text-foreground hover:bg-muted'
 } as const;
 
-type Variant = keyof typeof variants;
+export type ButtonVariant = keyof typeof variants;
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant;
+  variant?: ButtonVariant;
 };
 
-export function buttonClasses(variant: Variant = 'default', className?: string) {
+export function buttonClasses(variant: ButtonVariant = 'default', className?: string) {
   return cn(baseClasses, variants[variant], className);
 }
 

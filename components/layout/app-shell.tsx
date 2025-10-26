@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { SignOutButton } from '@/components/auth/sign-out-button';
+import { GradientAvatar } from '@/components/ui/avatar';
 
 export type AppShellInitialAuth = {
   status: 'signed-in' | 'signed-out';
@@ -263,6 +264,7 @@ export function AppShell({
               email={email}
               role={role}
               companyName={companyName}
+              vendorId={vendorId}
             />
           </div>
         </div>
@@ -281,12 +283,14 @@ function AuthControls({
   status,
   email,
   role,
-  companyName
+  companyName,
+  vendorId
 }: {
   status: 'loading' | 'signed-in' | 'signed-out';
   email: string | null;
   role: string | null;
   companyName: string | null;
+  vendorId: number | null;
 }) {
   if (status === 'loading') {
     return null;
@@ -300,24 +304,102 @@ function AuthControls({
     );
   }
 
-  const displayLabel = companyName ?? email;
-  const suffix = !companyName
-    ? role === 'admin'
-      ? '（管理者）'
-      : role === 'pending_vendor'
-        ? '（審査中）'
-        : null
-    : null;
+  return (
+    <UserMenu
+      email={email}
+      role={role}
+      companyName={companyName}
+      vendorId={vendorId}
+    />
+  );
+}
+
+function UserMenu({
+  email,
+  role,
+  companyName,
+  vendorId
+}: {
+  email: string | null;
+  role: string | null;
+  companyName: string | null;
+  vendorId: number | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    function handlePointer(event: PointerEvent) {
+      if (!containerRef.current) {
+        return;
+      }
+      if (!containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const displayName = companyName ?? email ?? 'アカウント';
+  const subLabel = companyName ? email : role === 'admin' ? '管理者' : role === 'pending_vendor' ? '審査中' : email;
 
   return (
-    <div className="flex items-center gap-2">
-      {displayLabel ? (
-        <span className="hidden text-xs text-slate-500 sm:inline">
-          {displayLabel}
-          {suffix}
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex items-center gap-3 rounded-full border border-transparent px-2 py-1 transition hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <GradientAvatar seed={companyName ?? email} label={companyName ?? email} size="sm" />
+        <span className="hidden flex-col text-left text-xs text-slate-600 sm:flex">
+          <span className="font-medium text-foreground">{displayName}</span>
+          {subLabel ? <span className="text-[11px] text-slate-500">{subLabel}</span> : null}
         </span>
+      </button>
+
+      {open ? (
+        <div className="absolute right-0 z-50 mt-2 w-56 rounded-md border border-slate-200 bg-white py-2 shadow-lg">
+          <div className="px-4 py-2">
+            <p className="text-sm font-semibold text-foreground">{displayName}</p>
+            {subLabel ? <p className="text-xs text-slate-500">{subLabel}</p> : null}
+          </div>
+          <div className="mt-2 border-t border-slate-100 py-1 text-sm">
+            {typeof vendorId === 'number' ? (
+              <Link
+                href="/vendor/profile"
+                className="block px-4 py-2 text-slate-600 transition hover:bg-slate-50 hover:text-foreground"
+                onClick={() => setOpen(false)}
+              >
+                プロフィール編集
+              </Link>
+            ) : null}
+            <SignOutButton
+              variant="ghost"
+              className="w-full justify-start px-4 py-2 text-left text-slate-600 hover:bg-slate-50 hover:text-foreground"
+              onSignedOut={() => setOpen(false)}
+            />
+          </div>
+        </div>
       ) : null}
-      <SignOutButton />
     </div>
   );
 }

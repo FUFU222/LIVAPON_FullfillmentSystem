@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { deleteVendor } from '@/lib/data/vendors';
-import { requireAuthContext, assertAdmin } from '@/lib/auth';
+import { deleteVendor, getVendorDetailForAdmin } from '@/lib/data/vendors';
+import type { VendorDetail } from '@/lib/data/vendors';
+import { requireAuthContext, assertAdmin, getAuthContext, isAdmin } from '@/lib/auth';
 
 const BASE_PATH = '/admin/vendors';
 
@@ -81,4 +82,34 @@ export async function bulkDeleteVendorsAction(formData: FormData) {
   }
 
   redirect(`${BASE_PATH}`);
+}
+
+export type LoadAdminVendorDetailResult =
+  | { status: 'success'; detail: VendorDetail }
+  | { status: 'not_found' }
+  | { status: 'error'; message: string };
+
+export async function loadAdminVendorDetailAction(vendorId: number): Promise<LoadAdminVendorDetailResult> {
+  if (!Number.isInteger(vendorId) || vendorId <= 0) {
+    return { status: 'error', message: '有効なベンダーIDではありません。' };
+  }
+
+  const auth = await getAuthContext();
+
+  if (!auth || !isAdmin(auth)) {
+    return { status: 'error', message: '権限がありません。' };
+  }
+
+  try {
+    const detail = await getVendorDetailForAdmin(vendorId);
+
+    if (!detail) {
+      return { status: 'not_found' };
+    }
+
+    return { status: 'success', detail };
+  } catch (error) {
+    console.error('Failed to load vendor detail for admin', error);
+    return { status: 'error', message: 'ベンダー詳細の取得に失敗しました。' };
+  }
 }

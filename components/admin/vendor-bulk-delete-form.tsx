@@ -1,12 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { Loader2, X } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { buttonClasses } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { bulkDeleteVendorsAction } from '@/app/admin/vendors/actions';
+import { Modal } from '@/components/ui/modal';
+import {
+  bulkDeleteVendorsAction,
+  loadAdminVendorDetailAction
+} from '@/app/admin/vendors/actions';
 import { VendorDeleteButton } from '@/components/admin/vendor-delete-button';
-import type { VendorListEntry } from '@/lib/data/vendors';
+import { AdminVendorDetail } from '@/components/admin/admin-vendor-detail';
+import type { VendorDetail, VendorListEntry } from '@/lib/data/vendors';
 
 function toDisplayDate(value: string | null): string {
   if (!value) {
@@ -19,8 +26,88 @@ function toDisplayDate(value: string | null): string {
   });
 }
 
+type LoadState = 'idle' | 'loading' | 'error';
+
 export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [activeVendorId, setActiveVendorId] = useState<number | null>(null);
+  const [activeDetail, setActiveDetail] = useState<VendorDetail | null>(null);
+  const [detailCache, setDetailCache] = useState<Record<number, VendorDetail>>({});
+  const [loadState, setLoadState] = useState<LoadState>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const cachedDetail = activeVendorId ? detailCache[activeVendorId] : null;
+
+  const handleOpenVendor = (vendorId: number) => {
+    setActiveVendorId(vendorId);
+    setErrorMessage(null);
+
+    if (detailCache[vendorId]) {
+      setActiveDetail(detailCache[vendorId]);
+      setLoadState('idle');
+      return;
+    }
+
+    setActiveDetail(null);
+    setLoadState('loading');
+
+    startTransition(() => {
+      loadAdminVendorDetailAction(vendorId)
+        .then((result) => {
+          if (!result || result.status !== 'success') {
+            const message =
+              result?.status === 'not_found'
+                ? 'ベンダー詳細が見つかりませんでした。'
+                : result?.message ?? 'ベンダー詳細の取得に失敗しました。';
+            setErrorMessage(message);
+            setLoadState('error');
+            return;
+          }
+
+          setDetailCache((prev) => ({ ...prev, [vendorId]: result.detail }));
+          setActiveDetail(result.detail);
+          setLoadState('idle');
+        })
+        .catch((error) => {
+          console.error('Failed to load vendor detail', error);
+          setErrorMessage('ベンダー詳細の取得に失敗しました。');
+          setLoadState('error');
+        });
+    });
+  };
+
+  const handleCloseModal = () => {
+    setActiveVendorId(null);
+    setActiveDetail(null);
+    setErrorMessage(null);
+    setLoadState('idle');
+  };
+
+  const renderModalContent = () => {
+    if (loadState === 'loading' || isPending) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 py-10 text-slate-500">
+          <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+          <span>読み込み中…</span>
+        </div>
+      );
+    }
+
+    if (loadState === 'error') {
+      return <Alert variant="destructive">{errorMessage ?? 'エラーが発生しました。'}</Alert>;
+    }
+
+    const detail = activeDetail ?? cachedDetail;
+
+    if (!detail) {
+      return <Alert variant="default">ベンダー詳細が見つかりませんでした。</Alert>;
+    }
+
+    return <AdminVendorDetail vendor={detail} />;
+  };
+
+  const modalTitle = activeDetail?.name ?? cachedDetail?.name ?? 'ベンダー詳細';
 
   return (
     <form action={bulkDeleteVendorsAction} className="grid gap-3">
@@ -49,8 +136,23 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
           </thead>
           <tbody>
             {vendors.map((vendor) => (
-              <tr key={vendor.id} className="border-b border-slate-100 text-slate-600">
-                <td className="px-3 py-2 align-middle">
+              <tr
+                key={vendor.id}
+                className="border-b border-slate-100 text-slate-600 transition hover:bg-slate-50 focus-within:bg-slate-50"
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVendor(vendor.id)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleOpenVendor(vendor.id);
+                  }
+                }}
+              >
+                <td className="px-3 py-2 align-middle"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <Checkbox
                     name="vendorIds"
                     value={vendor.id}
@@ -62,6 +164,8 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
                           : current.filter((id) => id !== vendor.id)
                       );
                     }}
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
                   />
                 </td>
                 <td className="px-3 py-2 font-medium text-foreground">{vendor.name}</td>
@@ -96,7 +200,11 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
                 </td>
                 <td className="px-3 py-2">{vendor.contactEmail ?? '-'}</td>
                 <td className="px-3 py-2 text-xs">{toDisplayDate(vendor.createdAt)}</td>
-                <td className="px-3 py-2 text-right">
+                <td
+                  className="px-3 py-2 text-right"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <VendorDeleteButton vendorId={vendor.id} vendorName={vendor.name} />
                 </td>
               </tr>
@@ -104,6 +212,22 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
           </tbody>
         </table>
       </div>
+
+      <Modal
+        open={activeVendorId !== null}
+        onClose={handleCloseModal}
+        title={modalTitle}
+        footer={
+          <div className="flex items-center justify-end">
+            <Button type="button" variant="outline" onClick={handleCloseModal} className="gap-2">
+              <X className="h-4 w-4" aria-hidden="true" />
+              閉じる
+            </Button>
+          </div>
+        }
+      >
+        {renderModalContent()}
+      </Modal>
     </form>
   );
 }

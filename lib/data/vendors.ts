@@ -18,11 +18,17 @@ type VendorApplicationRecord = Database['public']['Tables']['vendor_applications
 
 type VendorInsert = Database['public']['Tables']['vendors']['Insert'];
 
+type VendorRecord = Database['public']['Tables']['vendors']['Row'];
+
 type MinimalVendor = {
   id: number;
   code: string | null;
   name: string;
   contact_email: string | null;
+};
+
+type VendorDetailRecord = VendorRecord & {
+  vendor_applications?: VendorApplicationRecord[] | null;
 };
 
 export type VendorProfile = {
@@ -42,6 +48,30 @@ export type VendorListEntry = VendorProfile & {
     authUserId: string | null;
     companyName: string | null;
   } | null;
+};
+
+export type VendorSummaryMetrics = {
+  orderCount: number;
+  shipmentCount: number;
+  skuCount: number;
+};
+
+export type VendorDetail = VendorProfile & {
+  createdAt: string | null;
+  summary: VendorSummaryMetrics;
+  applications: Array<{
+    id: number;
+    status: VendorApplication['status'];
+    companyName: string;
+    contactName: string | null;
+    contactEmail: string;
+    message: string | null;
+    reviewerEmail: string | null;
+    reviewedAt: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+    notes: string | null;
+  }>;
 };
 
 export type VendorApplication = {
@@ -136,6 +166,99 @@ async function generateNextVendorCode(client: SupabaseClient<Database>): Promise
   }
   const next = numeric + 1;
   return next.toString().padStart(4, '0');
+}
+
+async function countRelatedRows(
+  client: AnySupabaseClient,
+  table: keyof Database['public']['Tables'],
+  vendorId: number
+): Promise<number> {
+  const { count, error } = await client
+    .from(table)
+    .select('id', { head: true, count: 'exact' })
+    .eq('vendor_id', vendorId);
+
+  if (error) {
+    console.error(`Failed to count ${String(table)} for vendor`, { vendorId, error });
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorDetail | null> {
+  if (!Number.isInteger(vendorId) || vendorId <= 0) {
+    throw new Error('有効なベンダーIDが必要です');
+  }
+
+  const client = serviceClient;
+
+  if (!client) {
+    return null;
+  }
+
+  const { data, error } = await client
+    .from('vendors')
+    .select(
+      `id, code, name, contact_email, created_at,
+       vendor_applications:vendor_applications(
+         id, status, company_name, contact_name, contact_email, message,
+         reviewer_email, reviewed_at, created_at, updated_at, notes
+       )`
+    )
+    .eq('id', vendorId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Failed to load vendor detail', error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const record = data as VendorDetailRecord;
+
+  const applications = Array.isArray(record.vendor_applications)
+    ? record.vendor_applications.map((application) => ({
+        id: application.id,
+        status: (application.status as VendorApplication['status']) ?? 'pending',
+        companyName: application.company_name,
+        contactName: application.contact_name,
+        contactEmail: application.contact_email,
+        message: application.message,
+        reviewerEmail: application.reviewer_email,
+        reviewedAt: application.reviewed_at,
+        createdAt: application.created_at,
+        updatedAt: application.updated_at,
+        notes: application.notes ?? null
+      }))
+    : [];
+
+  applications.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+
+  const [orderCount, shipmentCount, skuCount] = await Promise.all([
+    countRelatedRows(client, 'orders', vendorId),
+    countRelatedRows(client, 'shipments', vendorId),
+    countRelatedRows(client, 'vendor_skus', vendorId)
+  ]);
+
+  const summary: VendorSummaryMetrics = {
+    orderCount,
+    shipmentCount,
+    skuCount
+  };
+
+  return {
+    id: record.id,
+    code: record.code,
+    name: record.name,
+    contactEmail: record.contact_email ?? null,
+    createdAt: record.created_at ?? null,
+    summary,
+    applications
+  } satisfies VendorDetail;
 }
 
 async function ensureVendor(

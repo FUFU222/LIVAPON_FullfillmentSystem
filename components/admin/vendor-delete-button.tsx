@@ -39,7 +39,10 @@ export function VendorDeleteButton({ vendorId, vendorName }: Props) {
           variant="outline"
           className="border-red-200 text-red-600 hover:bg-red-50"
           disabled={pending}
-          onClick={() => setOpen(true)}
+          onClick={(event) => {
+            event.stopPropagation();
+            setOpen(true);
+          }}
         >
           {pending ? '削除中…' : '削除'}
         </Button>

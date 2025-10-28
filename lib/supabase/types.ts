@@ -404,6 +404,7 @@ export type Database = {
       vendors: {
         Row: {
           code: string | null
+          contact_name: string | null
           contact_email: string | null
           created_at: string | null
           id: number
@@ -411,6 +412,7 @@ export type Database = {
         }
         Insert: {
           code?: string | null
+          contact_name?: string | null
           contact_email?: string | null
           created_at?: string | null
           id?: number
@@ -418,6 +420,7 @@ export type Database = {
         }
         Update: {
           code?: string | null
+          contact_name?: string | null
           contact_email?: string | null
           created_at?: string | null
           id?: number

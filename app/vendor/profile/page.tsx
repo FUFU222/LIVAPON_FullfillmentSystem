@@ -21,7 +21,7 @@ export default async function VendorProfilePage() {
   const supabase = getServerComponentClient();
   const { data: vendor, error } = await supabase
     .from('vendors')
-    .select('name, code, contact_email')
+    .select('name, code, contact_email, contact_name')
     .eq('id', auth.vendorId)
     .maybeSingle();
 
@@ -33,7 +33,8 @@ export default async function VendorProfilePage() {
     redirect('/orders');
   }
 
-  const contactName = (auth.session.user.user_metadata?.contact_name ?? null) as string | null;
+  const contactName =
+    (vendor.contact_name ?? (auth.session.user.user_metadata?.contact_name ?? null)) as string | null;
   const email = auth.session.user.email ?? vendor.contact_email ?? '';
 
   return (

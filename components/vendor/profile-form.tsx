@@ -50,6 +50,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
           name="companyName"
           defaultValue={initial.companyName}
           placeholder="株式会社LIVAPON"
+          autoComplete="organization"
           required
           aria-invalid={state.fieldErrors?.companyName ? 'true' : 'false'}
         />
@@ -67,6 +68,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
           name="contactName"
           defaultValue={initial.contactName ?? ''}
           placeholder="田中 太郎"
+          autoComplete="name"
         />
       </div>
 
@@ -80,6 +82,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
           type="email"
           defaultValue={initial.email}
           placeholder="user@example.com"
+          autoComplete="email"
           required
           aria-invalid={state.fieldErrors?.email ? 'true' : 'false'}
         />
@@ -98,6 +101,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
           name="password"
           type="password"
           placeholder="8文字以上で入力"
+          autoComplete="new-password"
           aria-invalid={state.fieldErrors?.password ? 'true' : 'false'}
         />
         {state.fieldErrors?.password ? (

@@ -67,7 +67,8 @@ export async function updateVendorProfileAction(
     .from('vendors')
     .update({
       name: companyName,
-      contact_email: email
+      contact_email: email,
+      contact_name: contactName || null
     })
     .eq('id', auth.vendorId)
     .select('id')
@@ -81,10 +82,19 @@ export async function updateVendorProfileAction(
     };
   }
 
+  const currentMetadata = {
+    ...(auth.session.user.user_metadata ?? {})
+  } as Record<string, unknown>;
+
+  const mergedMetadata = {
+    ...currentMetadata,
+    contact_name: contactName ? contactName : null,
+    vendor_id: auth.vendorId,
+    vendorId: auth.vendorId
+  };
+
   const authPayload: Parameters<typeof supabase.auth.updateUser>[0] = {
-    data: {
-      contact_name: contactName || null
-    }
+    data: mergedMetadata
   };
 
   const currentEmail = auth.session.user.email ?? null;

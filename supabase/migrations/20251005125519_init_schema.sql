@@ -7,6 +7,7 @@ CREATE TABLE vendors (
   id SERIAL PRIMARY KEY,
   code CHAR(4) UNIQUE,
   name VARCHAR(255) NOT NULL,
+  contact_name VARCHAR(255),
   contact_email VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW()
 );

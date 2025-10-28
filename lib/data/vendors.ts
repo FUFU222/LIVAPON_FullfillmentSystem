@@ -25,6 +25,7 @@ type MinimalVendor = {
   code: string | null;
   name: string;
   contact_email: string | null;
+  contact_name: string | null;
 };
 
 type VendorDetailRecord = VendorRecord & {
@@ -35,6 +36,7 @@ export type VendorProfile = {
   id: number;
   code: string | null;
   name: string;
+  contactName: string | null;
   contactEmail: string | null;
 };
 
@@ -200,7 +202,7 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, created_at,
+      `id, code, name, contact_email, contact_name, created_at,
        vendor_applications:vendor_applications(
          id, status, company_name, contact_name, contact_email, message,
          reviewer_email, reviewed_at, created_at, updated_at, notes
@@ -254,6 +256,7 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
     id: record.id,
     code: record.code,
     name: record.name,
+    contactName: record.contact_name ?? null,
     contactEmail: record.contact_email ?? null,
     createdAt: record.created_at ?? null,
     summary,
@@ -268,12 +271,13 @@ async function ensureVendor(
     vendorCode: string | null;
     companyName: string;
     contactEmail: string;
+    contactName?: string | null;
   }
 ): Promise<MinimalVendor> {
   if (params.vendorId) {
     const { data, error } = await client
       .from('vendors')
-      .select('id, code, name, contact_email')
+      .select('id, code, name, contact_email, contact_name')
       .eq('id', params.vendorId)
       .maybeSingle();
 
@@ -291,7 +295,7 @@ async function ensureVendor(
   if (sanitizedCode) {
     const { data: existingVendor, error: existingVendorError } = await client
       .from('vendors')
-      .select('id, code, name, contact_email')
+      .select('id, code, name, contact_email, contact_name')
       .eq('code', sanitizedCode)
       .maybeSingle();
 
@@ -312,13 +316,14 @@ async function ensureVendor(
     const insertPayload: VendorInsert = {
       code: sanitizedCode,
       name: params.companyName,
-      contact_email: params.contactEmail
+      contact_email: params.contactEmail,
+      contact_name: params.contactName?.trim() ?? null
     };
 
     const { data: insertedVendor, error: insertError } = await client
       .from('vendors')
       .insert(insertPayload)
-      .select('id, code, name, contact_email')
+      .select('id, code, name, contact_email, contact_name')
       .single();
 
     if (insertError) {
@@ -332,13 +337,14 @@ async function ensureVendor(
   const insertPayload: VendorInsert = {
     code: nextCode,
     name: params.companyName,
-    contact_email: params.contactEmail
+    contact_email: params.contactEmail,
+    contact_name: params.contactName?.trim() ?? null
   };
 
   const { data: newVendor, error: newVendorError } = await client
     .from('vendors')
     .insert(insertPayload)
-      .select('id, code, name, contact_email')
+    .select('id, code, name, contact_email, contact_name')
     .single();
 
   if (newVendorError) {
@@ -466,7 +472,8 @@ export async function approveVendorApplication(params: {
     vendorId: application.vendor_id,
     vendorCode: vendorCodeInput ?? application.vendor_code,
     companyName: application.company_name,
-    contactEmail: application.contact_email
+    contactEmail: application.contact_email,
+    contactName: application.contact_name
   });
 
   if (application.auth_user_id) {
@@ -508,7 +515,8 @@ export async function approveVendorApplication(params: {
     .from('vendors')
     .update({
       name: application.company_name,
-      contact_email: application.contact_email
+      contact_email: application.contact_email,
+      contact_name: application.contact_name
     })
     .eq('id', vendor.id);
 
@@ -570,7 +578,7 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email')
+    .select('id, code, name, contact_email, contact_name')
     .eq('id', vendorId)
     .maybeSingle();
 
@@ -586,6 +594,7 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
     id: data.id,
     code: data.code,
     name: data.name,
+    contactName: data.contact_name,
     contactEmail: data.contact_email
   };
 }
@@ -595,6 +604,7 @@ type VendorWithApplications = {
   code: string | null;
   name: string;
   contact_email: string | null;
+  contact_name: string | null;
   created_at: string | null;
   vendor_applications?: Array<{
     id: number;
@@ -654,6 +664,7 @@ function mapVendorsWithApplications(
       id: vendor.id,
       code: vendor.code,
       name: lastApplication?.companyName ?? vendor.name,
+      contactName: vendor.contact_name,
       contactEmail: vendor.contact_email,
       createdAt: vendor.created_at,
       lastApplication
@@ -667,7 +678,7 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, created_at,
+      `id, code, name, contact_email, contact_name, created_at,
        vendor_applications:vendor_applications(
          id, status, reviewed_at, reviewer_email, auth_user_id, company_name, created_at
        )`
@@ -688,7 +699,7 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, created_at,
+      `id, code, name, contact_email, contact_name, created_at,
        vendor_applications:vendor_applications(
          id, status, reviewed_at, reviewer_email, auth_user_id, company_name, created_at
        )`

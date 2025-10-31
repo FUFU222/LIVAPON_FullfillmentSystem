@@ -37,6 +37,11 @@ export type OrderDetail = {
   customerName: string | null;
   status: string | null;
   updatedAt: string | null;
+  shippingPostal: string | null;
+  shippingPrefecture: string | null;
+  shippingCity: string | null;
+  shippingAddress1: string | null;
+  shippingAddress2: string | null;
   shipments: OrderShipment[];
   lineItems: Array<{
     id: number;
@@ -97,6 +102,11 @@ const demoOrders: OrderDetail[] = [
     customerName: '佐藤 花子',
     status: 'unfulfilled',
     updatedAt: new Date().toISOString(),
+    shippingPostal: '1500001',
+    shippingPrefecture: '東京都',
+    shippingCity: '渋谷区神宮前',
+    shippingAddress1: '1-2-3 LIVAPONビル',
+    shippingAddress2: null,
     shipments: [
       {
         id: 5001,
@@ -158,6 +168,11 @@ const demoOrders: OrderDetail[] = [
     customerName: 'John Doe',
     status: 'partially_fulfilled',
     updatedAt: new Date().toISOString(),
+    shippingPostal: '2200012',
+    shippingPrefecture: '神奈川県',
+    shippingCity: '横浜市西区みなとみらい',
+    shippingAddress1: '2-3-4 テストタワー 10F',
+    shippingAddress2: null,
     shipments: [],
     lineItems: [
       {
@@ -190,13 +205,23 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     }
   });
 
+  const addressParts = [
+    order.shippingPostal ? `〒${order.shippingPostal}` : null,
+    order.shippingPrefecture,
+    order.shippingCity,
+    order.shippingAddress1,
+    order.shippingAddress2
+  ].filter((part): part is string => Boolean(part && part.trim().length > 0));
+
+  const shippingAddress = addressParts.length > 0 ? addressParts.join(' ') : null;
+
   return {
     id: order.id,
     orderNumber: order.orderNumber,
     customerName: order.customerName,
     lineItemCount: order.lineItems.length,
     status: order.status,
-    shippingAddress: '-',
+    shippingAddress,
     trackingNumbers: Array.from(trackingNumbers),
     updatedAt: order.updatedAt
   };
@@ -220,6 +245,11 @@ type RawOrderRecord = {
   customer_name: string | null;
   status: string | null;
   updated_at: string | null;
+  shipping_postal: string | null;
+  shipping_prefecture: string | null;
+  shipping_city: string | null;
+  shipping_address1: string | null;
+  shipping_address2: string | null;
   line_items?: Array<{
     id: number;
     vendor_id: number | null;
@@ -319,6 +349,11 @@ function toOrderDetailFromRecord(
     customerName: record.customer_name ?? null,
     status: record.status ?? null,
     updatedAt: record.updated_at ?? null,
+    shippingPostal: record.shipping_postal ?? null,
+    shippingPrefecture: record.shipping_prefecture ?? null,
+    shippingCity: record.shipping_city ?? null,
+    shippingAddress1: record.shipping_address1 ?? null,
+    shippingAddress2: record.shipping_address2 ?? null,
     shipments,
     lineItems
   };
@@ -396,6 +431,7 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
     .from('orders')
     .select(
       `id, order_number, customer_name, status, updated_at,
+       shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items!inner(
          id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
          vendor:vendor_id(id, code, name),
@@ -435,6 +471,7 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
     .from('orders')
     .select(
       `id, order_number, customer_name, status, updated_at,
+       shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
          id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
          vendor:vendor_id(id, code, name),
@@ -464,6 +501,7 @@ export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDet
     .from('orders')
     .select(
       `id, order_number, customer_name, status, updated_at,
+       shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
          id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
          vendor:vendor_id(id, code, name),

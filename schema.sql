@@ -40,6 +40,11 @@ CREATE TABLE orders (
   vendor_id INT REFERENCES vendors(id),
   order_number VARCHAR(50) NOT NULL, -- Shopifyの注文番号 (#1001 等)
   customer_name VARCHAR(255),
+  shipping_postal VARCHAR(20),
+  shipping_prefecture VARCHAR(100),
+  shipping_city VARCHAR(255),
+  shipping_address1 VARCHAR(255),
+  shipping_address2 VARCHAR(255),
   status VARCHAR(50) DEFAULT 'unfulfilled', -- Fulfilled / Partially Fulfilled / Unfulfilled
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()

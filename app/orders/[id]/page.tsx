@@ -33,6 +33,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     notFound();
   }
 
+  const shippingParts = [
+    order.shippingPostal ? `〒${order.shippingPostal}` : null,
+    order.shippingPrefecture,
+    order.shippingCity,
+    order.shippingAddress1,
+    order.shippingAddress2
+  ].filter((part): part is string => Boolean(part && part.trim().length > 0));
+
+  const shippingAddress = shippingParts.length > 0 ? shippingParts.join(' ') : '住所情報が未登録です';
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3 text-sm text-slate-500">
@@ -46,6 +56,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <CardTitle className="text-2xl font-semibold">{order.orderNumber}</CardTitle>
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
             <span>顧客: {order.customerName ?? '-'}</span>
+            <span>配送先: {shippingAddress}</span>
           </div>
         </CardHeader>
         <CardContent className="gap-6">

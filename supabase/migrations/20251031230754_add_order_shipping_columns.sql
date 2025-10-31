@@ -1,0 +1,6 @@
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS shipping_postal VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS shipping_prefecture VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS shipping_city VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS shipping_address1 VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS shipping_address2 VARCHAR(255);

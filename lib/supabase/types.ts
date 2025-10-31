@@ -122,6 +122,11 @@ export type Database = {
           customer_name: string | null
           id: number
           order_number: string
+          shipping_address1: string | null
+          shipping_address2: string | null
+          shipping_city: string | null
+          shipping_postal: string | null
+          shipping_prefecture: string | null
           shop_domain: string | null
           shopify_fulfillment_order_id: number | null
           shopify_order_id: number
@@ -134,6 +139,11 @@ export type Database = {
           customer_name?: string | null
           id?: number
           order_number: string
+          shipping_address1?: string | null
+          shipping_address2?: string | null
+          shipping_city?: string | null
+          shipping_postal?: string | null
+          shipping_prefecture?: string | null
           shop_domain?: string | null
           shopify_fulfillment_order_id?: number | null
           shopify_order_id: number
@@ -146,6 +156,11 @@ export type Database = {
           customer_name?: string | null
           id?: number
           order_number?: string
+          shipping_address1?: string | null
+          shipping_address2?: string | null
+          shipping_city?: string | null
+          shipping_postal?: string | null
+          shipping_prefecture?: string | null
           shop_domain?: string | null
           shopify_fulfillment_order_id?: number | null
           shopify_order_id?: number

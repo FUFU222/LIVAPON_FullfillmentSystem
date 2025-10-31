@@ -61,6 +61,15 @@ type ShopifyOrderPayload = {
   currency: string;
   total_price: string;
   customer?: { first_name?: string | null; last_name?: string | null } | null;
+  shipping_address?: {
+    zip?: string | null;
+    postal_code?: string | null;
+    province?: string | null;
+    province_code?: string | null;
+    city?: string | null;
+    address1?: string | null;
+    address2?: string | null;
+  } | null;
   line_items: Array<{
     id: number;
     variant_id: number | null;
@@ -158,6 +167,27 @@ function buildCustomerName(payload: ShopifyOrderPayload): string | null {
   return full.length > 0 ? full : null;
 }
 
+function buildShippingAddress(payload: ShopifyOrderPayload) {
+  const shipping = payload.shipping_address;
+  if (!shipping) {
+    return {
+      postal: null,
+      prefecture: null,
+      city: null,
+      address1: null,
+      address2: null
+    };
+  }
+
+  return {
+    postal: shipping.zip ?? shipping.postal_code ?? null,
+    prefecture: shipping.province ?? shipping.province_code ?? null,
+    city: shipping.city ?? null,
+    address1: shipping.address1 ?? null,
+    address2: shipping.address2 ?? null
+  };
+}
+
 // ==========================
 // Orders Table Upsert
 // ==========================
@@ -171,12 +201,18 @@ async function upsertOrderRecord(
     new Set(lineItemVendors.map(r => r.vendorId).filter((v): v is number => Number.isInteger(v)))
   );
   const orderVendorId = uniqueVendorIds.length === 1 ? uniqueVendorIds[0] : null;
+  const shippingAddress = buildShippingAddress(payload);
 
   const orderInsert: Database['public']['Tables']['orders']['Insert'] = {
     shopify_order_id: payload.id,
     vendor_id: orderVendorId,
     order_number: payload.name || payload.order_number,
     customer_name: buildCustomerName(payload),
+    shipping_postal: shippingAddress.postal,
+    shipping_prefecture: shippingAddress.prefecture,
+    shipping_city: shippingAddress.city,
+    shipping_address1: shippingAddress.address1,
+    shipping_address2: shippingAddress.address2,
     status: payload.fulfillment_status ?? 'unfulfilled',
     shop_domain: normalizedShopDomain,
     created_at: payload.created_at,

@@ -4,6 +4,7 @@ import {
   isRegisteredShopDomain
 } from '@/lib/shopify/order-import';
 import { triggerShipmentResyncForShopifyOrder } from '@/lib/data/orders';
+import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
 import { verifyShopifyWebhook } from '@/lib/shopify/hmac';
 
 export const runtime = 'edge';
@@ -85,13 +86,30 @@ export async function POST(request: Request) {
   }
 
   if (FULFILLMENT_ORDER_TOPICS.has(topic)) {
-    const fulfillmentOrder = (payload as { fulfillment_order?: { order_id?: unknown } })?.fulfillment_order;
-    const orderId = typeof fulfillmentOrder?.order_id === 'number'
+    const fulfillmentOrder = (payload as { fulfillment_order?: { order_id?: unknown; id?: unknown } })?.fulfillment_order;
+    let orderId = typeof fulfillmentOrder?.order_id === 'number'
       ? fulfillmentOrder.order_id
       : (payload as { order_id?: unknown })?.order_id;
 
     if (typeof orderId !== 'number') {
-      console.warn('Fulfillment order webhook missing numeric order_id', {
+      const fulfillmentOrderId = fulfillmentOrder?.id ?? (payload as { fulfillment_order_id?: unknown })?.fulfillment_order_id;
+
+      if (typeof fulfillmentOrderId === 'string' || typeof fulfillmentOrderId === 'number') {
+        try {
+          orderId = await resolveShopifyOrderIdFromFulfillmentOrder(shopDomainHeader, fulfillmentOrderId);
+        } catch (error) {
+          console.error('Failed to resolve order_id from fulfillment_order payload', {
+            error,
+            ...logContext,
+            fulfillmentOrderId
+          });
+          return new NextResponse('Failed to resolve fulfillment order', { status: 500 });
+        }
+      }
+    }
+
+    if (typeof orderId !== 'number') {
+      console.warn('Fulfillment order webhook missing resolvable order_id', {
         ...logContext,
         payload
       });

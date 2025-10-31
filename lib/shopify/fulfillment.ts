@@ -89,6 +89,18 @@ async function shopifyRequest<T>(
   return json;
 }
 
+function extractNumericIdFromGid(value: string | number, resourceName: string): number {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  const match = value.match(/\/(\d+)(?:\?.*)?$/);
+  if (!match) {
+    throw new Error(`Invalid Shopify GID for ${resourceName}: ${value}`);
+  }
+  return Number(match[1]);
+}
+
 type FulfillmentOrderLineItem = {
   id: number;
   line_item_id: number;
@@ -413,6 +425,35 @@ export async function syncShipmentWithShopify(shipmentId: number) {
       .from('shipment_line_items')
       .upsert(pivotUpdates, { onConflict: 'shipment_id,line_item_id' });
   }
+}
+
+export async function resolveShopifyOrderIdFromFulfillmentOrder(
+  shop: string,
+  fulfillmentOrderId: string | number
+): Promise<number> {
+  const client = getShopifyServiceClient();
+  const accessToken = await loadShopifyAccessToken(client, shop);
+  const numericId = extractNumericIdFromGid(fulfillmentOrderId, 'FulfillmentOrder');
+
+  type Response = {
+    fulfillment_order?: {
+      id: number;
+      order_id: number;
+    };
+  };
+
+  const data = await shopifyRequest<Response>(
+    shop,
+    accessToken,
+    `fulfillment_orders/${numericId}.json`
+  );
+
+  const resolvedOrderId = data.fulfillment_order?.order_id;
+  if (typeof resolvedOrderId !== 'number') {
+    throw new Error(`Fulfillment order ${numericId} response missing order_id`);
+  }
+
+  return resolvedOrderId;
 }
 
 export async function cancelShopifyFulfillment(

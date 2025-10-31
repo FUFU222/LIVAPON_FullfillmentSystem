@@ -63,6 +63,7 @@ export type OrderSummary = {
   lineItemCount: number;
   status: string | null;
   shippingAddress: string | null;
+  shippingAddressLines: string[];
   trackingNumbers: string[];
   updatedAt: string | null;
 };
@@ -205,15 +206,22 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     }
   });
 
-  const addressParts = [
-    order.shippingPostal ? `〒${order.shippingPostal}` : null,
-    order.shippingPrefecture,
-    order.shippingCity,
-    order.shippingAddress1,
-    order.shippingAddress2
-  ].filter((part): part is string => Boolean(part && part.trim().length > 0));
+  const shippingLines: string[] = [];
+  if (order.shippingPostal) {
+    shippingLines.push(`〒${order.shippingPostal}`);
+  }
+  const baseLine = [order.shippingPrefecture, order.shippingCity, order.shippingAddress1]
+    .filter((part) => Boolean(part && part.trim().length > 0))
+    .join(' ')
+    .trim();
+  if (baseLine.length > 0) {
+    shippingLines.push(baseLine);
+  }
+  if (order.shippingAddress2 && order.shippingAddress2.trim().length > 0) {
+    shippingLines.push(order.shippingAddress2);
+  }
 
-  const shippingAddress = addressParts.length > 0 ? addressParts.join(' ') : null;
+  const shippingAddress = shippingLines.length > 0 ? shippingLines.join(' ') : null;
 
   return {
     id: order.id,
@@ -222,6 +230,7 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     lineItemCount: order.lineItems.length,
     status: order.status,
     shippingAddress,
+    shippingAddressLines: shippingLines,
     trackingNumbers: Array.from(trackingNumbers),
     updatedAt: order.updatedAt
   };

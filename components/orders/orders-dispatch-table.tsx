@@ -99,8 +99,10 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                 </TableCell>
                 <TableCell className="font-medium">{order.orderNumber}</TableCell>
                 <TableCell>{order.customerName ?? "-"}</TableCell>
-                <TableCell className="text-xs text-slate-500">
-                  {order.shippingAddress ?? "住所情報は現在未連携です"}
+                <TableCell className="text-xs text-slate-500 whitespace-pre-line">
+                  {order.shippingAddressLines.length > 0
+                    ? order.shippingAddressLines.join('\n')
+                    : "住所情報は現在未登録です"}
                 </TableCell>
                 <TableCell>{order.lineItemCount}</TableCell>
                 <TableCell>

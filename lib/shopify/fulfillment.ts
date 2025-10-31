@@ -430,7 +430,7 @@ export async function syncShipmentWithShopify(shipmentId: number) {
 export async function resolveShopifyOrderIdFromFulfillmentOrder(
   shop: string,
   fulfillmentOrderId: string | number
-): Promise<number> {
+): Promise<number | null> {
   const client = getShopifyServiceClient();
   const accessToken = await loadShopifyAccessToken(client, shop);
   const numericId = extractNumericIdFromGid(fulfillmentOrderId, 'FulfillmentOrder');
@@ -442,18 +442,33 @@ export async function resolveShopifyOrderIdFromFulfillmentOrder(
     };
   };
 
-  const data = await shopifyRequest<Response>(
-    shop,
-    accessToken,
-    `fulfillment_orders/${numericId}.json`
-  );
+  try {
+    const data = await shopifyRequest<Response>(
+      shop,
+      accessToken,
+      `fulfillment_orders/${numericId}.json`
+    );
 
-  const resolvedOrderId = data.fulfillment_order?.order_id;
-  if (typeof resolvedOrderId !== 'number') {
-    throw new Error(`Fulfillment order ${numericId} response missing order_id`);
+    const resolvedOrderId = data.fulfillment_order?.order_id;
+    if (typeof resolvedOrderId !== 'number') {
+      throw new Error(`Fulfillment order ${numericId} response missing order_id`);
+    }
+
+    return resolvedOrderId;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('404')) {
+      console.warn('Fulfillment order not yet available when resolving order id', {
+        shop,
+        fulfillmentOrderId,
+        numericId,
+        message
+      });
+      return null;
+    }
+
+    throw error;
   }
-
-  return resolvedOrderId;
 }
 
 export async function cancelShopifyFulfillment(

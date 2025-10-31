@@ -109,11 +109,11 @@ export async function POST(request: Request) {
     }
 
     if (typeof orderId !== 'number') {
-      console.warn('Fulfillment order webhook missing resolvable order_id', {
+      console.warn('Fulfillment order webhook missing resolvable order_id (likely not yet created)', {
         ...logContext,
         payload
       });
-      return new NextResponse('Invalid fulfillment_order payload', { status: 422 });
+      return new NextResponse(null, { status: 202 });
     }
 
     try {

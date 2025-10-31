@@ -1,0 +1,4 @@
+ALTER TABLE shipments
+  ADD COLUMN IF NOT EXISTS sync_retry_count INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_retry_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS sync_pending_until TIMESTAMPTZ;

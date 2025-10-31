@@ -62,6 +62,12 @@ export type OrderSummary = {
   updatedAt: string | null;
 };
 
+type ShipmentRetryCandidate = {
+  id: number;
+  sync_status: string | null;
+  sync_pending_until: string | null;
+};
+
 export type AdminOrderPreview = {
   id: number;
   orderNumber: string;
@@ -539,7 +545,10 @@ export async function upsertShipment(
     sync_status: 'pending',
     synced_at: null,
     sync_error: null,
-    updated_at: nowIso
+    updated_at: nowIso,
+    sync_retry_count: 0,
+    last_retry_at: null,
+    sync_pending_until: null
   } satisfies Database['public']['Tables']['shipments']['Insert'];
 
   let shipmentId = shipment.id ?? null;
@@ -597,16 +606,102 @@ export async function upsertShipment(
   try {
     await syncShipmentWithShopify(shipmentId as number);
   } catch (error) {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const rawMessage = error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました';
+    const isFoMissing = rawMessage.includes('No fulfillment order found for Shopify order');
+
+    const updatePayload: Database['public']['Tables']['shipments']['Update'] = {
+      sync_status: isFoMissing ? 'pending' : 'error',
+      sync_error: rawMessage,
+      updated_at: nowIso,
+      last_retry_at: nowIso,
+      sync_pending_until: null
+    };
+
+    if (isFoMissing) {
+      const { data: retryInfo } = await client
+        .from('shipments')
+        .select('sync_retry_count')
+        .eq('id', shipmentId as number)
+        .maybeSingle();
+
+      const currentRetryCount = retryInfo?.sync_retry_count ?? 0;
+      const nextRetryCount = currentRetryCount + 1;
+      const baseDelayMinutes = 5;
+      const delayMinutes = Math.min(60, baseDelayMinutes * Math.pow(2, currentRetryCount));
+      const pendingUntil = new Date(now.getTime() + delayMinutes * 60_000).toISOString();
+
+      updatePayload.sync_retry_count = nextRetryCount;
+      updatePayload.sync_pending_until = pendingUntil;
+    }
+
     await client
       .from('shipments')
-      .update({
-        sync_status: 'error',
-        sync_error: error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました',
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', shipmentId as number);
 
-    throw error;
+    if (isFoMissing) {
+      throw new Error('Shopify 側の Fulfillment Order がまだ生成されていないため、追跡番号の同期を保留しました。数分後に自動で再試行します。');
+    }
+
+    throw error instanceof Error ? error : new Error(rawMessage);
+  }
+}
+
+export async function triggerShipmentResyncForShopifyOrder(shopifyOrderId: number): Promise<void> {
+  if (!serviceClient) {
+    throw new Error('Supabase service client is not configured');
+  }
+
+  const client = serviceClient;
+
+  const { data: orderRecord, error: orderError } = await client
+    .from('orders')
+    .select('id')
+    .eq('shopify_order_id', shopifyOrderId)
+    .maybeSingle();
+
+  if (orderError) {
+    throw orderError;
+  }
+
+  if (!orderRecord) {
+    console.info('Shopify order not found in Supabase for resync trigger', {
+      shopifyOrderId
+    });
+    return;
+  }
+
+  const { data: shipments, error: shipmentsError } = await client
+    .from('shipments')
+    .select('id, sync_status, sync_pending_until')
+    .eq('order_id', orderRecord.id)
+    .in('sync_status', ['pending', 'error']);
+
+  if (shipmentsError) {
+    throw shipmentsError;
+  }
+
+  if (!shipments || shipments.length === 0) {
+    return;
+  }
+
+  for (const shipment of shipments as ShipmentRetryCandidate[]) {
+    const pendingUntil = shipment.sync_pending_until ? Date.parse(shipment.sync_pending_until) : null;
+    if (pendingUntil && pendingUntil > Date.now()) {
+      continue;
+    }
+
+    try {
+      await syncShipmentWithShopify(shipment.id);
+    } catch (error) {
+      console.error('Failed to resync shipment after FO webhook', {
+        error,
+        shipmentId: shipment.id,
+        shopifyOrderId
+      });
+    }
   }
 }
 

@@ -89,7 +89,10 @@ CREATE TABLE shipments (
   updated_at TIMESTAMP DEFAULT NOW(),
   sync_status VARCHAR(32) DEFAULT 'pending',
   synced_at TIMESTAMPTZ,
-  sync_error TEXT
+  sync_error TEXT,
+  sync_retry_count INT DEFAULT 0,
+  last_retry_at TIMESTAMPTZ,
+  sync_pending_until TIMESTAMPTZ
 );
 
 -- Shopify OAuth 接続情報

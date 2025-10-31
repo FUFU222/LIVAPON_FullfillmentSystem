@@ -209,6 +209,9 @@ export type Database = {
           shopify_fulfillment_id: number | null
           status: string | null
           sync_error: string | null
+          last_retry_at: string | null
+          sync_pending_until: string | null
+          sync_retry_count: number | null
           sync_status: string | null
           synced_at: string | null
           tracking_company: string | null
@@ -226,6 +229,9 @@ export type Database = {
           shopify_fulfillment_id?: number | null
           status?: string | null
           sync_error?: string | null
+          last_retry_at?: string | null
+          sync_pending_until?: string | null
+          sync_retry_count?: number | null
           sync_status?: string | null
           synced_at?: string | null
           tracking_company?: string | null
@@ -243,6 +249,9 @@ export type Database = {
           shopify_fulfillment_id?: number | null
           status?: string | null
           sync_error?: string | null
+          last_retry_at?: string | null
+          sync_pending_until?: string | null
+          sync_retry_count?: number | null
           sync_status?: string | null
           synced_at?: string | null
           tracking_company?: string | null

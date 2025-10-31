@@ -1,10 +1,24 @@
 import { NextResponse } from 'next/server';
-import { upsertShopifyOrder, isRegisteredShopDomain } from '@/lib/shopify/order-import';
+import {
+  upsertShopifyOrder,
+  isRegisteredShopDomain
+} from '@/lib/shopify/order-import';
+import { triggerShipmentResyncForShopifyOrder } from '@/lib/data/orders';
 import { verifyShopifyWebhook } from '@/lib/shopify/hmac';
 
 export const runtime = 'edge';
 
-const SUPPORTED_TOPICS = new Set(['orders/create', 'orders/updated']);
+const SUPPORTED_TOPICS = new Set([
+  'orders/create',
+  'orders/updated',
+  'fulfillment_orders/order_routing_complete',
+  'fulfillment_orders/hold_released'
+]);
+
+const FULFILLMENT_ORDER_TOPICS = new Set([
+  'fulfillment_orders/order_routing_complete',
+  'fulfillment_orders/hold_released'
+]);
 
 export async function POST(request: Request) {
   const bodyArrayBuffer = await request.arrayBuffer();
@@ -19,7 +33,8 @@ export async function POST(request: Request) {
     return new NextResponse('Missing shop domain', { status: 400 });
   }
 
-  const topic = request.headers.get('x-shopify-topic');
+  const topicHeader = request.headers.get('x-shopify-topic');
+  const topic = topicHeader?.toLowerCase() ?? null;
   if (!topic) {
     return new NextResponse('Missing topic', { status: 400 });
   }
@@ -57,7 +72,49 @@ export async function POST(request: Request) {
   }
 
   const payloadText = new TextDecoder().decode(bodyArrayBuffer);
-  const payload = JSON.parse(payloadText);
+  let payload: unknown;
+
+  try {
+    payload = JSON.parse(payloadText);
+  } catch (error) {
+    console.warn('Failed to parse Shopify webhook payload', {
+      error,
+      ...logContext
+    });
+    return new NextResponse('Invalid JSON payload', { status: 400 });
+  }
+
+  if (FULFILLMENT_ORDER_TOPICS.has(topic)) {
+    const fulfillmentOrder = (payload as { fulfillment_order?: { order_id?: unknown } })?.fulfillment_order;
+    const orderId = typeof fulfillmentOrder?.order_id === 'number'
+      ? fulfillmentOrder.order_id
+      : (payload as { order_id?: unknown })?.order_id;
+
+    if (typeof orderId !== 'number') {
+      console.warn('Fulfillment order webhook missing numeric order_id', {
+        ...logContext,
+        payload
+      });
+      return new NextResponse('Invalid fulfillment_order payload', { status: 422 });
+    }
+
+    try {
+      await triggerShipmentResyncForShopifyOrder(orderId);
+      console.info('Triggered shipment resync after fulfillment order webhook', {
+        ...logContext,
+        orderId
+      });
+    } catch (error) {
+      console.error('Failed to trigger shipment resync', {
+        error,
+        ...logContext,
+        orderId
+      });
+      return new NextResponse('Failed to trigger shipment resync', { status: 500 });
+    }
+
+    return new NextResponse(null, { status: 204 });
+  }
 
   if (
     typeof payload !== 'object' ||

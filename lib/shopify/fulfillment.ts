@@ -275,6 +275,8 @@ export async function syncShipmentWithShopify(shipmentId: number) {
     .update({
       sync_status: 'processing',
       sync_error: null,
+      sync_pending_until: null,
+      last_retry_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', shipmentId);
@@ -327,7 +329,10 @@ export async function syncShipmentWithShopify(shipmentId: number) {
         synced_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         sync_error: null,
-        tracking_company: trackingCompany ?? data.tracking_company ?? null
+        tracking_company: trackingCompany ?? data.tracking_company ?? null,
+        sync_retry_count: 0,
+        sync_pending_until: null,
+        last_retry_at: new Date().toISOString()
       })
       .eq('id', shipmentId);
 
@@ -364,7 +369,10 @@ export async function syncShipmentWithShopify(shipmentId: number) {
       synced_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       sync_error: null,
-      tracking_company: trackingCompany ?? data.tracking_company ?? null
+      tracking_company: trackingCompany ?? data.tracking_company ?? null,
+      sync_retry_count: 0,
+      sync_pending_until: null,
+      last_retry_at: new Date().toISOString()
     })
     .eq('id', shipmentId);
 

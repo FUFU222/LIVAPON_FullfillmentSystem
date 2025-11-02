@@ -254,7 +254,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
               <TableRow
                 key={`order-${order.id}`}
                 className={cn(
-                  "align-top cursor-pointer transition-colors duration-200",
+                  "relative align-top cursor-pointer transition-colors duration-200",
                   isExpanded && "bg-slate-50/60"
                 )}
                 onClick={(event) => {
@@ -297,17 +297,23 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                         isExpanded ? "max-h-[600px]" : "max-h-0"
                       )}
                     >
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-xs uppercase tracking-wide text-slate-500">
-                            <th className="w-16 px-4 py-2 text-left">選択</th>
-                            <th className="px-4 py-2 text-left">商品</th>
-                            <th className="px-4 py-2 text-left">注文数</th>
-                            <th className="px-4 py-2 text-left">発送済み</th>
-                            <th className="px-4 py-2 text-left">未発送</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      <div
+                        className={cn(
+                          "mx-4 mt-3 rounded-lg border border-slate-200 bg-white/95 shadow-sm transition-opacity duration-200",
+                          isExpanded ? "opacity-100" : "opacity-0"
+                        )}
+                      >
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-xs uppercase tracking-wide text-slate-500">
+                              <th className="w-16 px-4 py-2 text-left">選択</th>
+                              <th className="px-4 py-2 text-left">商品</th>
+                              <th className="px-4 py-2 text-left">注文数</th>
+                              <th className="px-4 py-2 text-left">発送済み</th>
+                              <th className="px-4 py-2 text-left">未発送</th>
+                            </tr>
+                          </thead>
+                          <tbody>
                           {order.lineItems.map((lineItem) => {
                             const remaining = computeRemainingQuantity(lineItem);
                             const isSelected = selectedLineItems.has(lineItem.id);
@@ -349,8 +355,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                               </tr>
                             );
                           })}
-                        </tbody>
-                      </table>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </td>
                 </TableRow>

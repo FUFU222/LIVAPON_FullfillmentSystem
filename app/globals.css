@@ -6,6 +6,12 @@
   color-scheme: light;
 }
 
+html {
+  min-height: 100%;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: #fff;
   color: #0f172a;

@@ -25,7 +25,7 @@ type SelectedLineItem = {
   productName: string;
   sku: string | null;
   variantTitle: string | null;
-  orderedQuantity: number;
+  totalOrdered: number;
   fulfilledQuantity: number;
   availableQuantity: number;
   quantity: number;
@@ -278,7 +278,7 @@ export function OrdersDispatchPanel({
                       {item.variantTitle ? (
                         <span>オプション: {item.variantTitle}</span>
                       ) : null}
-                      <span>注文数: {item.orderedQuantity}</span>
+                      <span>注文数: {item.totalOrdered}</span>
                       <span>発送済み: {item.fulfilledQuantity}</span>
                       <span>未発送: {Math.max(item.availableQuantity, 0)}</span>
                     </div>

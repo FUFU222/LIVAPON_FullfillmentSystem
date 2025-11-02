@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/orders/status-badge';
 import type { OrderSummary } from '@/lib/data/orders';
 
-function formatUpdatedAt(date: string | null) {
+function formatDate(date: string | null) {
   if (!date) {
     return '-';
   }
@@ -30,15 +30,15 @@ export function OrderTable({ orders }: { orders: OrderSummary[] }) {
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>注文番号</TableHead>
-          <TableHead>顧客名</TableHead>
-          <TableHead>商品数</TableHead>
-          <TableHead>ステータス</TableHead>
-          <TableHead>追跡番号</TableHead>
-          <TableHead>更新日</TableHead>
-          <TableHead>アクション</TableHead>
-        </TableRow>
+          <TableRow>
+            <TableHead>注文番号</TableHead>
+            <TableHead>顧客名</TableHead>
+            <TableHead>商品数</TableHead>
+            <TableHead>ステータス</TableHead>
+            <TableHead>追跡番号</TableHead>
+            <TableHead>注文日時</TableHead>
+            <TableHead>アクション</TableHead>
+          </TableRow>
       </TableHeader>
       <TableBody>
         {orders.map((order) => (
@@ -54,7 +54,7 @@ export function OrderTable({ orders }: { orders: OrderSummary[] }) {
                 ? order.trackingNumbers.join(', ')
                 : '-'}
             </TableCell>
-            <TableCell>{formatUpdatedAt(order.updatedAt)}</TableCell>
+            <TableCell>{formatDate(order.createdAt)}</TableCell>
             <TableCell>
               <Link href={`/orders/${order.id}`} className={buttonClasses('outline')}>
                 詳細

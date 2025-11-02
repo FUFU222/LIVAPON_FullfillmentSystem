@@ -37,6 +37,7 @@ export type OrderDetail = {
   customerName: string | null;
   status: string | null;
   updatedAt: string | null;
+  createdAt: string | null;
   shippingPostal: string | null;
   shippingPrefecture: string | null;
   shippingCity: string | null;
@@ -80,6 +81,7 @@ export type OrderSummary = {
   shippingAddressLines: string[];
   trackingNumbers: string[];
   updatedAt: string | null;
+  createdAt: string | null;
   lineItems: OrderLineItemSummary[];
 };
 
@@ -118,6 +120,7 @@ const demoOrders: OrderDetail[] = [
     customerName: '佐藤 花子',
     status: 'unfulfilled',
     updatedAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
     shippingPostal: '1500001',
     shippingPrefecture: '東京都',
     shippingCity: '渋谷区神宮前',
@@ -188,6 +191,7 @@ const demoOrders: OrderDetail[] = [
     customerName: 'John Doe',
     status: 'partially_fulfilled',
     updatedAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
     shippingPostal: '2200012',
     shippingPrefecture: '神奈川県',
     shippingCity: '横浜市西区みなとみらい',
@@ -254,6 +258,7 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     shippingAddressLines: shippingLines,
     trackingNumbers: Array.from(trackingNumbers),
     updatedAt: order.updatedAt,
+    createdAt: order.createdAt,
     lineItems: order.lineItems.map((lineItem) => ({
       id: lineItem.id,
       orderId: order.id,
@@ -286,6 +291,7 @@ type RawOrderRecord = {
   customer_name: string | null;
   status: string | null;
   updated_at: string | null;
+  created_at?: string | null;
   shipping_postal: string | null;
   shipping_prefecture: string | null;
   shipping_city: string | null;
@@ -394,6 +400,7 @@ function toOrderDetailFromRecord(
     customerName: record.customer_name ?? null,
     status: record.status ?? null,
     updatedAt: record.updated_at ?? null,
+    createdAt: (record as { created_at?: string | null }).created_at ?? null,
     shippingPostal: record.shipping_postal ?? null,
     shippingPrefecture: record.shipping_prefecture ?? null,
     shippingCity: record.shipping_city ?? null,
@@ -412,7 +419,7 @@ export async function getRecentOrdersForAdmin(limit = 5): Promise<AdminOrderPrev
   const { data, error } = await serviceClient
     .from('orders')
     .select(
-      `id, order_number, customer_name, status, updated_at,
+      `id, order_number, customer_name, status, updated_at, created_at,
        vendor:vendor_id ( id, code, name )`
     )
     .order('updated_at', { ascending: false })
@@ -475,7 +482,7 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
   const { data, error } = await serviceClient
     .from('orders')
     .select(
-      `id, order_number, customer_name, status, updated_at,
+      `id, order_number, customer_name, status, updated_at, created_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items!inner(
          id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,
@@ -515,7 +522,7 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
   const { data, error } = await serviceClient
     .from('orders')
     .select(
-      `id, order_number, customer_name, status, updated_at,
+      `id, order_number, customer_name, status, updated_at, created_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
          id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,

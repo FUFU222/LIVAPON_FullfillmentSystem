@@ -2,10 +2,10 @@ import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 const intentStyles: Record<string, string> = {
-  unfulfilled: 'border-slate-200 text-slate-600',
-  partially_fulfilled: 'border-amber-500/40 text-amber-600',
-  fulfilled: 'border-emerald-500/40 text-emerald-600',
-  default: 'border-slate-200 text-slate-600'
+  unfulfilled: 'border-amber-200 bg-amber-50 text-amber-700',
+  partially_fulfilled: 'border-sky-200 bg-sky-50 text-sky-700',
+  fulfilled: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  default: 'border-slate-200 bg-slate-100 text-slate-600'
 };
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {

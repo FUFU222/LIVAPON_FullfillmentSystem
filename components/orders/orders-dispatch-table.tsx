@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
 
-function formatUpdatedAt(date: string | null) {
+function formatDate(date: string | null) {
   if (!date) {
     return "-";
   }
@@ -41,7 +41,7 @@ type SelectedLineItem = {
   productName: string;
   sku: string | null;
   variantTitle: string | null;
-  orderedQuantity: number;
+  totalOrdered: number;
   fulfilledQuantity: number;
   availableQuantity: number;
   quantity: number;
@@ -68,7 +68,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           ...value,
           sku: lineItem.sku,
           variantTitle: lineItem.variantTitle,
-          orderedQuantity: lineItem.quantity,
+          totalOrdered: lineItem.quantity,
           fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
           availableQuantity: remaining,
           quantity: Math.min(value.quantity, remaining)
@@ -120,7 +120,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           productName: lineItem.productName,
           sku: lineItem.sku,
           variantTitle: lineItem.variantTitle,
-          orderedQuantity: lineItem.quantity,
+          totalOrdered: lineItem.quantity,
           fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
           availableQuantity: remaining,
           quantity: Math.min(remaining, next.get(lineItem.id)?.quantity ?? remaining)
@@ -152,7 +152,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           productName: lineItem.productName,
           sku: lineItem.sku,
           variantTitle: lineItem.variantTitle,
-          orderedQuantity: lineItem.quantity,
+          totalOrdered: lineItem.quantity,
           fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
           availableQuantity: remaining,
           quantity: remaining
@@ -179,7 +179,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
               productName: item.productName,
               sku: item.sku,
               variantTitle: item.variantTitle,
-              orderedQuantity: item.quantity,
+              totalOrdered: item.quantity,
               fulfilledQuantity: item.fulfilledQuantity ?? 0,
               availableQuantity: remaining,
               quantity: remaining
@@ -240,7 +240,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
             <TableHead>配送先住所</TableHead>
             <TableHead>商品数</TableHead>
             <TableHead>ステータス</TableHead>
-            <TableHead>更新日</TableHead>
+            <TableHead>注文日時</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -281,7 +281,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                   <TableCell>
                     <StatusBadge status={order.status} />
                   </TableCell>
-                  <TableCell>{formatUpdatedAt(order.updatedAt)}</TableCell>
+                  <TableCell>{formatDate(order.createdAt)}</TableCell>
                 </TableRow>
 
                 {isExpanded ? (

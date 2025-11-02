@@ -162,9 +162,10 @@ async function resolveVendorForSku(
 // Helpers
 // ==========================
 function buildCustomerName(payload: ShopifyOrderPayload): string | null {
-  const first = payload.customer?.first_name ?? '';
-  const last = payload.customer?.last_name ?? '';
-  const full = `${first} ${last}`.trim();
+  const first = (payload.customer?.first_name ?? '').trim();
+  const last = (payload.customer?.last_name ?? '').trim();
+  const parts = [last, first].filter((value) => value.length > 0);
+  const full = parts.join(' ').trim();
   return full.length > 0 ? full : null;
 }
 

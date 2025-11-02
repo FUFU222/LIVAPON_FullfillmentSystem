@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import type { OrderLineItemSummary, OrderSummary } from "@/lib/data/orders";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/orders/status-badge";
@@ -252,26 +251,30 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
 
             return (
               <>
-                <TableRow key={`order-${order.id}`} className="align-top">
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded border border-slate-200 p-1 text-slate-600 transition hover:bg-slate-100"
-                        onClick={() => toggleExpanded(order.id)}
-                        aria-label={isExpanded ? '明細を閉じる' : '明細を開く'}
-                      >
-                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </button>
-                      <input
-                        type="checkbox"
-                        aria-label={`${order.orderNumber} を選択`}
-                        checked={allSelected}
-                        onChange={(event) => toggleOrderSelection(order, event.target.checked)}
-                        disabled={selectableItems.length === 0}
-                      />
-                    </div>
-                  </TableCell>
+              <TableRow
+                key={`order-${order.id}`}
+                className={cn(
+                  "align-top cursor-pointer transition-colors duration-200",
+                  isExpanded && "bg-slate-50/60"
+                )}
+                onClick={(event) => {
+                  const target = event.target as HTMLElement;
+                  if (target.closest('input,button,select,a')) {
+                    return;
+                  }
+                  toggleExpanded(order.id);
+                }}
+              >
+                <TableCell>
+                  <input
+                    type="checkbox"
+                    aria-label={`${order.orderNumber} を選択`}
+                    checked={allSelected}
+                    onChange={(event) => toggleOrderSelection(order, event.target.checked)}
+                    disabled={selectableItems.length === 0}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                </TableCell>
                   <TableCell className="font-medium">{order.orderNumber}</TableCell>
                   <TableCell>{order.customerName ?? '-'} </TableCell>
                   <TableCell className="text-xs text-slate-500 whitespace-pre-line">
@@ -284,9 +287,14 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                   <TableCell>{formatDate(order.createdAt)}</TableCell>
                 </TableRow>
 
-                {isExpanded ? (
-                  <TableRow key={`order-${order.id}-items`} className="bg-slate-50">
-                    <td colSpan={7} className="bg-slate-50 p-0">
+                <TableRow key={`order-${order.id}-items`} className="bg-slate-50">
+                  <td colSpan={7} className="bg-slate-50 p-0">
+                    <div
+                      className={cn(
+                        "overflow-hidden border-t border-slate-200 transition-[max-height] duration-300 ease-in-out",
+                        isExpanded ? "max-h-[600px]" : "max-h-0"
+                      )}
+                    >
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-xs uppercase tracking-wide text-slate-500">
@@ -302,14 +310,27 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                             const remaining = computeRemainingQuantity(lineItem);
                             const isSelected = selectedLineItems.has(lineItem.id);
                             return (
-                              <tr key={lineItem.id} className="border-t border-slate-200">
+                              <tr
+                                key={lineItem.id}
+                                className={cn(
+                                  "border-t border-slate-200 transition-colors duration-200",
+                                  isSelected && "bg-white"
+                                )}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleLineItemSelection(order, lineItem);
+                                }}
+                              >
                                 <td className="px-4 py-2">
                                   <input
                                     type="checkbox"
                                     aria-label={`${lineItem.productName} を選択`}
                                     checked={isSelected}
                                     disabled={remaining <= 0}
-                                    onChange={() => toggleLineItemSelection(order, lineItem)}
+                                    onChange={(event) => {
+                                      event.stopPropagation();
+                                      toggleLineItemSelection(order, lineItem);
+                                    }}
                                   />
                                 </td>
                                 <td className="px-4 py-2 text-slate-700">
@@ -328,9 +349,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                           })}
                         </tbody>
                       </table>
-                    </td>
-                  </TableRow>
-                ) : null}
+                    </div>
+                  </td>
+                </TableRow>
               </>
             );
           })}

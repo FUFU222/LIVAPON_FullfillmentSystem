@@ -275,7 +275,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                     onClick={(event) => event.stopPropagation()}
                   />
                 </TableCell>
-                  <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                <TableCell className="font-medium text-foreground">
+                  {order.orderNumber}
+                </TableCell>
                   <TableCell>{order.customerName ?? '-'} </TableCell>
                   <TableCell className="text-xs text-slate-500 whitespace-pre-line">
                     {order.shippingAddressLines.length > 0 ? order.shippingAddressLines.join('\n') : '住所情報が未登録です'}

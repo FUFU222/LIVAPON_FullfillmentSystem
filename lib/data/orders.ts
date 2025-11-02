@@ -333,9 +333,13 @@ function toOrderDetailFromRecord(
 
   const shipmentMap = new Map<number, OrderShipment>();
   const lineItemShipmentIds = new Map<number, Array<{ shipmentId: number; quantity: number | null }>>();
+  const uniqueLineItems = new Map<number, typeof rawLineItems[number]>();
 
   rawLineItems.forEach((item) => {
     const pivots = Array.isArray(item.shipments) ? item.shipments : [];
+    if (!uniqueLineItems.has(item.id)) {
+      uniqueLineItems.set(item.id, item);
+    }
     pivots.forEach((pivot) => {
       const shipmentRecord = pivot.shipment;
       if (!shipmentRecord) {
@@ -364,7 +368,7 @@ function toOrderDetailFromRecord(
   const shipments = Array.from(shipmentMap.values());
   const shipmentLookup = new Map(shipments.map((shipment) => [shipment.id, shipment] as const));
 
-  const lineItems = rawLineItems.map((item) => {
+  const lineItems = Array.from(uniqueLineItems.values()).map((item) => {
     const shipmentRefs = lineItemShipmentIds.get(item.id) ?? [];
     const shipmentsForLineItem: LineItemShipment[] = shipmentRefs
       .map(({ shipmentId, quantity }) => {

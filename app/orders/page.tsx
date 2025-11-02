@@ -82,9 +82,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           <Link href="/orders/shipments" className={buttonClasses('outline')}>
             発送履歴一覧
           </Link>
-          <Link href="/import" className={buttonClasses()}>
-            CSVインポート
-          </Link>
         </div>
       </CardHeader>
       <CardContent className="gap-6">

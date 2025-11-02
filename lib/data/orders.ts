@@ -52,8 +52,20 @@ export type OrderDetail = {
     productName: string;
     quantity: number;
     fulfilledQuantity: number | null;
+    fulfillableQuantity: number | null;
     shipments: LineItemShipment[];
   }>;
+};
+
+export type OrderLineItemSummary = {
+  id: number;
+  orderId: number;
+  productName: string;
+  sku: string | null;
+  quantity: number;
+  fulfilledQuantity: number | null;
+  fulfillableQuantity: number | null;
+  shipments: LineItemShipment[];
 };
 
 export type OrderSummary = {
@@ -66,6 +78,7 @@ export type OrderSummary = {
   shippingAddressLines: string[];
   trackingNumbers: string[];
   updatedAt: string | null;
+  lineItems: OrderLineItemSummary[];
 };
 
 type ShipmentRetryCandidate = {
@@ -128,6 +141,7 @@ const demoOrders: OrderDetail[] = [
         productName: 'プレミアムチェア',
         quantity: 2,
         fulfilledQuantity: 1,
+        fulfillableQuantity: 1,
         shipments: [
           {
             id: 5001,
@@ -149,6 +163,7 @@ const demoOrders: OrderDetail[] = [
         productName: '交換用クッション',
         quantity: 1,
         fulfilledQuantity: 0,
+        fulfillableQuantity: 1,
         shipments: [
           {
             id: 5001,
@@ -185,6 +200,7 @@ const demoOrders: OrderDetail[] = [
         productName: 'デスクライト',
         quantity: 1,
         fulfilledQuantity: 0,
+        fulfillableQuantity: 1,
         shipments: []
       }
     ]
@@ -232,7 +248,17 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     shippingAddress,
     shippingAddressLines: shippingLines,
     trackingNumbers: Array.from(trackingNumbers),
-    updatedAt: order.updatedAt
+    updatedAt: order.updatedAt,
+    lineItems: order.lineItems.map((lineItem) => ({
+      id: lineItem.id,
+      orderId: order.id,
+      productName: lineItem.productName,
+      sku: lineItem.sku,
+      quantity: lineItem.quantity,
+      fulfilledQuantity: lineItem.fulfilledQuantity,
+      fulfillableQuantity: lineItem.fulfillableQuantity,
+      shipments: lineItem.shipments
+    }))
   };
 }
 
@@ -266,6 +292,7 @@ type RawOrderRecord = {
     product_name: string;
     quantity: number;
     fulfilled_quantity: number | null;
+    fulfillable_quantity: number | null;
     shipments?: RawShipmentPivot[];
     vendor?: {
       id: number | null;
@@ -348,6 +375,7 @@ function toOrderDetailFromRecord(
       productName: item.product_name,
       quantity: item.quantity,
       fulfilledQuantity: item.fulfilled_quantity ?? null,
+      fulfillableQuantity: item.fulfillable_quantity ?? null,
       shipments: shipmentsForLineItem
     };
   });
@@ -442,7 +470,7 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
       `id, order_number, customer_name, status, updated_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items!inner(
-         id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
+         id, vendor_id, sku, product_name, quantity, fulfilled_quantity, fulfillable_quantity,
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
@@ -482,7 +510,7 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
       `id, order_number, customer_name, status, updated_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
-         id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
+         id, vendor_id, sku, product_name, quantity, fulfilled_quantity, fulfillable_quantity,
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
@@ -512,7 +540,7 @@ export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDet
       `id, order_number, customer_name, status, updated_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
-         id, vendor_id, sku, product_name, quantity, fulfilled_quantity,
+         id, vendor_id, sku, product_name, quantity, fulfilled_quantity, fulfillable_quantity,
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
@@ -539,6 +567,7 @@ export async function upsertShipment(
     carrier: string;
     status: string;
     shippedAt?: string | null;
+    lineItemQuantities?: Record<number, number | null>;
   },
   vendorId: number
 ) {
@@ -634,10 +663,13 @@ export async function upsertShipment(
 
   const pivotInserts: Database['public']['Tables']['shipment_line_items']['Insert'][] = shipment.lineItemIds.map((lineItemId) => {
     const matching = lineItems.find((item) => item.id === lineItemId);
+    const overrideQuantity = shipment.lineItemQuantities?.[lineItemId] ?? null;
+    const baseQuantity = matching?.fulfillable_quantity ?? matching?.quantity ?? null;
+    const quantity = overrideQuantity ?? baseQuantity;
     return {
       shipment_id: shipmentId as number,
       line_item_id: lineItemId,
-      quantity: matching?.fulfillable_quantity ?? matching?.quantity ?? null,
+      quantity,
       fulfillment_order_line_item_id: matching?.fulfillment_order_line_item_id ?? null
     };
   });

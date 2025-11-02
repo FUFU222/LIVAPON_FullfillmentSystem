@@ -58,6 +58,7 @@ export type Database = {
           id: number
           order_id: number | null
           product_name: string
+          variant_title: string | null
           quantity: number
           shopify_line_item_id: number
           sku: string | null
@@ -72,6 +73,7 @@ export type Database = {
           id?: number
           order_id?: number | null
           product_name: string
+          variant_title?: string | null
           quantity: number
           shopify_line_item_id: number
           sku?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           id?: number
           order_id?: number | null
           product_name?: string
+          variant_title?: string | null
           quantity?: number
           shopify_line_item_id?: number
           sku?: string | null

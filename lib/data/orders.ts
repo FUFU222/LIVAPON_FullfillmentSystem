@@ -46,6 +46,7 @@ export type OrderDetail = {
   lineItems: Array<{
     id: number;
     sku: string | null;
+    variantTitle: string | null;
     vendorId: number | null;
     vendorCode: string | null;
     vendorName: string | null;
@@ -62,6 +63,7 @@ export type OrderLineItemSummary = {
   orderId: number;
   productName: string;
   sku: string | null;
+  variantTitle: string | null;
   quantity: number;
   fulfilledQuantity: number | null;
   fulfillableQuantity: number | null;
@@ -135,6 +137,7 @@ const demoOrders: OrderDetail[] = [
       {
         id: 101,
         sku: '0001-001-01',
+        variantTitle: 'レッド',
         vendorId: 1,
         vendorCode: '0001',
         vendorName: 'デモベンダーA',
@@ -157,6 +160,7 @@ const demoOrders: OrderDetail[] = [
       {
         id: 102,
         sku: '0001-002-01',
+        variantTitle: '交換用クッション',
         vendorId: 1,
         vendorCode: '0001',
         vendorName: 'デモベンダーA',
@@ -194,6 +198,7 @@ const demoOrders: OrderDetail[] = [
       {
         id: 201,
         sku: '0002-001-01',
+        variantTitle: 'ホワイト',
         vendorId: 2,
         vendorCode: '0002',
         vendorName: 'デモベンダーB',
@@ -254,6 +259,7 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
       orderId: order.id,
       productName: lineItem.productName,
       sku: lineItem.sku,
+      variantTitle: lineItem.variantTitle,
       quantity: lineItem.quantity,
       fulfilledQuantity: lineItem.fulfilledQuantity,
       fulfillableQuantity: lineItem.fulfillableQuantity,
@@ -290,6 +296,7 @@ type RawOrderRecord = {
     vendor_id: number | null;
     sku: string | null;
     product_name: string;
+    variant_title: string | null;
     quantity: number;
     fulfilled_quantity: number | null;
     fulfillable_quantity: number | null;
@@ -369,6 +376,7 @@ function toOrderDetailFromRecord(
     return {
       id: item.id,
       sku: item.sku ?? null,
+      variantTitle: item.variant_title ?? null,
       vendorId: item.vendor_id ?? null,
       vendorCode: item.vendor?.code ?? deriveVendorCode(item.sku ?? null),
       vendorName: item.vendor?.name ?? null,
@@ -470,7 +478,7 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
       `id, order_number, customer_name, status, updated_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items!inner(
-         id, vendor_id, sku, product_name, quantity, fulfilled_quantity, fulfillable_quantity,
+         id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
@@ -510,7 +518,7 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
       `id, order_number, customer_name, status, updated_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
-         id, vendor_id, sku, product_name, quantity, fulfilled_quantity, fulfillable_quantity,
+         id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
@@ -540,7 +548,7 @@ export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDet
       `id, order_number, customer_name, status, updated_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
-         id, vendor_id, sku, product_name, quantity, fulfilled_quantity, fulfillable_quantity,
+         id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,

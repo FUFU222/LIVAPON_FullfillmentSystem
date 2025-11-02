@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderSummary } from "@/lib/data/orders";
@@ -24,6 +24,9 @@ type SelectedLineItem = {
   orderNumber: string;
   productName: string;
   sku: string | null;
+  variantTitle: string | null;
+  orderedQuantity: number;
+  fulfilledQuantity: number;
   availableQuantity: number;
   quantity: number;
 };
@@ -34,6 +37,7 @@ type Props = {
   onClearSelection: () => void;
   onRemoveLineItem: (lineItemId: number) => void;
   onUpdateQuantity: (lineItemId: number, quantity: number) => void;
+  onRemoveOrder: (orderId: number) => void;
 };
 
 export function OrdersDispatchPanel({
@@ -41,7 +45,8 @@ export function OrdersDispatchPanel({
   selectedLineItems,
   onClearSelection,
   onRemoveLineItem,
-  onUpdateQuantity
+  onUpdateQuantity,
+  onRemoveOrder
 }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -63,10 +68,6 @@ export function OrdersDispatchPanel({
     });
     return Array.from(map.values());
   }, [orders, selectedLineItems]);
-
-  if (selectedLineItems.length === 0) {
-    return null;
-  }
 
   const handleSubmit = async () => {
     if (!trackingNumber.trim()) {
@@ -145,6 +146,16 @@ export function OrdersDispatchPanel({
   const previewItems = selectedLineItems.slice(0, 2);
   const overflowCount = Math.max(0, selectedLineItems.length - previewItems.length);
 
+  useEffect(() => {
+    if (selectedLineItems.length === 0) {
+      setDetailOpen(false);
+    }
+  }, [selectedLineItems.length]);
+
+  if (selectedLineItems.length === 0) {
+    return null;
+  }
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-4">
@@ -159,6 +170,7 @@ export function OrdersDispatchPanel({
                     className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600"
                   >
                     {item.orderNumber}: {item.productName}
+                    {item.variantTitle ? `（${item.variantTitle}）` : ""}
                     <button
                       type="button"
                       className="text-slate-400 transition hover:text-slate-600"
@@ -240,21 +252,35 @@ export function OrdersDispatchPanel({
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         title="発送対象の明細を確認"
+        showCloseButton
       >
         <div className="space-y-4">
           {selectedByOrder.map(({ order, items }) => (
             <div key={order.id} className="rounded-lg border border-slate-200 p-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-slate-700">{order.orderNumber}</div>
-                <div className="text-xs text-slate-500">{order.customerName ?? '-'}</div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-slate-700">{order.orderNumber}</span>
+                  <span className="text-xs text-slate-500">{order.customerName ?? '-'}</span>
+                </div>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-slate-400 transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-600"
+                  onClick={() => onRemoveOrder(order.id)}
+                >
+                  <X className="h-3 w-3" aria-hidden="true" /> 注文を除外
+                </button>
               </div>
               <div className="mt-3 space-y-3">
                 {items.map((item) => (
                   <div key={item.lineItemId} className="flex flex-col gap-2 rounded border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col gap-1 text-xs text-slate-600">
                       <span className="font-medium text-slate-700">{item.productName}</span>
-                      <span>SKU: {item.sku ?? '-'}</span>
-                      <span>残数: {item.availableQuantity}</span>
+                      {item.variantTitle ? (
+                        <span>オプション: {item.variantTitle}</span>
+                      ) : null}
+                      <span>注文数: {item.orderedQuantity}</span>
+                      <span>発送済み: {item.fulfilledQuantity}</span>
+                      <span>未発送: {Math.max(item.availableQuantity, 0)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <label className="text-xs text-slate-500" htmlFor={`modal-qty-${item.lineItemId}`}>

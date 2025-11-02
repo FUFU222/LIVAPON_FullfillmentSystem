@@ -75,6 +75,7 @@ type ShopifyOrderPayload = {
     variant_id: number | null;
     sku: string | null;
     title: string;
+    variant_title?: string | null;
     quantity: number;
     fulfillable_quantity?: number;
     vendor?: string | null;
@@ -262,6 +263,7 @@ async function replaceLineItems(
       shopify_line_item_id: item.id,
       sku: item.sku ?? null,
       product_name: item.title,
+      variant_title: item.variant_title ?? null,
       quantity: item.quantity,
       fulfilled_quantity: 0,
       fulfillable_quantity: item.fulfillable_quantity ?? item.quantity

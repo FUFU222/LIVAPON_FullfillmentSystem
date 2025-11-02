@@ -1,0 +1,2 @@
+ALTER TABLE line_items
+  ADD COLUMN IF NOT EXISTS variant_title VARCHAR(255);

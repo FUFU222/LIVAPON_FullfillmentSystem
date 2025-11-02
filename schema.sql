@@ -73,6 +73,7 @@ CREATE TABLE line_items (
   fulfillment_order_line_item_id BIGINT,
   sku VARCHAR(16),
   product_name VARCHAR(255) NOT NULL,
+  variant_title VARCHAR(255),
   quantity INT NOT NULL,
   fulfillable_quantity INT DEFAULT 0,
   fulfilled_quantity INT DEFAULT 0,

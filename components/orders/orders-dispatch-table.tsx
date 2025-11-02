@@ -40,6 +40,9 @@ type SelectedLineItem = {
   orderNumber: string;
   productName: string;
   sku: string | null;
+  variantTitle: string | null;
+  orderedQuantity: number;
+  fulfilledQuantity: number;
   availableQuantity: number;
   quantity: number;
 };
@@ -63,6 +66,10 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
         }
         next.set(key, {
           ...value,
+          sku: lineItem.sku,
+          variantTitle: lineItem.variantTitle,
+          orderedQuantity: lineItem.quantity,
+          fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
           availableQuantity: remaining,
           quantity: Math.min(value.quantity, remaining)
         });
@@ -112,6 +119,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           orderNumber: order.orderNumber,
           productName: lineItem.productName,
           sku: lineItem.sku,
+          variantTitle: lineItem.variantTitle,
+          orderedQuantity: lineItem.quantity,
+          fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
           availableQuantity: remaining,
           quantity: Math.min(remaining, next.get(lineItem.id)?.quantity ?? remaining)
         });
@@ -141,6 +151,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           orderNumber: order.orderNumber,
           productName: lineItem.productName,
           sku: lineItem.sku,
+          variantTitle: lineItem.variantTitle,
+          orderedQuantity: lineItem.quantity,
+          fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
           availableQuantity: remaining,
           quantity: remaining
         });
@@ -165,6 +178,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
               orderNumber: order.orderNumber,
               productName: item.productName,
               sku: item.sku,
+              variantTitle: item.variantTitle,
+              orderedQuantity: item.quantity,
+              fulfilledQuantity: item.fulfilledQuantity ?? 0,
               availableQuantity: remaining,
               quantity: remaining
             });
@@ -201,6 +217,17 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
   }, []);
 
   const selectedItems = useMemo(() => Array.from(selectedLineItems.values()), [selectedLineItems]);
+  const removeOrderSelection = useCallback((orderId: number) => {
+    setSelectedLineItems((prev) => {
+      const next = new Map(prev);
+      prev.forEach((value, key) => {
+        if (value.orderId === orderId) {
+          next.delete(key);
+        }
+      });
+      return next;
+    });
+  }, []);
 
   return (
     <>
@@ -264,11 +291,10 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                         <thead>
                           <tr className="text-xs uppercase tracking-wide text-slate-500">
                             <th className="w-16 px-4 py-2 text-left">選択</th>
-                            <th className="px-4 py-2 text-left">商品名</th>
-                            <th className="px-4 py-2 text-left">SKU</th>
+                            <th className="px-4 py-2 text-left">商品</th>
                             <th className="px-4 py-2 text-left">注文数</th>
                             <th className="px-4 py-2 text-left">発送済み</th>
-                            <th className="px-4 py-2 text-left">残数</th>
+                            <th className="px-4 py-2 text-left">未発送</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -286,13 +312,17 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                                     onChange={() => toggleLineItemSelection(order, lineItem)}
                                   />
                                 </td>
-                                <td className="px-4 py-2 text-slate-700">{lineItem.productName}</td>
-                                <td className="px-4 py-2 text-xs text-slate-500">{lineItem.sku ?? '-'}</td>
+                                <td className="px-4 py-2 text-slate-700">
+                                  <div className="flex flex-col">
+                                    <span>{lineItem.productName}</span>
+                                    {lineItem.variantTitle ? (
+                                      <span className="text-xs text-slate-500">{lineItem.variantTitle}</span>
+                                    ) : null}
+                                  </div>
+                                </td>
                                 <td className="px-4 py-2">{lineItem.quantity}</td>
                                 <td className="px-4 py-2">{lineItem.fulfilledQuantity ?? 0}</td>
-                                <td className="px-4 py-2 text-slate-600">
-                                  {remaining > 0 ? remaining : '0 (発送済み)'}
-                                </td>
+                                <td className="px-4 py-2">{remaining}</td>
                               </tr>
                             );
                           })}
@@ -313,6 +343,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
         onClearSelection={clearSelection}
         onRemoveLineItem={removeLineItemSelection}
         onUpdateQuantity={handleQuantityUpdate}
+        onRemoveOrder={removeOrderSelection}
       />
     </>
   );

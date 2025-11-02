@@ -10,9 +10,10 @@ export type ModalProps = {
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  showCloseButton?: boolean;
 };
 
-export function Modal({ open, onClose, title, description, children, footer }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, footer, showCloseButton = false }: ModalProps) {
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -162,7 +163,17 @@ export function Modal({ open, onClose, title, description, children, footer }: M
         aria-describedby={descriptionId}
         tabIndex={-1}
       >
-        <div className="flex flex-col gap-4 p-6">
+        <div className="relative flex flex-col gap-4 p-6">
+          {showCloseButton ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="閉じる"
+              className="absolute right-2 top-2 rounded border border-transparent p-2 text-slate-400 transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-600"
+            >
+              ×
+            </button>
+          ) : null}
           {title ? (
             <div className="flex flex-col gap-2">
               <h2 id={titleId} className="text-xl font-semibold text-foreground">

@@ -909,6 +909,42 @@ export async function syncFulfillmentOrderMetadata(
   }
 }
 
+export async function markShipmentsCancelledForOrder(orderId: number): Promise<void> {
+  if (!Number.isInteger(orderId)) {
+    throw new Error('A valid orderId is required to cancel shipments');
+  }
+
+  const client = assertServiceClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: shipmentIds, error: listError } = await client
+    .from('shipments')
+    .select('id')
+    .eq('order_id', orderId);
+
+  if (listError) {
+    throw listError;
+  }
+
+  if (!shipmentIds || shipmentIds.length === 0) {
+    return;
+  }
+
+  await client
+    .from('shipments')
+    .update({
+      status: 'cancelled',
+      sync_status: 'cancelled',
+      sync_error: null,
+      shopify_fulfillment_id: null,
+      synced_at: null,
+      updated_at: nowIso,
+      last_retry_at: nowIso,
+      sync_pending_until: null
+    })
+    .eq('order_id', orderId);
+}
+
 export async function updateOrderStatus(orderId: number, status: string, vendorId: number) {
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to update order status');

@@ -9,7 +9,8 @@ jest.mock('@/lib/data/orders', () => ({
   triggerShipmentResyncForShopifyOrder: jest.fn(),
   syncFulfillmentOrderMetadata: jest
     .fn()
-    .mockResolvedValue({ status: 'synced', fulfillmentOrderId: 1, lineItemCount: 0 })
+    .mockResolvedValue({ status: 'synced', fulfillmentOrderId: 1, lineItemCount: 0 }),
+  markShipmentsCancelledForOrder: jest.fn()
 }));
 
 jest.mock('@/lib/shopify/hmac', () => ({
@@ -27,8 +28,9 @@ const { upsertShopifyOrder, isRegisteredShopDomain } = jest.requireMock<{
   isRegisteredShopDomain: jest.Mock;
 }>('@/lib/shopify/order-import');
 
-const { syncFulfillmentOrderMetadata } = jest.requireMock<{
+const { syncFulfillmentOrderMetadata, markShipmentsCancelledForOrder } = jest.requireMock<{
   syncFulfillmentOrderMetadata: jest.Mock;
+  markShipmentsCancelledForOrder: jest.Mock;
 }>('@/lib/data/orders');
 
 const { verifyShopifyWebhook } = jest.requireMock<{
@@ -77,6 +79,7 @@ describe('POST /api/shopify/orders/ingest', () => {
       fulfillmentOrderId: 1,
       lineItemCount: 0
     });
+    markShipmentsCancelledForOrder.mockResolvedValue(undefined);
   });
 
   it('returns 401 when signature verification fails', async () => {
@@ -116,6 +119,16 @@ describe('POST /api/shopify/orders/ingest', () => {
   it('processes payload when headers and signature are valid', async () => {
     const payload = { id: 99, line_items: [] };
     const response = await POST(buildRequest(payload));
+
+    expect(response.status).toBe(204);
+    expect(upsertShopifyOrder).toHaveBeenCalledWith(payload, 'example.myshopify.com');
+  });
+
+  it('marks shipments cancelled when orders/cancelled webhook is received', async () => {
+    const payload = { id: 777, line_items: [], cancelled_at: '2025-11-01T10:00:00Z' };
+    const response = await POST(
+      buildRequest(payload, { 'x-shopify-topic': 'orders/cancelled' })
+    );
 
     expect(response.status).toBe(204);
     expect(upsertShopifyOrder).toHaveBeenCalledWith(payload, 'example.myshopify.com');

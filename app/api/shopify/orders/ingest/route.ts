@@ -15,6 +15,7 @@ export const runtime = 'edge';
 const SUPPORTED_TOPICS = new Set([
   'orders/create',
   'orders/updated',
+  'orders/cancelled',
   'fulfillment_orders/order_routing_complete',
   'fulfillment_orders/hold_released'
 ]);

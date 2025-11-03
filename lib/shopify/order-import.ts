@@ -38,6 +38,7 @@ type ShopifyOrderPayload = {
   updated_at: string;
   financial_status: string | null;
   fulfillment_status: string | null;
+  cancelled_at?: string | null;
   currency: string;
   total_price: string;
   customer?: { first_name?: string | null; last_name?: string | null } | null;
@@ -179,6 +180,7 @@ async function upsertOrderRecord(
   lineItemVendors: VendorResolution[],
   normalizedShopDomain: string | null
 ): Promise<number> {
+  const orderStatus = deriveOrderStatus(payload);
   const uniqueVendorIds = Array.from(
     new Set(lineItemVendors.map(r => r.vendorId).filter((v): v is number => Number.isInteger(v)))
   );
@@ -195,7 +197,7 @@ async function upsertOrderRecord(
     shipping_city: shippingAddress.city,
     shipping_address1: shippingAddress.address1,
     shipping_address2: shippingAddress.address2,
-    status: payload.fulfillment_status ?? 'unfulfilled',
+    status: orderStatus,
     shop_domain: normalizedShopDomain,
     created_at: payload.created_at,
     updated_at: payload.updated_at
@@ -270,6 +272,13 @@ function normalizeShopDomain(shopDomain: string | null | undefined): string | nu
   return shopDomain.replace(/^https?:\/\//i, '').trim().toLowerCase() || null;
 }
 
+function deriveOrderStatus(payload: ShopifyOrderPayload): string {
+  if (payload.cancelled_at) {
+    return 'cancelled';
+  }
+  return payload.fulfillment_status ?? 'unfulfilled';
+}
+
 export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
   const order = payload as ShopifyOrderPayload;
   const client = getShopifyServiceClient();
@@ -298,7 +307,9 @@ export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
     await replaceLineItems(client, orderId, order, lineItemVendors);
 
     try {
-      const { syncFulfillmentOrderMetadata } = await import('@/lib/data/orders');
+      const { syncFulfillmentOrderMetadata, markShipmentsCancelledForOrder } = await import(
+        '@/lib/data/orders'
+      );
       const syncResult = await syncFulfillmentOrderMetadata(normalizedShopDomain, order.id);
       if (syncResult.status === 'error') {
         console.warn('Fulfillment order metadata sync failed after order upsert', {
@@ -306,6 +317,10 @@ export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
           orderId: order.id,
           error: syncResult.error
         });
+      }
+
+      if (deriveOrderStatus(order) === 'cancelled') {
+        await markShipmentsCancelledForOrder(orderId);
       }
     } catch (error) {
       console.warn('Deferred fulfillment order sync after order upsert due to error', {

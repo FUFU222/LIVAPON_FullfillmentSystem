@@ -272,8 +272,18 @@ export function AppShell({
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-6">
         {children}
       </main>
-      <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} LIVAPON Logistics
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <span>© {new Date().getFullYear()} LIVAPON Logistics</span>
+          <nav className="flex gap-4">
+            <Link href="/terms" className="transition hover:text-foreground">
+              利用規約
+            </Link>
+            <Link href="/privacy" className="transition hover:text-foreground">
+              プライバシーポリシー
+            </Link>
+          </nav>
+        </div>
       </footer>
     </div>
   );

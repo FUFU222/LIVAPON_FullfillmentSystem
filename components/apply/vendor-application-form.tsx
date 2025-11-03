@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useFormState, useFormStatus } from 'react-dom';
 import { submitVendorApplication } from '@/app/(public)/apply/actions';
@@ -135,7 +136,15 @@ export function VendorApplicationForm() {
           <span>
             <span className="font-medium text-foreground">利用規約への同意</span>
             <br />
-            送信をもって当サービスの利用規約とプライバシーポリシーに同意したものとみなします。
+            送信をもって当サービスの{' '}
+            <Link href="/terms" className="text-foreground underline underline-offset-4">
+              利用規約
+            </Link>
+            {' '}と{' '}
+            <Link href="/privacy" className="text-foreground underline underline-offset-4">
+              プライバシーポリシー
+            </Link>
+            {' '}に同意したものとみなします。
           </span>
         </label>
         {state.errors?.acceptTerms ? (

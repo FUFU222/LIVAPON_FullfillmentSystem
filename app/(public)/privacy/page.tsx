@@ -8,7 +8,7 @@ const sections = [
   {
     heading: '1. 基本方針',
     body: [
-      '株式会社LIVAPON（以下、「当社」といいます。）は、LIVAPON Fulfillment Console（以下、「本サービス」といいます。）において取り扱う個人情報を保護するため、以下の方針に基づき安全かつ適切な管理を行います。'
+      '株式会社CHAIRMAN（以下、「当社」といいます。）は、LIVAPON Fulfillment Console（以下、「本サービス」といいます。）において取り扱う個人情報を保護するため、以下の方針に基づき安全かつ適切な管理を行います。'
     ]
   },
   {
@@ -79,7 +79,7 @@ const sections = [
     heading: '10. お問い合わせ窓口',
     body: [
       '本ポリシーに関するお問い合わせは、以下の窓口までお願いいたします。',
-      'メール：support@livapon.co.jp',
+      'メール：info@chairman.jp',
       '営業時間：平日 10:00-18:00（祝日・年末年始を除く）'
     ]
   },

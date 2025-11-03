@@ -1,16 +1,30 @@
 /** @jest-environment node */
 
+jest.mock('@/lib/shopify/fulfillment', () => {
+  const actual = jest.requireActual('@/lib/shopify/fulfillment');
+  return {
+    ...actual,
+    loadShopifyAccessToken: jest.fn(),
+    fetchFulfillmentOrderSnapshots: jest.fn(),
+    applyFulfillmentOrderSnapshot: jest.fn(actual.applyFulfillmentOrderSnapshot)
+  };
+});
+
 import { cancelShopifyFulfillment, syncShipmentWithShopify } from '@/lib/shopify/fulfillment';
+const fulfillmentModule = jest.requireMock<typeof import('@/lib/shopify/fulfillment')>(
+  '@/lib/shopify/fulfillment'
+);
+const actualFulfillmentModule = jest.requireActual('@/lib/shopify/fulfillment');
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
 
-jest.mock('@/lib/shopify/order-import', () => ({
+jest.mock('@/lib/shopify/service-client', () => ({
   getShopifyServiceClient: jest.fn()
 }));
 
 const { getShopifyServiceClient } = jest.requireMock<{
   getShopifyServiceClient: jest.Mock
-}>('@/lib/shopify/order-import');
+}>('@/lib/shopify/service-client');
 
 function createShipmentRecord() {
   return {
@@ -80,16 +94,44 @@ function createSupabaseMock() {
     };
   });
 
+  const ordersSelectResult = {
+    id: shipmentRecord.order.id,
+    shop_domain: shipmentRecord.order.shop_domain
+  };
+
+  const ordersSelectState: Array<[string, unknown]> = [];
+
+  const ordersSelectBuilder = {
+    eq: jest.fn((column: string, value: unknown) => {
+      ordersSelectState.push([column, value]);
+      return ordersSelectBuilder;
+    }),
+    limit: jest.fn(() => ordersSelectBuilder),
+    order: jest.fn(() => ordersSelectBuilder),
+    gt: jest.fn(() => ordersSelectBuilder),
+    maybeSingle: jest.fn(async () => ({ data: ordersSelectResult, error: null }))
+  };
+
+  const ordersSelect = jest.fn(() => ordersSelectBuilder);
+
+  const ordersTable = {
+    update: ordersUpdate,
+    select: ordersSelect
+  } as any;
+
   const lineItemUpdates: Array<{ payload: any; eqArgs: [string, number][] }> = [];
   const lineItemsUpdate = jest.fn((payload: unknown) => {
     const eqCalls: [string, number][] = [];
     lineItemUpdates.push({ payload, eqArgs: eqCalls });
-    return {
-      eq: jest.fn(async (column: string, value: number) => {
+
+    const builder = {
+      eq: jest.fn((column: string, value: number) => {
         eqCalls.push([column, value]);
-        return { data: null, error: null };
+        return builder;
       })
     };
+
+    return builder as any;
   });
 
   const shipmentLineItemsUpserts: any[] = [];
@@ -111,9 +153,7 @@ function createSupabaseMock() {
             select: shopifyConnectionsSelect
           } as any;
         case 'orders':
-          return {
-            update: ordersUpdate
-          } as any;
+          return ordersTable;
         case 'line_items':
           return {
             update: lineItemsUpdate
@@ -155,6 +195,11 @@ describe('syncShipmentWithShopify', () => {
     jest.resetAllMocks();
     process.env.SHOPIFY_STORE_DOMAIN = 'example.myshopify.com';
     process.env.SHOPIFY_ADMIN_API_VERSION = '2025-10';
+    (fulfillmentModule.loadShopifyAccessToken as jest.Mock).mockResolvedValue('test-access-token');
+    (fulfillmentModule.fetchFulfillmentOrderSnapshots as jest.Mock).mockReset();
+    (fulfillmentModule.applyFulfillmentOrderSnapshot as jest.Mock).mockImplementation(
+      actualFulfillmentModule.applyFulfillmentOrderSnapshot
+    );
   });
 
   it('Shopifyへ新規Fulfillmentを作成し、Supabaseレコードを同期する', async () => {
@@ -234,7 +279,10 @@ describe('syncShipmentWithShopify', () => {
       fulfillment_order_line_item_id: 777,
       fulfillable_quantity: 2
     });
-    expect(lineItemUpdates[0].eqArgs[0]).toEqual(['id', shipmentRecord.line_items[0].line_item!.id]);
+    expect(lineItemUpdates[0].eqArgs).toEqual([
+      ['shopify_line_item_id', shipmentRecord.line_items[0].line_item!.shopify_line_item_id],
+      ['order_id', shipmentRecord.order!.id]
+    ]);
 
     expect(shipmentLineItemsUpserts).toHaveLength(1);
     expect(shipmentLineItemsUpserts[0]).toEqual([
@@ -245,6 +293,115 @@ describe('syncShipmentWithShopify', () => {
         quantity: 2
       }
     ]);
+  });
+});
+
+describe('syncFulfillmentOrderMetadata', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    getShopifyServiceClient.mockReset();
+    (fulfillmentModule.loadShopifyAccessToken as jest.Mock).mockReset();
+    (fulfillmentModule.fetchFulfillmentOrderSnapshots as jest.Mock).mockReset();
+    (fulfillmentModule.applyFulfillmentOrderSnapshot as jest.Mock).mockReset();
+    process.env.SHOPIFY_ADMIN_API_VERSION = '2025-10';
+    process.env.SHOPIFY_STORE_DOMAIN = 'example.myshopify.com';
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    process.env = { ...originalEnv };
+  });
+
+  function createOrdersSelectMock(orderId: number, shopDomain: string) {
+    const builder = {
+      eq: jest.fn(() => builder),
+      limit: jest.fn(() => builder),
+      order: jest.fn(() => builder),
+      gt: jest.fn(() => builder),
+      maybeSingle: jest.fn(async () => ({
+        data: { id: orderId, shop_domain: shopDomain },
+        error: null
+      }))
+    };
+
+    const select = jest.fn(() => builder);
+
+    return { builder, select };
+  }
+
+  it('returns synced result when fulfillment order exists', async () => {
+    const orderId = 42;
+    const shopDomain = 'example.myshopify.com';
+    const { select } = createOrdersSelectMock(orderId, shopDomain);
+
+    const supabaseClient = {
+      from(table: keyof Database['public']['Tables']) {
+        if (table === 'orders') {
+          return {
+            select
+          } as any;
+        }
+        throw new Error(`Unexpected table ${table}`);
+      }
+    } as unknown as SupabaseClient<Database>;
+
+    getShopifyServiceClient.mockReturnValue(supabaseClient);
+
+    (fulfillmentModule.loadShopifyAccessToken as jest.Mock).mockResolvedValue('test-token');
+    (fulfillmentModule.fetchFulfillmentOrderSnapshots as jest.Mock).mockResolvedValue([
+      {
+        id: 999,
+        line_items: [{ id: 777, line_item_id: 555, remaining_quantity: 2 }]
+      }
+    ]);
+    (fulfillmentModule.applyFulfillmentOrderSnapshot as jest.Mock).mockResolvedValue(undefined);
+
+    const { syncFulfillmentOrderMetadata } = await import('@/lib/data/orders');
+    const result = await syncFulfillmentOrderMetadata(shopDomain, 1234567890);
+
+    expect(result).toEqual({ status: 'synced', fulfillmentOrderId: 999, lineItemCount: 1 });
+    expect(fulfillmentModule.fetchFulfillmentOrderSnapshots).toHaveBeenCalledWith(
+      shopDomain,
+      'test-token',
+      1234567890
+    );
+    expect(fulfillmentModule.applyFulfillmentOrderSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderRecordId: orderId,
+        fulfillmentOrderId: 999,
+        lineItems: [{ id: 777, line_item_id: 555, remaining_quantity: 2 }]
+      })
+    );
+  });
+
+  it('returns pending when fulfillment orders are not yet available', async () => {
+    const { select } = createOrdersSelectMock(101, 'example.myshopify.com');
+
+    const supabaseClient = {
+      from(table: keyof Database['public']['Tables']) {
+        if (table === 'orders') {
+          return {
+            select
+          } as any;
+        }
+        throw new Error(`Unexpected table ${table}`);
+      }
+    } as unknown as SupabaseClient<Database>;
+
+    getShopifyServiceClient.mockReturnValue(supabaseClient);
+
+    (fulfillmentModule.loadShopifyAccessToken as jest.Mock).mockResolvedValue('token');
+    (fulfillmentModule.fetchFulfillmentOrderSnapshots as jest.Mock).mockResolvedValue([]);
+    (fulfillmentModule.applyFulfillmentOrderSnapshot as jest.Mock).mockResolvedValue(undefined);
+
+    const { syncFulfillmentOrderMetadata } = await import('@/lib/data/orders');
+    const result = await syncFulfillmentOrderMetadata('example.myshopify.com', 222);
+
+    expect(result.status).toBe('pending');
+    expect(fulfillmentModule.applyFulfillmentOrderSnapshot).not.toHaveBeenCalled();
   });
 });
 

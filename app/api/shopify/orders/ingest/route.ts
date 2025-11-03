@@ -3,7 +3,10 @@ import {
   upsertShopifyOrder,
   isRegisteredShopDomain
 } from '@/lib/shopify/order-import';
-import { triggerShipmentResyncForShopifyOrder } from '@/lib/data/orders';
+import {
+  triggerShipmentResyncForShopifyOrder,
+  syncFulfillmentOrderMetadata
+} from '@/lib/data/orders';
 import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
 import { verifyShopifyWebhook } from '@/lib/shopify/hmac';
 
@@ -32,6 +35,16 @@ export async function POST(request: Request) {
   const shopDomainHeader = request.headers.get('x-shopify-shop-domain');
   if (!shopDomainHeader) {
     return new NextResponse('Missing shop domain', { status: 400 });
+  }
+
+  const apiVersion = request.headers.get('x-shopify-api-version');
+  if (apiVersion && apiVersion !== '2025-10') {
+    console.warn('Unexpected Shopify API version', {
+      shop: shopDomainHeader,
+      received: apiVersion,
+      expected: '2025-10'
+    });
+    return new NextResponse('Unsupported API version', { status: 400 });
   }
 
   const topicHeader = request.headers.get('x-shopify-topic');
@@ -146,6 +159,17 @@ export async function POST(request: Request) {
 
   try {
     await upsertShopifyOrder(payload, shopDomainHeader);
+    const orderId = (payload as { id: number }).id;
+    if (typeof orderId === 'number') {
+      const foSync = await syncFulfillmentOrderMetadata(shopDomainHeader, orderId);
+      if (foSync.status !== 'synced') {
+        console.info('Fulfillment order metadata not yet available after order webhook', {
+          shop: shopDomainHeader,
+          orderId,
+          result: foSync
+        });
+      }
+    }
     console.info('Shopify webhook processed successfully', logContext);
   } catch (error) {
     console.error('Failed to upsert Shopify order', {

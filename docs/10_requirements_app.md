@@ -1,75 +1,66 @@
-# Requirements: Shopify 配送管理アプリ (MVP)
+# Requirements: LIVAPON Fulfillment Console (MVP)
 
-## 概要
+## 背景と目的
+- LIVAPON/CHAIRMAN で扱う Shopify 注文を Supabase に集約し、ベンダーが追跡番号登録・発送管理を自律的に行えるようにする。
+- 管理者はベンダー申請の審査・ベンダー情報整理・注文状況の俯瞰を担う。
+- Shopify Fulfillment Orders（FO）との整合を取り、部分発送・リトライを含めた追跡番号同期を実現する。
 
-CHAIRMAN 向けに、Shopify 注文データを同期し、メーカー（ベンダー）が注文ごとの配送状況を更新できるアプリを開発する。  
-初期 MVP では **個別更新 UI + CSV インポート** による追跡番号管理を提供し、将来的に配送会社 API との自動連携を目指す。
-
----
-
-## ユースケース
-
-1. Shopify で注文が発生すると、自作アプリに同期される。
-2. ベンダーは管理画面から注文を確認。
-3. 注文ごとに追跡番号を入力して「発送済み」に更新できる。
-4. 注文が多い場合は、CSV インポートで一括登録が可能。
-5. 更新内容は Shopify 側へ反映される（ステータス：Unfulfilled / Partially Fulfilled / Fulfilled）。
+> ステータス: 2025-11-02 時点でベンダー/管理者用 UI・Shopify 連携・CSV インポートが稼働。FO 未生成時の自動キュー処理は残タスク。
 
 ---
 
-## 機能要件
+## コアユースケース
+1. **注文同期**: Shopify Webhook (`orders/create`, `orders/updated`, FO 関連トピック) が Supabase の `orders` / `line_items` を更新。
+2. **ベンダーオンボーディング**: 申請フォーム→メール認証→管理者承認→ロール自動割当→`vendor` ログイン。
+3. **ベンダー出荷管理**:
+   - `/orders` で検索・フィルタ、ラインアイテム単位で数量と SKU を確認。
+   - `/orders/[id]` で複数ラインアイテムを選択し、追跡番号＋配送会社を登録。登録後、Shopify へ Fulfillment 作成 / 更新。
+   - `/orders/shipments` で過去発送と `sync_status` を一覧、必要に応じて再送。
+   - `/import` で CSV から一括登録（検証/プレビュー/結果通知）。
+   - `/vendor/profile` で会社名・担当者・連絡先・任意のパスワード変更。
+4. **管理者業務**:
+   - `/admin` ダッシュボードで pending 申請・最近の注文・新規ベンダーをモニタ。
+   - `/admin/applications` で審査（承認: コード採番 + Supabase Auth 紐付け / 却下: 理由登録）。
+   - `/admin/vendors` で一覧確認、詳細モーダル、単体/一括削除、CSV Export。
+   - `/admin/orders` で最新 50 件の注文を参照。
+5. **Shopify 同期**:
+   - `upsertShipment` が `shipments` / `shipment_line_items` を作成し、`sync_status` を `pending` に。
+   - `syncShipmentWithShopify` が FO 情報を取得し Fulfillment API を呼出、成功で `synced`、未生成 FO はリトライスケジュール。
+   - `triggerShipmentResyncForShopifyOrder` が FO 完了 Webhook を受け、保留分を即再同期。
+   - `cancelShipment` が Shopify Fulfillment を取消し、Supabase レコードを削除。
+6. **CSV インポート**:
+   - テンプレ: `order_number,sku,tracking_number,carrier[,quantity]`。
+   - フロントで先頭 N 行プレビュー、行単位のバリデーション→エラーメッセージ。
+   - 成功失敗件数を UI と `import_logs` に記録。
 
-### 1. 注文データの同期
+---
 
-- Shopify Webhook (orders/create, orders/updated)
-- 1 日 1 回 API で全件リフレッシュ（整合性確保）
-
-### 2. 注文管理 UI
-
-- **注文一覧画面**
-  - 注文番号 / 顧客名 / 商品数 / ステータス / 追跡番号 / 詳細リンク
-  - 検索・フィルタ（ステータス別）
-  - ページネーション
-- **注文詳細画面**
-  - 各商品ごとに追跡番号を登録・編集
-  - ステータス操作は「発送済みにする」「未発送に戻す」の 2 アクションを提供（部分発送は将来拡張）
-
-### 3. CSV インポート
-
-- CSV フォーマット：  
-  `order_number, sku, tracking_number, carrier`
-- UI：ファイル選択 + アップロードボタン
-- アップロード後にプレビューを表示（先頭数行）
-- 成功/失敗をアラート表示（失敗は理由付き）
-
-### 4. ステータス管理
-
-- 現在：ベンダー操作は発送済み ⇔ 未発送の切り替えに限定（部分発送は表示のみ想定）
-- 将来拡張：返品・交換 → 1 注文に複数 shipment を紐付け可能 / 部分発送の正式対応
-
-### 5. ベンダー対応
-
-- 初期は手動入力 or CSV
-- 将来的に配送 API（ヤマト B2 / 佐川 e 飛伝 / DHL / FedEx）と連携予定
+## 機能要件サマリ
+| 分類 | 要件 |
+| ---- | ---- |
+| 認証/ロール | Supabase Auth + Server Session。`pending_vendor` は `/pending` へ強制リダイレクト。|
+| 注文閲覧 | 検索（注文番号/顧客名）、ステータスフィルタ、行展開で SKU・ベンダー名表示。|
+| 発送登録 | ラインアイテム複数選択、数量自動算出（残数が優先）、送信後は UI をリセット。|
+| 発送履歴 | `sync_status`（`pending`/`processing`/`synced`/`error`）と `shipped_at`、キャンセル導線。|
+| 申請審査 | 申請カードで承認/却下。承認時は 4 桁コード自動採番・Auth ユーザー紐付け。|
+| ベンダー管理 | 一覧→詳細モーダル（申請履歴 + Summary）、一括削除、CSV エクスポート。|
+| Shopify 同期 | OAuth (`write_merchant_managed_fulfillment_orders`)、Webhook 検証、FO 情報キャッシュ、指数バックオフ。|
+| CSV | プレビュー、部分失敗の行別エラー、ログ保存。
 
 ---
 
 ## 非機能要件
-
-- 技術スタック：Next.js + Supabase + shadcn/ui
-- デザイン方針：白黒基調のシンプルモダン
-- エラーハンドリング：失敗時は即座に UI で通知
-- セキュリティ：
-  - ベンダーごとにデータを隔離
-  - Shopify OAuth 認証によるアプリ連携
-- パフォーマンス：1000 件程度の注文一覧をスムーズに操作可能
-- 将来拡張性：配送 API や返品フロー追加を考慮したスキーマ設計
+- **スキーマ整合性**: `schema.sql` ↔ マイグレーション ↔ `lib/supabase/types.ts` を常に同期。
+- **監視/ログ**: Shopify API 失敗や FO 未生成は `console.error` で記録し、`sync_error` カラムに残す。
+- **性能**: 1,000 行規模の注文表示を想定。クエリは Supabase 側でフィルタ、必要に応じてキャッシュ (`cache`)。
+- **UX**: 成功/失敗は Toast + インライン Alert。長時間処理は Toast duration Infinity + 手動 dismiss。
+- **アクセシビリティ**: Form / Table のラベル・aria 属性は `docs/31_ui_notification_patterns.md` に準拠。
 
 ---
 
-## 今後の拡張計画
-
-- 配送会社 API との自動連携
-- 返品・再発送対応
-- Shopify の UI 拡張（App Extension）
-- 多言語対応（ベンダーが海外拠点でも利用可能に）
+## 将来拡張
+- Shopify FO 未生成時の自動補償（GraphQL `fulfillmentOrderCreate` も視野）。
+- `sync_pending_until` を消化する Cron / Edge Function ワーカー。
+- 返品・再発送フロー、在庫の可視化（Supabase `inventory` テーブル追加予定）。
+- App Extension / Shopify 管理画面への UI 埋め込み。
+- 多言語 UI（英語/日本語切替）と国際配送キャリアの追加。

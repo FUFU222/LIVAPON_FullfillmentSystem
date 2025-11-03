@@ -1,26 +1,6 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
-
-// ==========================
-// Supabase Client Setup
-// ==========================
-const serviceUrl = process.env.SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const serviceClient: SupabaseClient<Database> | null = serviceUrl && serviceKey
-  ? createClient<Database>(serviceUrl, serviceKey, {
-      auth: { persistSession: false }
-    })
-  : null;
-
-function assertServiceClient(): SupabaseClient<Database> {
-  if (!serviceClient) throw new Error('Supabase service client is not configured');
-  return serviceClient;
-}
-
-export function getShopifyServiceClient(): SupabaseClient<Database> {
-  return assertServiceClient();
-}
+import { getShopifyServiceClient } from '@/lib/shopify/service-client';
 
 // ==========================
 // Shop Domain Verification
@@ -29,7 +9,7 @@ export async function isRegisteredShopDomain(shopDomain: string): Promise<boolea
   const normalized = shopDomain.trim().toLowerCase();
   if (!normalized) return false;
 
-  const client = assertServiceClient();
+  const client = getShopifyServiceClient();
   console.log('🏪 Checking shop domain in Supabase:', normalized);
 
   const { data, error } = await client
@@ -292,7 +272,7 @@ function normalizeShopDomain(shopDomain: string | null | undefined): string | nu
 
 export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
   const order = payload as ShopifyOrderPayload;
-  const client = assertServiceClient();
+  const client = getShopifyServiceClient();
 
   const normalizedShopDomain = normalizeShopDomain(shopDomain);
 
@@ -316,6 +296,24 @@ export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
 
     const orderId = await upsertOrderRecord(client, order, lineItemVendors, normalizedShopDomain);
     await replaceLineItems(client, orderId, order, lineItemVendors);
+
+    try {
+      const { syncFulfillmentOrderMetadata } = await import('@/lib/data/orders');
+      const syncResult = await syncFulfillmentOrderMetadata(normalizedShopDomain, order.id);
+      if (syncResult.status === 'error') {
+        console.warn('Fulfillment order metadata sync failed after order upsert', {
+          shopDomain: normalizedShopDomain,
+          orderId: order.id,
+          error: syncResult.error
+        });
+      }
+    } catch (error) {
+      console.warn('Deferred fulfillment order sync after order upsert due to error', {
+        error,
+        shopDomain: normalizedShopDomain,
+        orderId: order.id
+      });
+    }
 
     console.log('✅ upsertShopifyOrder COMPLETE:', { orderId, lineItemCount: order.line_items.length });
   } catch (err) {

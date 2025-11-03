@@ -1,26 +1,46 @@
-# 60 Fulfillment Sync Overview
+# Fulfillment Sync Overview
 
-## 目的
-- LIVAPON Fulfillment System から Supabase 上のベンダー発送データを Shopify へ反映する設計をまとめる（2025年10月時点）。
-- Shopify が完全に Fulfillment Orders を中心とする運用に移行している現状を踏まえた API 利用方針を整理する。
+最終更新: 2025-11-02
 
-## 推奨アーキテクチャ（2025-10 時点）
-- **Fulfillment Orders API の利用が必須**：注文作成時にロケーションごとの Fulfillment Order（FO）が自動生成される。バックエンドは FO を取得し、その FO に紐づく Fulfillment（発送）を作成する。
-- **部分発送・複数ロケーション発送を標準サポート**：FO の仕組みにより、同一注文でも複数回に分けた発送やロケーション単位の管理が可能。Shopify 側の注文ステータスも自動で Unfulfilled → Partially Fulfilled → Fulfilled と変化する。
-- **旧 Fulfillment API は非推奨**：`/orders/{id}/fulfillments.json` を直接叩く方式は廃止方向。2025 年 4 月以降の新規公開アプリは GraphQL Admin API の利用が必須。現時点では理解しやすい REST での実装を進めつつ、将来的な GraphQL 対応を見据えておく。
-- **GraphQL の利点**：`fulfillmentCreate` ミューテーションなら 1 度に複数の追跡番号を取り扱える。REST だと 1 Fulfillment につき 1 追跡番号なので、後追いで `update_tracking` を呼ぶ必要がある。切り替え易い抽象化を検討。
-- **ロケーション戦略**：Basic プランのロケーション上限に注意。ベンダー数が上限を超えないならベンダー別ロケーションも可。超える場合は単一ロケーション内でベンダー判別だけ行い、部分発送で対応する。
+## ゴール
+- Supabase で管理される Shipment を Shopify Fulfillment Order (FO) と同期し、追跡番号を確実に反映する。
+- FO が未生成または一時的に取得できない場合でも、再試行と通知で整合を保つ。
 
-## 主要コンセプト
-- **Fulfillment Order (FO)**：ロケーションごとの発送指示。手動で作成することはできず、注文作成時に自動生成される。
-- **FO ラインアイテム**：FO 内に含まれる注文ライン。`fulfillable_quantity`（未発送数）を保持する。
-- **Fulfillment**：実際に Shopify にPOSTする発送オブジェクト。FO ラインアイテムの ID と数量、追跡情報を含む。
+## アーキテクチャ
+- **データストア**: Supabase (Postgres)。`shipments`, `shipment_line_items`, `orders`, `line_items`。
+- **サービス層**: `lib/data/orders.ts` が作成・キャンセル・再同期を担い、`lib/shopify/fulfillment.ts` が Shopify Admin API との通信を抽象化。
+- **同期トリガー**:
+  - 注文 Webhook (`orders/create`, `orders/updated`) で `upsertShopifyOrder` が注文保存 → `syncFulfillmentOrderMetadata` で FO を即時取得・保存（未生成なら pending）。
+  - ベンダー UI / CSV / API で `upsertShipment` → `sync_status = 'pending'`。`syncShipmentWithShopify` が FO メタデータを再利用・更新。
+  - Shopify Webhook (`fulfillment_orders/*`) 受信時に `triggerShipmentResyncForShopifyOrder` が FO メタ同期＋保留 Shipment の再同期を行う。
+  - バックフィルスクリプト `scripts/backfill-fulfillment-orders.ts` が定期的に NULL 行を再取得し、再試行ログを残す。
+- **再試行**: FO 未生成エラー時は指数バックオフで数分待機。ワーカー未実装のため、現状は次のユーザー操作 or Webhook で再実行。
 
-## LIVAPON 側のデータ前提
-- Supabase 側で Shopify `order_id`・`line_item_id` を保持し、FO / FO ラインアイテム ID を取得・キャッシュするように設計（必要に応じてカラム追加）。
-- SKU は内部処理用。Shopify API 呼び出し時は FO / ラインアイテム ID を利用する。
-- 部分数量発送も FO ラインアイテムに数量を指定して実現可能。
+## 関連テーブル
+| テーブル | 主なカラム | 説明 |
+| -------- | ---------- | ---- |
+| `shipments` | `tracking_number`, `carrier`, `shopify_fulfillment_id`, `sync_status`, `sync_error`, `sync_pending_until` | Shopify との同期状態・メタ情報。|
+| `shipment_line_items` | `line_item_id`, `quantity`, `fulfillment_order_line_item_id` | 1 Shipment に複数ラインを紐付け。数量指定可能。|
+| `line_items` | `shopify_line_item_id`, `fulfillment_order_line_item_id`, `fulfillable_quantity` | Shopify 側 FO の残量を保存し部分発送を計算。|
+| `orders` | `shopify_order_id`, `shopify_fulfillment_order_id`, `shop_domain` | FO 参照と Shopify 接続情報。|
 
-## ベンダー操作フローとの整合
-- ベンダー UI で「発送済みにする」を押す → バックエンドで Supabase 更新 → Shopify Fulfillment を作成 → ステータスが Shopify 側に反映される、という流れ。
+## Shopify 側の依存
+- Admin API Version: `2025-10`（`SHOPIFY_ADMIN_API_VERSION` で上書き可）。
+- 必須スコープ: `write_merchant_managed_fulfillment_orders`, `read_orders`, `write_orders`, `read_fulfillments`。
+- 配送会社マッピング: `yamato` → `Yamato (JA)`、`sagawa` → `Sagawa (JA)` 等。未対応キャリアはそのまま文字列を渡す。
+- FO 取得: `/orders/{order_id}/fulfillment_orders.json`。最初の FO を前提にしているため、将来的に複数ロケーション対応を検討。
 
+## エラー処理
+- 戻り値に応じて `sync_status` を更新。
+  - `pending`: まだ Shopify 送信前。
+  - `processing`: API 呼び出し中。
+  - `synced`: 成功。`synced_at` 記録。
+  - `error`: 致命的失敗。`sync_error` にメッセージ保管。
+- FO 未生成時は `sync_status='pending'` のまま `sync_pending_until` に次回試行予定時刻を設定。
+- API 失敗時はメッセージをそのまま `sync_error` に保存。UI では Alert + Toast で提示。
+
+## 今後の強化
+- `sync_pending_until` を自動で監視する Cron/Edge Functions。
+- Shopify GraphQL `fulfillmentCreate` への切り替え（複数追跡番号対応）。
+- 複数ロケーション向けに FO 選択を動的に行う仕組み。
+- `notify_customer` 設定の店舗別テンプレート化。

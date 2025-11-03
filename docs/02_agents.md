@@ -1,35 +1,37 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- `app/` — Next.js app router pages. `/orders`, `/import`, `/admin` house vendor and admin flows; `(public)/apply` is the vendor application form.
-- `components/` — Shared UI and feature components (e.g., `admin/vendor-application-card.tsx`).
-- `lib/` — Supabase clients, auth helpers, and data access layers (service-role usage lives in `lib/data/*`).
-- `supabase/` — CLI configuration and SQL migrations (`migrations/` and `seed.sql`). Keep schema changes here first, then mirror them into `schema.sql` and generated types.
-- Documentation lives in numbered markdown files (`00_context.md`, `10_requirements_app.md`, …) plus this guide.
+## プロジェクト構成
+- `app/` — Next.js App Router。`(public)` が未認証フロー、`(auth)` がサインイン、`orders` / `import` / `vendor` がベンダー機能、`admin` が管理コンソール、`api/shopify` が OAuth / Webhook / Vendor API。
+- `components/` — UI コンポーネント。`orders/*`・`admin/*` など機能単位、`ui/*` に共通パーツ、`toast-provider.tsx` で通知を集中管理。
+- `lib/` — 認証 (`auth.ts`)、Supabase サービス層 (`data/*`)、Shopify 連携 (`shopify/*`)、共有ユーティリティ。
+- `supabase/` — CLI 設定とマイグレーション。`schema.sql` を正とし、差分は `supabase/migrations/` に追加する。
+- `docs/` — 番号順に文脈 → 要件 → 仕様 → 実装 → 運用が並ぶ。更新したら関連セクションを横断して整合させる。
 
-## Build, Test, and Development Commands
-- `npm run dev` — Launch local Next.js dev server.
-- `npm run lint` — Run Next.js ESLint config (must pass before commit).
-- `npx tsc --noEmit` — Type-check without emitting JS.
-- `npm run build` — Production build; also triggers lint & type check.
-- `npx supabase db push` — Apply staged migrations to the linked Supabase project (requires `SUPABASE_ACCESS_TOKEN`).
+## 開発コマンド
+- `npm run dev` — Next.js 開発サーバー。
+- `npm run lint` — ESLint（Next.js 設定）。
+- `npm run test` — Jest（Supabase / Shopify ロジックの単体テスト）。
+- `npx tsc --noEmit` — 型チェック。
+- `npm run build` — 本番ビルド（lint・型チェック込み）。
+- `supabase db diff --linked --file schema.sql` — 変更差分の確認（プロジェクトに接続済みの場合）。
 
-## Coding Style & Naming Conventions
-- TypeScript + React with functional components; prefer hooks over class components.
-- Use 2-space indentation, ESLint + Prettier defaults from Next.js.
-- Follow Tailwind utility-first styling; shared patterns belong in `components/ui/`.
-- Vendor codes are 4-digit zero-padded strings (e.g., `0007`); SKU format is `CCCC-NNN-VV`.
+## コーディング規約
+- TypeScript + React Hooks。Async ロジックは `lib/data/*` やサーバーアクションに寄せ、コンポーネントは表示と UX 専任にする。
+- Tailwind でスタイル統一。重複するクラスは `components/ui/*` へ切り出し、`buttonClasses` などユーティリティを再利用。
+- 命名規則は `docs/00_context.md` に従い、日本語 UI / コメント前提。API との契約値は英語で揃える。
+- ベンダーコードは 4 桁 zero-pad (`0001`)。SKU は `CCCC-NNN-VV` パターン、`vendor_skus` で冪等採番。
 
-## Testing Guidelines
-- Automated tests are not yet defined. At minimum run `npm run lint`, `npx tsc --noEmit`, and `npm run build` before push.
-- When adding tests, colocate under `__tests__/` or alongside the module and document the command here.
+## テスト & 品質
+- 変更後は最低限 `npm run lint` / `npm run test` / `npx tsc --noEmit` をローカルで実行。
+- Supabase スキーマを触った場合は `schema.sql` と `lib/supabase/types.ts` の差分を確認し、必要ならテストにモックを追加。
+- UI 変更時は Storybook 代替としてスクリーンショットや GIF を PR に添付する。
 
-## Commit & Pull Request Guidelines
-- Use Conventional Commit prefixes observed in history (`feat:`, `fix:`, `docs:`, `chore:`, `db:`). Keep messages in the imperative mood.
-- Each PR should describe the change, reference related issues, and include screenshots or logs for UI/data updates.
-- Stage related files together (`git add path1 path2`) and avoid unrelated changes in a single commit.
+## コミット / PR
+- Conventional Commits を継続（`feat:`, `fix:`, `docs:`, `db:`, `chore:`）。
+- 1 PR = 1 改善テーマ。スキーマ変更と UI 変更を分ける。
+- PR 説明には「目的」「影響範囲」「確認方法」を明記。ショップ連携が絡む場合は影響する環境変数も書く。
 
-## Security & Configuration Tips
-- Store secrets in environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-- Never commit `node_modules/`, generated `.tsbuildinfo`, or Supabase tokens. `.gitignore` already covers common cases.
-- For remote DB actions, export `SUPABASE_ACCESS_TOKEN` per session rather than storing it in plain text.
+## セキュリティ / 設定
+- Secrets は `.env.local` で管理。`SHOPIFY_*` / `SUPABASE_*` をコードに直書きしない。
+- Supabase サービスロールキーは server components / server actions でのみ利用。クライアント側には公開キーだけ渡す。
+- 長期的に使わないテストストアやトークンは `shopify_connections` から削除し、アクセストークン流出を防ぐ。

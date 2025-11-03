@@ -1,67 +1,51 @@
-# 70 Fulfillment Order Integration Plan (Production Phase)
+# Fulfillment Order Integration Plan
 
-## 1. Current Context
+最終更新: 2025-11-02
 
-- OAuth flow between Shopify and LIVAPON is operational; `shopify_connections` stores the Admin API access token and scopes (`read_/write_` for orders, fulfillments, inventory, shipping, products).
-- Orders and line items are imported via `orders/create` and `orders/updated` webhooks into Supabase (`orders`, `line_items`).
-- Shipment syncing (`upsertShipment` → `syncShipmentWithShopify`) expects a Shopify Fulfillment Order (FO) to exist; when FO is missing, the flow fails with `No fulfillment order found for Shopify order` and `shopify_fulfillment_order_id` remains `null`.
-- 現時点でも Shopify 側で Fulfillment Order (FO) が生成されない注文が発生しており、在庫・配送設定が揃っていても内部割当が完了しないケースが確認されている。→ **FO をこちら側で補助生成するアプローチを検討中。**
+## 1. 現状まとめ
+- Shopify OAuth 済み。`shopify_connections` にアクセストークン・スコープ・インストール時刻を保存。
+- 注文取り込み (`orders/create`, `orders/updated`) と FO 完了 Webhook（`order_routing_complete`, `hold_released`）が稼働。
+- `upsertShipment` → `syncShipmentWithShopify` で FO 情報を取得し、Fulfillment を新規作成/更新。FO 未生成時は `sync_pending_until` にリトライ時刻を保存。
+- `20251102165153_add_line_items_variant_title.sql` までマイグレーション反映済み。
 
-## 2. Objective
+## 2. 目的
+1. FO 未生成ケースでも数分以内に追跡番号を Shopify に同期。
+2. 管理者・ベンダー双方が同期状態を把握し、必要に応じて再送・取消。
+3. 店舗設定・ロケーション周りのベストプラクティスを文書化。
 
-Stabilise the end-to-end workflow:
-1. **Order intake** → 2. **FO confirmed/created** → 3. **Vendor registers shipment** → 4. **Tracking data syncs back to Shopify**, even when FO creation is delayed.
+## 3. Codex エンジニアリングタスク
+| フェーズ | 内容 | 状態 |
+| -------- | ---- | ---- |
+| FO リトライワーカー | `sync_pending_until` が過去の Shipment を Cron / Edge Functions で再同期。 | 未着手 |
+| Webhook Resync | FO 関連 Webhook を受信後に保留 Shipment を処理。 | 完了 |
+| Shipment Queue API | `/api/shopify/orders/shipments` をベンダーツールから利用可能に。 | 完了 |
+| FO メタ同期 | 注文Webhook / FO Webhook / バックフィルで `syncFulfillmentOrderMetadata` を実行。 | 完了 |
+| Cancel Flow | `cancelShipment` 呼び出しを UI から行い Shopify 取消。 | 部分完了（API 準備済み、UI 未実装） |
+| FO ドキュメント | FO 生成条件・店舗設定チェックリストを整備。 | 進行中 |
 
-## 3. Codex engineering tasks
+## 4. オペレーター（店舗側）の責務
+- 商品に `requires_shipping = true`、ロケーションを正しく割当、在庫を >0 に維持。
+- Shopify Admin で Webhook を有効化・監視。エラー率が高い場合は Codex team へ共有。
+- スコープ変更時はアプリ再認証。`shopify_connections.updated_at` をウォッチ。
+- テスト注文で FO が生成されるか定期的に確認（非生成例はログとして保管）。
 
-### 3.1 FO missing retry / queue（実装済み）
-- `shipments` に `sync_retry_count`・`last_retry_at`・`sync_pending_until` を追加済み。`upsertShipment` は FO 不在時に指数バックオフで自動再試行をスケジュールし、UI には自動再試行メッセージを返す。
-- `syncShipmentWithShopify` 成功時にはリトライ情報をリセット。
-- **残タスク**: `sync_pending_until` が到来したレコードを処理する Cron / Edge Function ワーカー実装。
+## 5. チェックリスト（2025-11-02 時点）
+- [x] `shipments` リトライ関連カラム追加
+- [x] FO Webhook → Resync 実装
+- [x] Shopify Bulk Shipment API（ベンダー向け）
+- [ ] FO 生成条件ドキュメント作成
+- [ ] Cancel Flow UI
+- [ ] Cron/Edge Functions で自動再同期
+- [ ] FO 自動生成の要否評価（GraphQL or REST）
 
-### 3.2 Webhook-triggered resync
-- Webhook実装を拡張し、`fulfillment_orders/order_routing_complete` / `fulfillment_orders/hold_released` を受信した時点で `triggerShipmentResyncForShopifyOrder` を呼び出し、対象注文の保留中 Shipment を即時再同期。
-- ストア側でも同トピックを登録しておく必要あり（操作者タスク）。
+## 6. 未解決の論点
+- Shopify が FO を生成しない条件と、どのタイミングで補助 API を打つのが最適か。
+- Cron / Edge Functions の実行間隔（5 分?, 10 分?）と失敗時の通知方法。
+- `notify_customer` を店舗設定で切替可能にするか、固定で false のままにするか。
+- 複数ロケーションを扱う店舗でベンダー別 FO をどう振り分けるか。
 
-### 3.3 Shipment queue & tracking upload（進行中）
-- `shipments` には必要情報を保持済み。FO 取得後に確実に `fulfillmentCreate` へ流すワーカー／ジョブ設計を詰める。
-- 部分発送（SKU 単位）への対応を前提に、ラインアイテム単位の数量を持たせる API 拡張が必要。
-
-### 3.4 Documentation & tooling
-- FO が生成されるストア設定テンプレートをドキュメント化（WIP）。
-- FO 生成／非生成パターンの記録と差分分析を継続。
-- Backlog: `orders/cancelled` / `orders/delete` Webhook 連携で Supabase レコードを自動削除。
-
-## 4. Operator (store admin) responsibilities
-
-- Maintain Shopify product settings fulfilling FO prerequisites:
-  - `requires_shipping = true` on products.
-  - Inventory tracking enabled; location inventory (`available_inventory > 0`).
-  - Product assigned to correct shipping profile / location.
-- For test environments, verify at least one real checkout path produces FO; temporarily, create + cancel a fulfillment to force FO if needed.
-- Reinstall / re-authorise the Shopify app when scopes change.
-- Share examples of FO-generated vs FO-missing orders for Codex to analyse.
-
-## 5. Backlog checklist（2025-10-31 時点）
-
-- [x] Implement retry fields & logic for FO polling（ワーカー実装のみ未着手）
-- [x] Add webhook subscriptions for FO state changes and wire to resync
-- [ ] Document Shopify store setup for FO generation in Notion（着手中）
-- [ ] Analyse order samples (FOあり vs FOなし) and report findings
-- [ ] Implement cancellation webhook handling
-- [ ] Cron / worker for `sync_pending_until`
-- [ ] FO self-provisioning via Shopify API（要設計）
-
-## 6. Open questions
-
-- Shopify が FO を自動生成しない場合、どのタイミングでこちらが補助生成するか（注文直後 vs リトライ中）。
-- FO 作成 API を利用する場合に必要な追加スコープ・ロケーション割当ルール。
-- Cron / Edge Functions の実行間隔および SLA（再試行の最大許容時間）。
-
-## 7. SKU-level fulfillment enhancements（2025-10-31）
-
-- ✅ 注文一覧で SKU を展開表示し、ラインアイテム単位での選択・数量編集・発送登録を実装。
-- ✅ `/api/shopify/orders/shipments` と `upsertShipment` をラインアイテム単位／数量指定対応に拡張。
-- ☐ 追跡番号を SKU 単位で複数入力する UI（現在は共通番号を適用）
-- ☐ SKU ごとの在庫ステータス／未割当状態の可視化（`line_items` 状態管理フィールド追加）
-- ☐ Shopify 側の部分出荷結果を UI にフィードバックするレポート機能
+## 7. SKU / FO 連携の強化ポイント
+- ✅ ラインアイテム単位で数量調整しながら Fulfillment 作成。
+- ✅ FO ID と残量を Supabase にキャッシュ。
+- ☐ 複数追跡番号（SKU ごとに異なる追跡番号）のサポート。
+- ☐ Shopify 側の部分出荷ステータスを UI に反映するレポート機能。

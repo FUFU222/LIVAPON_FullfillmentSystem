@@ -1,22 +1,37 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
 import type { Database } from '@/lib/supabase/types';
 import {
+  applyFulfillmentOrderSnapshot,
   cancelShopifyFulfillment,
+  fetchFulfillmentOrderSnapshots,
   loadShopifyAccessToken,
   syncShipmentWithShopify
 } from '@/lib/shopify/fulfillment';
+import { getShopifyServiceClient } from '@/lib/shopify/service-client';
 
-const serviceUrl = process.env.SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+function getOptionalServiceClient(): SupabaseClient<Database> | null {
+  try {
+    return getShopifyServiceClient();
+  } catch {
+    return null;
+  }
+}
 
-const serviceClient: SupabaseClient<Database> | null = serviceUrl && serviceKey
-  ? createClient<Database>(serviceUrl, serviceKey, {
-      auth: {
-        persistSession: false
-      }
-    })
-  : null;
+function assertServiceClient(): SupabaseClient<Database> {
+  const client = getOptionalServiceClient();
+  if (!client) {
+    throw new Error('Supabase service client is not configured');
+  }
+  return client;
+}
+
+function normalizeShopDomainValue(domain: string | null | undefined): string | null {
+  if (!domain) {
+    return null;
+  }
+  return domain.replace(/^https?:\/\//i, '').trim().toLowerCase() || null;
+}
 
 export type OrderShipment = {
   id: number;
@@ -416,11 +431,13 @@ function toOrderDetailFromRecord(
 }
 
 export async function getRecentOrdersForAdmin(limit = 5): Promise<AdminOrderPreview[]> {
-  if (!serviceClient) {
+  const client = getOptionalServiceClient();
+
+  if (!client) {
     return [];
   }
 
-  const { data, error } = await serviceClient
+  const { data, error } = await client
     .from('orders')
     .select(
       `id, order_number, customer_name, status, updated_at, created_at,
@@ -476,14 +493,16 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
     throw new Error('A valid vendorId is required to load orders');
   }
 
-  if (!serviceClient) {
+  const client = getOptionalServiceClient();
+
+  if (!client) {
     return demoOrders
       .map((order) => toOrderDetailFromDemo(order, vendorId))
       .filter((order): order is OrderDetail => order !== null)
       .map(mapDetailToSummary);
   }
 
-  const { data, error } = await serviceClient
+  const { data, error } = await client
     .from('orders')
     .select(
       `id, order_number, customer_name, status, updated_at, created_at,
@@ -516,14 +535,16 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
     throw new Error('A valid vendorId is required to load order detail');
   }
 
-  if (!serviceClient) {
+  const client = getOptionalServiceClient();
+
+  if (!client) {
     const order = demoOrders
       .map((demo) => toOrderDetailFromDemo(demo, vendorId))
       .find((demo) => demo?.id === id);
     return order ?? null;
   }
 
-  const { data, error } = await serviceClient
+  const { data, error } = await client
     .from('orders')
     .select(
       `id, order_number, customer_name, status, updated_at, created_at,
@@ -549,11 +570,13 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
 });
 
 export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDetail | null> => {
-  if (!serviceClient) {
+  const client = getOptionalServiceClient();
+
+  if (!client) {
     return demoOrders.find((demo) => demo.id === id) ?? null;
   }
 
-  const { data, error } = await serviceClient
+  const { data, error } = await client
     .from('orders')
     .select(
       `id, order_number, customer_name, status, updated_at,
@@ -590,15 +613,11 @@ export async function upsertShipment(
   },
   vendorId: number
 ) {
-  if (!serviceClient) {
-    throw new Error('Supabase service client is not configured');
-  }
-
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to update shipments');
   }
 
-  const client: SupabaseClient<Database> = serviceClient;
+  const client: SupabaseClient<Database> = assertServiceClient();
 
   if (!Array.isArray(shipment.lineItemIds) || shipment.lineItemIds.length === 0) {
     throw new Error('lineItemIds must contain at least one item');
@@ -748,15 +767,11 @@ export async function upsertShipment(
 }
 
 export async function triggerShipmentResyncForShopifyOrder(shopifyOrderId: number): Promise<void> {
-  if (!serviceClient) {
-    throw new Error('Supabase service client is not configured');
-  }
-
-  const client = serviceClient;
+  const client = assertServiceClient();
 
   const { data: orderRecord, error: orderError } = await client
     .from('orders')
-    .select('id')
+    .select('id, shop_domain')
     .eq('shopify_order_id', shopifyOrderId)
     .maybeSingle();
 
@@ -769,6 +784,15 @@ export async function triggerShipmentResyncForShopifyOrder(shopifyOrderId: numbe
       shopifyOrderId
     });
     return;
+  }
+
+  try {
+    await syncFulfillmentOrderMetadata(orderRecord.shop_domain ?? null, shopifyOrderId);
+  } catch (error) {
+    console.error('Failed to sync fulfillment order metadata during resync trigger', {
+      error,
+      shopifyOrderId
+    });
   }
 
   const { data: shipments, error: shipmentsError } = await client
@@ -803,16 +827,94 @@ export async function triggerShipmentResyncForShopifyOrder(shopifyOrderId: numbe
   }
 }
 
-export async function updateOrderStatus(orderId: number, status: string, vendorId: number) {
-  if (!serviceClient) {
-    throw new Error('Supabase service client is not configured');
+export type FulfillmentOrderSyncResult =
+  | { status: 'synced'; fulfillmentOrderId: number; lineItemCount: number }
+  | { status: 'pending'; reason: 'not_found'; attempts: number }
+  | { status: 'error'; error: string };
+
+export async function syncFulfillmentOrderMetadata(
+  shopDomain: string | null,
+  shopifyOrderId: number
+): Promise<FulfillmentOrderSyncResult> {
+  if (!Number.isInteger(shopifyOrderId)) {
+    throw new Error('A valid shopifyOrderId is required to sync fulfillment orders');
   }
 
+  const client = assertServiceClient();
+  const normalizedDomain = normalizeShopDomainValue(shopDomain);
+
+  let orderQuery = client
+    .from('orders')
+    .select('id, shop_domain')
+    .eq('shopify_order_id', shopifyOrderId)
+    .limit(1);
+
+  if (normalizedDomain) {
+    orderQuery = orderQuery.eq('shop_domain', normalizedDomain);
+  }
+
+  const { data: orderRecord, error: orderError } = await orderQuery.maybeSingle();
+
+  if (orderError) {
+    return { status: 'error', error: orderError.message };
+  }
+
+  if (!orderRecord) {
+    return { status: 'error', error: 'Order not found in Supabase' };
+  }
+
+  const domainForToken = normalizeShopDomainValue(orderRecord.shop_domain) ?? normalizedDomain;
+  const fallbackDomain = normalizeShopDomainValue(process.env.SHOPIFY_STORE_DOMAIN ?? '');
+  const resolvedShopDomain = domainForToken ?? fallbackDomain;
+
+  if (!resolvedShopDomain) {
+    return { status: 'error', error: 'Shop domain is not configured for fulfillment sync' };
+  }
+
+  try {
+    const accessToken = await loadShopifyAccessToken(client, resolvedShopDomain);
+    const snapshots = await fetchFulfillmentOrderSnapshots(
+      resolvedShopDomain,
+      accessToken,
+      shopifyOrderId
+    );
+
+    if (!snapshots || snapshots.length === 0) {
+      return { status: 'pending', reason: 'not_found', attempts: 0 };
+    }
+
+    const primarySnapshot = snapshots[0];
+
+    await applyFulfillmentOrderSnapshot({
+      client,
+      orderRecordId: orderRecord.id,
+      shopifyOrderId,
+      fulfillmentOrderId: primarySnapshot.id,
+      lineItems: primarySnapshot.line_items
+    });
+
+    return {
+      status: 'synced',
+      fulfillmentOrderId: primarySnapshot.id,
+      lineItemCount: primarySnapshot.line_items.length
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Failed to sync fulfillment order metadata', {
+      error,
+      shopifyOrderId,
+      shopDomain: resolvedShopDomain
+    });
+    return { status: 'error', error: message };
+  }
+}
+
+export async function updateOrderStatus(orderId: number, status: string, vendorId: number) {
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to update order status');
   }
 
-  const client = serviceClient;
+  const client = assertServiceClient();
 
   const { data: permittedLineItem, error: lineItemError } = await client
     .from('line_items')
@@ -841,15 +943,11 @@ export async function updateOrderStatus(orderId: number, status: string, vendorI
 }
 
 export async function cancelShipment(shipmentId: number, vendorId: number) {
-  if (!serviceClient) {
-    throw new Error('Supabase service client is not configured');
-  }
-
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to cancel shipments');
   }
 
-  const client: SupabaseClient<Database> = serviceClient;
+  const client: SupabaseClient<Database> = assertServiceClient();
 
   const { data: shipment, error: shipmentError } = await client
     .from('shipments')
@@ -918,7 +1016,9 @@ export async function getShipmentHistory(vendorId: number): Promise<ShipmentHist
     throw new Error('A valid vendorId is required to load shipments');
   }
 
-  if (!serviceClient) {
+  const client = getOptionalServiceClient();
+
+  if (!client) {
     return demoOrders
       .flatMap((order) =>
         order.shipments.map((shipment) => ({
@@ -939,7 +1039,7 @@ export async function getShipmentHistory(vendorId: number): Promise<ShipmentHist
       .sort((a, b) => (b.shippedAt ?? '').localeCompare(a.shippedAt ?? ''));
   }
 
-  const { data, error } = await serviceClient
+  const { data, error } = await client
     .from('shipments')
     .select(
       `id, tracking_number, carrier, shipped_at, sync_status, status, order_id,

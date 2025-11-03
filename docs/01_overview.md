@@ -1,70 +1,88 @@
-# LIVAPON Fulfillment System Scaffold
+# LIVAPON Fulfillment System
 
-Next.js + Supabase + shadcn/ui を用いた配送管理アプリの初期スキャフォールドです。`requirements.md` / `schema.sql` / `ui-wireframes.md` の要件を反映し、以下の画面と仕組みを提供します。
+## 現況（2025-11-02）
+- Next.js 14 App Router + Supabase を基盤にしたベンダー向け配送管理コンソール。
+- Shopify Webhook で注文を取込み、ベンダー単位の出荷登録を Supabase に保存しつつ Shopify へ同期。
+- ロールは `admin` / `vendor` / `pending_vendor`。申請〜承認〜利用開始のフローが稼働済み。
+- デモモード（Supabase Service Role 未設定時）はサンプル注文を返し、UI 検証だけ可能。
 
-- `/`: ベンダー/管理者向けランディング。利用申請ステップと主要動線（サインイン / 申請フォーム）を案内。
-- `/orders`: 注文一覧（検索・ステータスフィルタ・詳細導線）。
-- `/orders/[id]`: 注文詳細（発送登録フォーム、発送済み/未発送の切り替え、既存発送の編集）。
-- `/import`: CSV インポート（フォーマット検証とプレビュー）。
-- Supabase 連携: `orders` / `line_items` / `shipments` / `import_logs` を取り扱うサービス層とサーバーアクション
+## 機能ブロック
+- **パブリック / オンボーディング**: ランディング (`/`)、申請フォーム (`/(public)/apply`)、サインイン (`/(auth)/sign-in`)、審査待ち (`/pending`)。
+- **ベンダーコンソール**:
+  - `/orders` 検索・ステータスフィルタ・ラインアイテム展開表示、即時再読込ボタン。
+  - `/orders/[id]` でラインアイテム選択→追跡番号登録→Shopify 連携 (`ShipmentManager`)。
+  - `/orders/shipments` は発送履歴とステータス、再読込ボタン。
+  - `/import` で CSV プレビュー + バリデーション付きの一括登録。
+  - `/vendor/profile` で会社情報・連絡先・任意のパスワード変更。
+- **管理者コンソール**:
+  - `/admin` ダッシュボード：審査待ち申請・最新注文・最新ベンダーを同時取得。
+  - `/admin/applications` で審査（承認時 `approveVendorApplication` がコード採番）。
+  - `/admin/vendors` 一覧 + 詳細モーダル + 一括削除 + CSV エクスポート。
+  - `/admin/orders` 全注文の最新 50 件を参照。
+- **Shopify 連携**:
+  - `/api/shopify/auth/*` で OAuth、`shopify_connections` にアクセストークン保存。
+  - `/api/shopify/orders/*` で注文 Webhook 取込みと FO 完了トリガー、ベンダー Bulk API。
+  - `lib/data/orders.ts` / `lib/shopify/fulfillment.ts` が Fulfillment Order を解析し、`sync_status` とリトライ情報を管理。
 
-## セットアップ手順
-
+## セットアップ
 1. 依存関係をインストール
    ```bash
-   pnpm install # または npm install / yarn install
+   npm install
    ```
-2. `.env` を作成し、Supabase 環境変数を設定
+2. `.env.local` を作成し、以下を設定
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SHOPIFY_WEBHOOK_SECRET`
+   - `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_SCOPES`
+3. Supabase にスキーマを適用
    ```bash
-   cp .env.example .env
-   # NEXT_PUBLIC_SUPABASE_URL などをプロジェクトの値に置き換える
+   supabase db reset --schema public --file schema.sql
+   # もしくは supabase db push （プロジェクトに接続済みの場合）
    ```
-3. Supabase に `schema.sql` を適用
-   - Supabase SQL Editor / CLI からテーブル定義を投入
-4. 開発サーバーを起動
+4. 型定義と DB が揃っていることを確認
    ```bash
-   pnpm dev
+   npm run lint
+   npm run test
+   npx tsc --noEmit
    ```
-5. ブラウザで `http://localhost:3000/orders` を開き、UI を確認
+5. 開発サーバー起動
+   ```bash
+   npm run dev
+   ```
+   - Service Role を設定していない場合でも UI は起動し、モックデータで動作確認できる。
 
-> `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` を設定しない場合は、UI 表示用にダミーデータが利用されます。
-
-## ディレクトリ構成（抜粋）
-
+## 主なディレクトリ
 ```
 app/
-  layout.tsx                ルートレイアウト（AppShell、会社名表示などを初期化）
-  page.tsx                  ランディングページ（利用フロー紹介）
-  globals.css               Tailwind ベーススタイル
-  orders/
-    page.tsx                注文一覧ページ
-    [id]/page.tsx           注文詳細ページ
-    actions.ts              サーバーアクション（status 更新 / 追跡番号更新）
-  import/
-    page.tsx                CSV インポートページ
-    actions.ts              CSV 検証・ログ記録
-    upload-form.tsx         クライアント側のアップロードフォーム
+  layout.tsx             グローバルレイアウト + ToastProvider
+  page.tsx               ランディングページ
+  (auth)/sign-in/        認証フロー
+  (public)/apply/        ベンダー申請フォーム
+  pending/               審査待ち表示
+  orders/                ベンダー向け注文 UI 一式
+  import/                CSV インポート UI + サーバーアクション
+  vendor/profile/        ベンダープロフィール編集
+  admin/                 管理者ダッシュボード / 審査 / ベンダー管理
+  api/shopify/           OAuth・Webhook・ベンダー向け API エンドポイント
 components/
-  layout/app-shell.tsx      ナビゲーションを含むレイアウト
-  orders/*                  注文画面関連のUIコンポーネント
-  ui/*                      shadcn/ui 風の基礎コンポーネント
+  orders/*               発送登録・履歴 UI コンポーネント
+  admin/*                審査・ベンダー管理 UI
+  vendor/*               プロフィールフォーム
+  ui/*                   再利用 UI（Button, Alert, Toast など）
 lib/
-  supabase/*                Supabase クライアント・型定義
-  data/*                    データ取得・更新ロジック
+  auth.ts                Supabase Auth コンテキストとロール判定
+  data/orders.ts         注文・発送処理（Supabase Service Role）
+  data/vendors.ts        申請・ベンダー管理ロジック
+  shopify/*              OAuth / Fulfillment / HMAC
+  supabase/*             クライアント生成と型
+supabase/
+  config.toml, migrations/   DB 定義とマイグレーション履歴
+schema.sql                スキーマの単一ソース
 ```
 
-## 今後の拡張ポイント
-
-- Supabase Edge Function を用いた CSV インポートの非同期処理化
-- 配送API（ヤマト・佐川など）との連携ロジック実装
-- ベンダーごとのマルチテナント認可と Shopify OAuth フローの接続
-- Jest / Playwright 等による UI・API テストの追加
-
-## Development Guidelines
-
-- 生成したコードは必ず `npm run lint` と `tsc --noEmit` を通過できる状態にしてください。
-- Next.js プロジェクトは `npm run build` が成功する状態を維持してください。
-- Supabase の型定義（`lib/supabase/types.ts`）に必ず整合性を合わせてください。
-- コード生成は 1 ファイル単位で進め、エラーがないことを確認してから次のファイルを出力してください。
-- 型やビルドエラーが発生した場合は、まず最小限の修正を行ってビルドが通る状態を優先してください。
-- 生成後に可能であれば「何を修正したか」をコメントや説明で併記してください。
+## 今後の主要テーマ
+- 発送同期のバックグラウンドキュー化（`sync_pending_until` を消化するワーカー）。
+- Shopify FO 未生成時の自動補助生成と、発生条件のドキュメント化。
+- ベンダー向け在庫／返品フロー、リアルタイム更新の整備。

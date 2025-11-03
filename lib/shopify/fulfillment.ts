@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
-import { getShopifyServiceClient } from '@/lib/shopify/order-import';
+import { getShopifyServiceClient } from '@/lib/shopify/service-client';
 
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_ADMIN_API_VERSION ?? '2025-10';
 const DEFAULT_SHOP_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN ?? '';
@@ -53,6 +53,8 @@ export async function loadShopifyAccessToken(
   return data.access_token;
 }
 
+type ShopifyApiError = Error & { status?: number };
+
 async function shopifyRequest<T>(
   shop: string,
   accessToken: string,
@@ -78,7 +80,9 @@ async function shopifyRequest<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Shopify API ${response.status}: ${text}`);
+    const error: ShopifyApiError = new Error(`Shopify API ${response.status}: ${text}`);
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -112,11 +116,31 @@ type FulfillmentOrderInfo = {
   lineItems: Map<number, FulfillmentOrderLineItem>;
 };
 
-async function fetchFulfillmentOrderInfo(
+const RETRIABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const MAX_FO_ATTEMPTS = 5;
+
+function delay(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+export type FulfillmentOrderLineItemSnapshot = {
+  id: number;
+  line_item_id: number;
+  remaining_quantity: number;
+};
+
+export type FulfillmentOrderSnapshot = {
+  id: number;
+  line_items: FulfillmentOrderLineItemSnapshot[];
+};
+
+async function fetchFulfillmentOrdersWithRetry(
   shop: string,
   accessToken: string,
   orderId: number
-): Promise<FulfillmentOrderInfo> {
+): Promise<FulfillmentOrderSnapshot[]> {
   type Response = {
     fulfillment_orders: Array<{
       id: number;
@@ -128,8 +152,58 @@ async function fetchFulfillmentOrderInfo(
     }>;
   };
 
-  const data = await shopifyRequest<Response>(shop, accessToken, `orders/${orderId}/fulfillment_orders.json`);
-  const fulfillmentOrder = data.fulfillment_orders?.[0];
+  let attempt = 0;
+  let lastError: unknown = null;
+
+  while (attempt < MAX_FO_ATTEMPTS) {
+    attempt += 1;
+    try {
+      const data = await shopifyRequest<Response>(
+        shop,
+        accessToken,
+        `orders/${orderId}/fulfillment_orders.json`
+      );
+
+      return (data.fulfillment_orders ?? []).map((order) => ({
+        id: order.id,
+        line_items: (order.line_items ?? []).map((item) => ({
+          id: item.id,
+          line_item_id: item.line_item_id,
+          remaining_quantity: item.remaining_quantity
+        }))
+      }));
+    } catch (error) {
+      lastError = error;
+      const status = (error as ShopifyApiError)?.status;
+      const retriable = typeof status === 'number' && RETRIABLE_STATUS.has(status);
+
+      if (!retriable || attempt >= MAX_FO_ATTEMPTS) {
+        throw error;
+      }
+
+      const backoffMs = Math.min(16000, Math.pow(2, attempt - 1) * 1000);
+      console.warn('Retrying Shopify FO fetch', {
+        shop,
+        orderId,
+        attempt,
+        backoffMs,
+        status
+      });
+      await delay(backoffMs);
+    }
+  }
+
+  throw lastError ?? new Error('Failed to fetch fulfillment orders');
+}
+
+async function fetchFulfillmentOrderInfo(
+  shop: string,
+  accessToken: string,
+  orderId: number
+): Promise<FulfillmentOrderInfo> {
+  const snapshots = await fetchFulfillmentOrdersWithRetry(shop, accessToken, orderId);
+  const fulfillmentOrder = snapshots[0];
+
   if (!fulfillmentOrder) {
     throw new Error('No fulfillment order found for Shopify order');
   }
@@ -327,6 +401,16 @@ export async function syncShipmentWithShopify(shipmentId: number) {
 
   const trackingCompany = mapCarrierToShopifyCompany(data.tracking_company ?? data.carrier);
 
+  const lineItemQuantities = new Map<number, number | null>();
+  const lineItemInternalIds = new Map<number, number>();
+  lineItemsByFulfillmentOrder.forEach(({ pivot, quantity, lineItemRecord }) => {
+    lineItemQuantities.set(pivot.line_item_id, quantity);
+    const shopifyLineItemId = lineItemRecord.shopify_line_item_id;
+    if (typeof shopifyLineItemId === 'number') {
+      lineItemInternalIds.set(shopifyLineItemId, pivot.line_item_id);
+    }
+  });
+
   if (data.shopify_fulfillment_id) {
     await updateShopifyFulfillmentTracking(shopDomain, accessToken, data.shopify_fulfillment_id, {
       number: trackingNumber,
@@ -388,43 +472,16 @@ export async function syncShipmentWithShopify(shipmentId: number) {
     })
     .eq('id', shipmentId);
 
-  await client
-    .from('orders')
-    .update({
-      shopify_fulfillment_order_id: fulfillmentOrderId
-    })
-    .eq('id', order.id);
-
-  const updates = lineItemsByFulfillmentOrder.map(({ lineItemRecord, foItem }) => ({
-    id: lineItemRecord.id,
-    fulfillment_order_line_item_id: foItem.id,
-    fulfillable_quantity: foItem.remaining_quantity
-  }));
-
-  if (updates.length > 0) {
-    await Promise.all(
-      updates.map((row) =>
-        client
-          .from('line_items')
-          .update({
-            fulfillment_order_line_item_id: row.fulfillment_order_line_item_id,
-            fulfillable_quantity: row.fulfillable_quantity
-          })
-          .eq('id', row.id)
-      )
-    );
-
-    const pivotUpdates = lineItemsByFulfillmentOrder.map(({ pivot, foItem, quantity }) => ({
-      shipment_id: shipmentId,
-      line_item_id: pivot.line_item_id,
-      fulfillment_order_line_item_id: foItem.id,
-      quantity: quantity
-    }));
-
-    await client
-      .from('shipment_line_items')
-      .upsert(pivotUpdates, { onConflict: 'shipment_id,line_item_id' });
-  }
+  await applyFulfillmentOrderSnapshot({
+    client,
+    orderRecordId: order.id,
+    shopifyOrderId: order.shopify_order_id,
+    shipmentId,
+    fulfillmentOrderId,
+    lineItems: Array.from(foLineItems.values()),
+    lineItemQuantities,
+    lineItemInternalIds
+  });
 }
 
 export async function resolveShopifyOrderIdFromFulfillmentOrder(
@@ -479,4 +536,93 @@ export async function cancelShopifyFulfillment(
   await shopifyRequest(shop, accessToken, `fulfillments/${fulfillmentId}/cancel.json`, {
     method: 'POST'
   });
+}
+
+type ApplySnapshotOptions = {
+  client: SupabaseClient<Database>;
+  orderRecordId: number;
+  shopifyOrderId: number;
+  fulfillmentOrderId: number;
+  lineItems: FulfillmentOrderLineItemSnapshot[];
+  shipmentId?: number | null;
+  lineItemQuantities?: Map<number, number | null>;
+  lineItemInternalIds?: Map<number, number>;
+};
+
+export async function applyFulfillmentOrderSnapshot(options: ApplySnapshotOptions) {
+  const {
+    client,
+    orderRecordId,
+    shopifyOrderId,
+    fulfillmentOrderId,
+    lineItems,
+    shipmentId,
+    lineItemQuantities,
+    lineItemInternalIds
+  } = options;
+
+  await client
+    .from('orders')
+    .update({
+      shopify_fulfillment_order_id: fulfillmentOrderId,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', orderRecordId);
+
+  if (lineItems.length > 0) {
+    await Promise.all(
+      lineItems.map((item) =>
+        client
+          .from('line_items')
+          .update({
+            fulfillment_order_line_item_id: item.id,
+            fulfillable_quantity: item.remaining_quantity
+          })
+          .eq('shopify_line_item_id', item.line_item_id)
+          .eq('order_id', orderRecordId)
+      )
+    );
+  }
+
+  if (shipmentId && lineItems.length > 0 && lineItemInternalIds) {
+    const pivotUpdates = lineItems
+      .map((item) => {
+        const internalId = lineItemInternalIds.get(item.line_item_id);
+        if (typeof internalId !== 'number') {
+          return null;
+        }
+        return {
+          shipment_id: shipmentId,
+          line_item_id: internalId,
+          fulfillment_order_line_item_id: item.id,
+          quantity: lineItemQuantities?.get(internalId) ?? null
+        };
+      })
+      .filter((value): value is {
+        shipment_id: number;
+        line_item_id: number;
+        fulfillment_order_line_item_id: number;
+        quantity: number | null;
+      } => value !== null);
+
+    if (pivotUpdates.length > 0) {
+      await client
+        .from('shipment_line_items')
+        .upsert(pivotUpdates, { onConflict: 'shipment_id,line_item_id' });
+    }
+  }
+
+  console.info('Fulfillment order metadata applied', {
+    shopifyOrderId,
+    fulfillmentOrderId,
+    lineItemCount: lineItems.length
+  });
+}
+
+export async function fetchFulfillmentOrderSnapshots(
+  shop: string,
+  accessToken: string,
+  orderId: number
+): Promise<FulfillmentOrderSnapshot[]> {
+  return fetchFulfillmentOrdersWithRetry(shop, accessToken, orderId);
 }

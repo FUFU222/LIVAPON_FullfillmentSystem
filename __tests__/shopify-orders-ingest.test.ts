@@ -5,6 +5,13 @@ jest.mock('@/lib/shopify/order-import', () => ({
   isRegisteredShopDomain: jest.fn()
 }));
 
+jest.mock('@/lib/data/orders', () => ({
+  triggerShipmentResyncForShopifyOrder: jest.fn(),
+  syncFulfillmentOrderMetadata: jest
+    .fn()
+    .mockResolvedValue({ status: 'synced', fulfillmentOrderId: 1, lineItemCount: 0 })
+}));
+
 jest.mock('@/lib/shopify/hmac', () => ({
   verifyShopifyWebhook: jest.fn()
 }));
@@ -20,6 +27,10 @@ const { upsertShopifyOrder, isRegisteredShopDomain } = jest.requireMock<{
   isRegisteredShopDomain: jest.Mock;
 }>('@/lib/shopify/order-import');
 
+const { syncFulfillmentOrderMetadata } = jest.requireMock<{
+  syncFulfillmentOrderMetadata: jest.Mock;
+}>('@/lib/data/orders');
+
 const { verifyShopifyWebhook } = jest.requireMock<{
   verifyShopifyWebhook: jest.Mock;
 }>('@/lib/shopify/hmac');
@@ -32,7 +43,8 @@ function buildRequest(
     'content-type': 'application/json',
     'x-shopify-hmac-sha256': 'signature',
     'x-shopify-shop-domain': 'example.myshopify.com',
-    'x-shopify-topic': 'orders/create'
+    'x-shopify-topic': 'orders/create',
+    'x-shopify-api-version': '2025-10'
   });
 
   for (const [key, value] of Object.entries(headerOverrides)) {
@@ -60,6 +72,11 @@ describe('POST /api/shopify/orders/ingest', () => {
     verifyShopifyWebhook.mockResolvedValue(true);
     isRegisteredShopDomain.mockResolvedValue(true);
     upsertShopifyOrder.mockResolvedValue(undefined);
+    syncFulfillmentOrderMetadata.mockResolvedValue({
+      status: 'synced',
+      fulfillmentOrderId: 1,
+      lineItemCount: 0
+    });
   });
 
   it('returns 401 when signature verification fails', async () => {

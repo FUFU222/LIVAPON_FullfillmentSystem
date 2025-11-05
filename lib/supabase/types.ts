@@ -49,6 +49,120 @@ export type Database = {
           },
         ]
       }
+      fulfillment_request_line_items: {
+        Row: {
+          created_at: string | null
+          fulfillment_order_line_item_id: number | null
+          fulfillment_request_id: number
+          id: number
+          line_item_id: number | null
+          remaining_quantity: number | null
+          requested_quantity: number | null
+          shopify_line_item_id: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fulfillment_order_line_item_id?: number | null
+          fulfillment_request_id: number
+          id?: number
+          line_item_id?: number | null
+          remaining_quantity?: number | null
+          requested_quantity?: number | null
+          shopify_line_item_id: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fulfillment_order_line_item_id?: number | null
+          fulfillment_request_id?: number
+          id?: number
+          line_item_id?: number | null
+          remaining_quantity?: number | null
+          requested_quantity?: number | null
+          shopify_line_item_id?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fulfillment_request_line_items_fulfillment_request_id_fkey"
+            columns: ["fulfillment_request_id"]
+            isOneToOne: false
+            referencedRelation: "fulfillment_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_request_line_items_line_item_id_fkey"
+            columns: ["line_item_id"]
+            isOneToOne: false
+            referencedRelation: "line_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fulfillment_requests: {
+        Row: {
+          created_at: string | null
+          id: number
+          message: string | null
+          order_id: number | null
+          processed_at: string | null
+          raw_payload: Json
+          requested_at: string | null
+          shop_domain: string | null
+          shopify_fulfillment_order_id: number
+          shopify_order_id: number
+          status: string | null
+          updated_at: string | null
+          vendor_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          message?: string | null
+          order_id?: number | null
+          processed_at?: string | null
+          raw_payload: Json
+          requested_at?: string | null
+          shop_domain?: string | null
+          shopify_fulfillment_order_id: number
+          shopify_order_id: number
+          status?: string | null
+          updated_at?: string | null
+          vendor_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          message?: string | null
+          order_id?: number | null
+          processed_at?: string | null
+          raw_payload?: Json
+          requested_at?: string | null
+          shop_domain?: string | null
+          shopify_fulfillment_order_id?: number
+          shopify_order_id?: number
+          status?: string | null
+          updated_at?: string | null
+          vendor_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fulfillment_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       line_items: {
         Row: {
           created_at: string | null

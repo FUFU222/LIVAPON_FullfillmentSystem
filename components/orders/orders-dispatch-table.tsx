@@ -9,6 +9,13 @@ import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
 
+const ORDER_ROW_HEAD = "px-3 py-2 text-[11px] tracking-normal";
+const ORDER_ROW_CELL = "px-3 py-2 align-middle";
+const ORDER_ROW_CELL_MUTED = "px-3 py-2 align-middle text-xs leading-snug text-slate-500 whitespace-pre-line";
+const LINE_ITEM_HEAD = "px-3 py-1.5 text-xs font-medium text-slate-500";
+const LINE_ITEM_CELL = "px-3 py-1.5 text-xs";
+const LINE_ITEM_PRODUCT = "px-3 py-1.5 text-xs text-slate-700";
+
 function formatDate(date: string | null) {
   if (!date) {
     return "-";
@@ -233,13 +240,13 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-16">選択</TableHead>
-            <TableHead>注文番号</TableHead>
-            <TableHead>顧客名</TableHead>
-            <TableHead>配送先住所</TableHead>
-            <TableHead>商品数</TableHead>
-            <TableHead>ステータス</TableHead>
-            <TableHead>注文日時</TableHead>
+            <TableHead className={cn("w-16", ORDER_ROW_HEAD)}>選択</TableHead>
+            <TableHead className={ORDER_ROW_HEAD}>注文番号</TableHead>
+            <TableHead className={ORDER_ROW_HEAD}>顧客名</TableHead>
+            <TableHead className={ORDER_ROW_HEAD}>配送先住所</TableHead>
+            <TableHead className={ORDER_ROW_HEAD}>商品数</TableHead>
+            <TableHead className={ORDER_ROW_HEAD}>ステータス</TableHead>
+            <TableHead className={ORDER_ROW_HEAD}>注文日時</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -265,7 +272,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                   toggleExpanded(order.id);
                 }}
               >
-                <TableCell>
+                <TableCell className={ORDER_ROW_CELL}>
                   <input
                     type="checkbox"
                     aria-label={`${order.orderNumber} を選択`}
@@ -275,18 +282,18 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                     onClick={(event) => event.stopPropagation()}
                   />
                 </TableCell>
-                <TableCell className="font-medium text-foreground">
+                <TableCell className={cn("font-medium text-foreground", ORDER_ROW_CELL)}>
                   {order.orderNumber}
                 </TableCell>
-                  <TableCell>{order.customerName ?? '-'} </TableCell>
-                  <TableCell className="text-xs text-slate-500 whitespace-pre-line">
+                  <TableCell className={ORDER_ROW_CELL}>{order.customerName ?? '-'} </TableCell>
+                  <TableCell className={ORDER_ROW_CELL_MUTED}>
                     {order.shippingAddressLines.length > 0 ? order.shippingAddressLines.join('\n') : '住所情報が未登録です'}
                   </TableCell>
-                  <TableCell>{order.lineItemCount}</TableCell>
-                  <TableCell>
+                  <TableCell className={ORDER_ROW_CELL}>{order.lineItemCount}</TableCell>
+                  <TableCell className={ORDER_ROW_CELL}>
                     <StatusBadge status={order.status} />
                   </TableCell>
-                  <TableCell>{formatDate(order.createdAt)}</TableCell>
+                  <TableCell className={ORDER_ROW_CELL}>{formatDate(order.createdAt)}</TableCell>
                 </TableRow>
 
                 <TableRow key={`order-${order.id}-items`} className="bg-slate-50">
@@ -299,18 +306,18 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                     >
                       <div
                         className={cn(
-                          "mx-4 mt-3 rounded-lg border border-slate-200 bg-white/95 shadow-sm transition-opacity duration-200",
+                          "mx-3 mt-2 rounded-md border border-slate-200 bg-white/95 shadow-sm transition-opacity duration-200",
                           isExpanded ? "opacity-100" : "opacity-0"
                         )}
                       >
-                        <table className="w-full text-sm">
+                        <table className="w-full text-xs">
                           <thead>
-                            <tr className="text-xs uppercase tracking-wide text-slate-500">
-                              <th className="w-16 px-4 py-2 text-left">選択</th>
-                              <th className="px-4 py-2 text-left">商品</th>
-                              <th className="px-4 py-2 text-left">注文数</th>
-                              <th className="px-4 py-2 text-left">発送済み</th>
-                              <th className="px-4 py-2 text-left">未発送</th>
+                            <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+                              <th className={cn("w-16 text-left", LINE_ITEM_HEAD)}>選択</th>
+                              <th className={cn("text-left", LINE_ITEM_HEAD)}>商品</th>
+                              <th className={cn("text-left", LINE_ITEM_HEAD)}>注文数</th>
+                              <th className={cn("text-left", LINE_ITEM_HEAD)}>発送済み</th>
+                              <th className={cn("text-left", LINE_ITEM_HEAD)}>未発送</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -329,7 +336,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                                   toggleLineItemSelection(order, lineItem);
                                 }}
                               >
-                                <td className="px-4 py-2">
+                                <td className={LINE_ITEM_CELL}>
                                   <input
                                     type="checkbox"
                                     aria-label={`${lineItem.productName} を選択`}
@@ -341,17 +348,17 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                                     }}
                                   />
                                 </td>
-                                <td className="px-4 py-2 text-slate-700">
-                                  <div className="flex flex-col">
-                                    <span>{lineItem.productName}</span>
+                                <td className={LINE_ITEM_PRODUCT}>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-medium text-slate-700">{lineItem.productName}</span>
                                     {lineItem.variantTitle ? (
-                                      <span className="text-xs text-slate-500">{lineItem.variantTitle}</span>
+                                      <span className="text-[11px] text-slate-500">{lineItem.variantTitle}</span>
                                     ) : null}
                                   </div>
                                 </td>
-                                <td className="px-4 py-2">{lineItem.quantity}</td>
-                                <td className="px-4 py-2">{lineItem.fulfilledQuantity ?? 0}</td>
-                                <td className="px-4 py-2">{remaining}</td>
+                                <td className={LINE_ITEM_CELL}>{lineItem.quantity}</td>
+                                <td className={LINE_ITEM_CELL}>{lineItem.fulfilledQuantity ?? 0}</td>
+                                <td className={LINE_ITEM_CELL}>{remaining}</td>
                               </tr>
                             );
                           })}

@@ -9,6 +9,7 @@
 - **Webhook**:
   - `orders/create`, `orders/updated` → `upsertShopifyOrder` が `orders` / `line_items` / `vendor_skus` を整合。
   - `fulfillment_orders/order_routing_complete`, `fulfillment_orders/hold_released` → `triggerShipmentResyncForShopifyOrder` が保留中 Shipment の再同期を実行。
+- **Fulfillment Service Callback**: `/api/shopify/fulfillment/callback` が Shopify の `callbackUrl` から配送依頼を受け取り、Supabase の `fulfillment_requests` テーブルへ記録しつつ FO メタデータを更新。
 - **Bulk Shipment API**: `/api/shopify/orders/shipments` がベンダーの一括発送登録を受け付け、Supabase サーバーアクションと同等の検証を実施。
 - **Fulfillment 同期**: `syncShipmentWithShopify` が FO 情報を自動取得し、REST Admin API で Fulfillment 作成/追跡更新。未生成 FO は指数バックオフでリトライ予定時刻を保存。
 

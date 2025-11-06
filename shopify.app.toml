@@ -1,0 +1,40 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "2a1fe2bbf8a060f7c86b8fadd6196eca"
+name = "LIVAPON Bridge App"
+application_url = "https://livapon-fullfillment-system.vercel.app"
+embedded = true
+
+[webhooks]
+api_version = "2025-10"
+
+[[webhooks.subscriptions]]
+topic = "orders/create"
+uri = "/api/shopify/orders/ingest"
+
+[[webhooks.subscriptions]]
+topic = "orders/updated"
+uri = "/api/shopify/orders/ingest"
+
+[[webhooks.subscriptions]]
+topic = "orders/cancelled"
+uri = "/api/shopify/orders/ingest"
+
+[[webhooks.subscriptions]]
+topic = "fulfillment_orders/order_routing_complete"
+uri = "/api/shopify/orders/ingest"
+
+[[webhooks.subscriptions]]
+topic = "fulfillment_orders/hold_released"
+uri = "/api/shopify/orders/ingest"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_fulfillments,write_fulfillments,read_inventory,read_locations,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,read_orders,read_products,read_shipping"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://livapon-fullfillment-system.vercel.app/api/shopify/auth/callback"
+]

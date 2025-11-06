@@ -4,6 +4,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrderFilters } from '@/components/orders/order-filters';
 import { OrdersDispatchTable } from '@/components/orders/orders-dispatch-table';
+import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
 import { OrdersRefreshButton } from '@/components/orders/orders-refresh-button';
 import { getOrders } from '@/lib/data/orders';
 import { getAuthContext } from '@/lib/auth';
@@ -71,6 +72,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
 
   return (
     <Card>
+      <OrdersRealtimeListener vendorId={auth.vendorId} orderIds={filtered.map((order) => order.id)} />
       <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">

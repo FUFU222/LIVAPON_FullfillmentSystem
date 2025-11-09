@@ -244,12 +244,14 @@ export function AppShell({
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <nav className="flex items-center gap-2">
-              {links.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'rounded-md px-3 py-2 transition-colors',
+              {links
+                .filter((item) => item.href !== '/import')
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'rounded-md px-3 py-2 transition-colors',
                     isNavActive(pathname ?? null, item.href)
                       ? 'bg-foreground text-white'
                       : 'text-foreground/70 hover:bg-muted'

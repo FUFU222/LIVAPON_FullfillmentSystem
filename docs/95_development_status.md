@@ -12,6 +12,8 @@
   - 発送一覧テーブルの行高を縮め、1画面に多くの注文が表示可能に。
   - Supabase Realtime で発送更新を監視し、ベンダー一覧を即時リフレッシュ。
   - 発送登録直後でもステータスを `fulfilled/partially_fulfilled` に派生させ、表示齟齬を解消。
+- **在庫ポリシー確定**
+  - 在庫編集は Shopify GUI（マーチャント管理ロケーション）が唯一の操作点。Console 側は閲覧とステータス同期のみを担い、FS モデル由来の在庫操作は廃止。
 - **Fulfillment Callback**
   - `/api/shopify/fulfillment/callback` を実装し、Shopify → Console の配送依頼受信・記録が可能。
   - FO メタ更新や `fulfillment_requests` テーブルを通じた解析も可。

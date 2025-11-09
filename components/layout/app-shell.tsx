@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { GradientAvatar } from '@/components/ui/avatar';
+import { NavigationOverlayProvider, useNavigationOverlay } from '@/components/layout/navigation-overlay';
 
 export type AppShellInitialAuth = {
   status: 'signed-in' | 'signed-out';
@@ -87,6 +88,20 @@ function isNavActive(pathname: string | null, href: string) {
 }
 
 export function AppShell({
+  children,
+  initialAuth
+}: {
+  children: ReactNode;
+  initialAuth: AppShellInitialAuth;
+}) {
+  return (
+    <NavigationOverlayProvider>
+      <AppShellContent initialAuth={initialAuth}>{children}</AppShellContent>
+    </NavigationOverlayProvider>
+  );
+}
+
+function AppShellContent({
   children,
   initialAuth
 }: {
@@ -225,13 +240,18 @@ export function AppShell({
     return publicNavItems;
   })();
 
+  const { beginNavigation } = useNavigationOverlay();
   const brandHref = '/';
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
-          <Link href={brandHref} className="flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground">
+          <Link
+            href={brandHref}
+            className="flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground"
+            onClick={() => beginNavigation()}
+          >
             <Image
               src="/LIVAPON_logo_horizontal.svg"
               alt="LIVAPON"
@@ -244,7 +264,7 @@ export function AppShell({
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <nav className="flex items-center gap-2">
-              {links
+            {links
                 .filter((item) => item.href !== '/import')
                 .map((item) => (
                   <Link
@@ -254,8 +274,9 @@ export function AppShell({
                       'rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98]',
                       isNavActive(pathname ?? null, item.href)
                         ? 'bg-foreground text-white shadow-sm'
-                        : 'text-foreground/70 hover:bg-muted hover:text-foreground'
+                      : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
+                    onClick={() => beginNavigation()}
                   >
                     {item.label}
                   </Link>
@@ -338,6 +359,7 @@ function UserMenu({
   vendorId: number | null;
 }) {
   const router = useRouter();
+  const { beginNavigation } = useNavigationOverlay();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -402,6 +424,7 @@ function UserMenu({
                 className="block w-full px-4 py-2 text-left text-slate-600 transition hover:bg-slate-50 hover:text-foreground"
                 onClick={() => {
                   setOpen(false);
+                  beginNavigation();
                   router.push('/vendor/profile');
                 }}
               >

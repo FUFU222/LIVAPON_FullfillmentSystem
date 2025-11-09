@@ -37,11 +37,6 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
   return (
     <form ref={formRef} action={formAction} className="grid gap-6">
       <div className="grid gap-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-slate-500">ベンダーコード</label>
-        <Input value={initial.vendorCode ?? '----'} readOnly disabled className="bg-slate-100 text-slate-600" />
-      </div>
-
-      <div className="grid gap-2">
         <label htmlFor="companyName" className="text-sm font-medium text-foreground">
           会社名
         </label>

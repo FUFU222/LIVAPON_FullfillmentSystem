@@ -7,7 +7,7 @@ import { assertAuthorizedVendor, requireAuthContext } from '@/lib/auth';
 export type VendorProfileActionState = {
   status: 'idle' | 'success' | 'error';
   message: string | null;
-  fieldErrors?: Partial<Record<'companyName' | 'email' | 'password', string>>;
+  fieldErrors?: Partial<Record<'companyName' | 'email' | 'password' | 'currentPassword', string>>;
 };
 
 export const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
@@ -28,11 +28,13 @@ export async function updateVendorProfileAction(
   const rawContactName = formData.get('contactName');
   const rawEmail = formData.get('email');
   const rawPassword = formData.get('password');
+  const rawCurrentPassword = formData.get('currentPassword');
 
   const companyName = typeof rawCompanyName === 'string' ? rawCompanyName.trim() : '';
   const contactName = typeof rawContactName === 'string' ? rawContactName.trim() : '';
   const email = typeof rawEmail === 'string' ? rawEmail.trim() : '';
   const password = typeof rawPassword === 'string' ? rawPassword : '';
+  const currentPassword = typeof rawCurrentPassword === 'string' ? rawCurrentPassword : '';
 
   const fieldErrors: VendorProfileActionState['fieldErrors'] = {};
 
@@ -46,8 +48,13 @@ export async function updateVendorProfileAction(
     fieldErrors.email = 'メールアドレスの形式が正しくありません。';
   }
 
-  if (password && password.length < 8) {
-    fieldErrors.password = 'パスワードは8文字以上で設定してください。';
+  if (password) {
+    if (password.length < 8) {
+      fieldErrors.password = 'パスワードは8文字以上で設定してください。';
+    }
+    if (!currentPassword) {
+      fieldErrors.currentPassword = '現在のパスワードを入力してください。';
+    }
   }
 
   if (Object.keys(fieldErrors).length > 0) {

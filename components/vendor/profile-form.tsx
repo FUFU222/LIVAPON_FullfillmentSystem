@@ -89,7 +89,25 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         {state.fieldErrors?.email ? (
           <p className="text-xs text-red-600">{state.fieldErrors.email}</p>
         ) : null}
-        <p className="text-xs text-slate-500">変更すると確認メールが届く場合があります。</p>
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor="currentPassword" className="text-sm font-medium text-foreground">
+          現在のパスワード
+        </label>
+        <Input
+          id="currentPassword"
+          name="currentPassword"
+          type="password"
+          placeholder="現在のパスワード"
+          autoComplete="current-password"
+          aria-invalid={state.fieldErrors?.currentPassword ? 'true' : 'false'}
+        />
+        {state.fieldErrors?.currentPassword ? (
+          <p className="text-xs text-red-600">{state.fieldErrors.currentPassword}</p>
+        ) : (
+          <p className="text-xs text-slate-500">新しいパスワードを設定する場合のみ入力してください。</p>
+        )}
       </div>
 
       <div className="grid gap-2">
@@ -107,7 +125,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         {state.fieldErrors?.password ? (
           <p className="text-xs text-red-600">{state.fieldErrors.password}</p>
         ) : (
-          <p className="text-xs text-slate-500">未入力の場合はパスワードは変更されません。</p>
+          <p className="text-xs text-slate-500">新しいパスワードを設定する場合のみ入力してください。</p>
         )}
       </div>
 

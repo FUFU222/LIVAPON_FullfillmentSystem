@@ -49,56 +49,79 @@ function CancelShipmentForm({
   );
   const [reasonType, setReasonType] = useState<string>("");
   const [otherReason, setOtherReason] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
-    <form action={formAction} className="grid gap-2">
-      <input type="hidden" name="shipmentId" value={shipmentId} />
-      {orderId ? (
-        <input type="hidden" name="orderId" value={orderId} />
-      ) : null}
-      <input type="hidden" name="redirectTo" value="/orders/shipments" />
-      <label className="text-xs font-medium text-slate-500" htmlFor={`reason-${shipmentId}`}>
-        取消理由
-      </label>
-      <select
-        id={`reason-${shipmentId}`}
-        name="reasonType"
-        required
-        value={reasonType}
-        onChange={(event) => {
-          setReasonType(event.target.value);
-          if (event.target.value !== "other") {
-            setOtherReason("");
-          }
-        }}
-        className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+    <div className="grid gap-2">
+      <button
+        type="button"
+        className="text-xs text-red-600 underline-offset-2 hover:underline"
+        onClick={() => setConfirmOpen(true)}
       >
-        <option value="" disabled>
-          選択してください
-        </option>
-        {CANCELLATION_REASONS.map((reason) => (
-          <option key={reason.value} value={reason.value}>
-            {reason.label}
-          </option>
-        ))}
-      </select>
-      {reasonType === "other" ? (
-        <textarea
-          name="reasonDetail"
-          value={otherReason}
-          onChange={(event) => setOtherReason(event.target.value)}
-          required
-          placeholder="理由を入力してください"
-          className="min-h-[72px] rounded-md border border-slate-300 px-2 py-1 text-xs"
-        />
-      ) : (
-        <input type="hidden" name="reasonDetail" value="" />
-      )}
-      <CancelButton />
-      {state.status === "error" && state.message ? (
-        <span className="text-xs text-red-600">{state.message}</span>
+        未発送に戻す
+      </button>
+      {confirmOpen ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+          <form action={formAction} className="grid gap-2">
+            <p className="font-semibold">この発送を未発送に戻します。戻す理由を必ず選択してください。</p>
+            <input type="hidden" name="shipmentId" value={shipmentId} />
+            {orderId ? <input type="hidden" name="orderId" value={orderId} /> : null}
+            <input type="hidden" name="redirectTo" value="/orders/shipments" />
+            <label className="text-[11px] font-medium text-red-700" htmlFor={`reason-${shipmentId}`}>
+              取消理由
+            </label>
+            <select
+              id={`reason-${shipmentId}`}
+              name="reasonType"
+              required
+              value={reasonType}
+              onChange={(event) => {
+                setReasonType(event.target.value);
+                if (event.target.value !== "other") {
+                  setOtherReason("");
+                }
+              }}
+              className="rounded-md border border-red-200 px-2 py-1 text-xs"
+            >
+              <option value="" disabled>
+                選択してください
+              </option>
+              {CANCELLATION_REASONS.map((reason) => (
+                <option key={reason.value} value={reason.value}>
+                  {reason.label}
+                </option>
+              ))}
+            </select>
+            {reasonType === "other" ? (
+              <textarea
+                name="reasonDetail"
+                value={otherReason}
+                onChange={(event) => setOtherReason(event.target.value)}
+                required
+                placeholder="理由を入力してください"
+                className="min-h-[72px] rounded-md border border-red-200 px-2 py-1 text-xs"
+              />
+            ) : (
+              <input type="hidden" name="reasonDetail" value="" />
+            )}
+            <div className="mt-1 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-red-600 hover:bg-red-100"
+                onClick={() => setConfirmOpen(false)}
+              >
+                キャンセル
+              </Button>
+              <CancelButton />
+            </div>
+            {state.status === "error" && state.message ? (
+              <span className="text-xs text-red-600">{state.message}</span>
+            ) : null}
+          </form>
+        </div>
       ) : null}
-    </form>
+    </div>
   );
 }
 

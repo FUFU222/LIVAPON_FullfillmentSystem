@@ -10,7 +10,7 @@ export type VendorProfileActionState = {
   fieldErrors?: Partial<Record<'companyName' | 'email' | 'password' | 'currentPassword', string>>;
 };
 
-export const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
+const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
   status: 'idle',
   message: null
 };

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { updateVendorProfileAction, INITIAL_VENDOR_PROFILE_STATE } from '@/app/vendor/profile/actions';
+import { updateVendorProfileAction } from '@/app/vendor/profile/actions';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,11 @@ export type VendorProfileInitialValues = {
   contactName: string | null;
   email: string;
   vendorCode: string | null;
+};
+
+const INITIAL_VENDOR_PROFILE_STATE = {
+  status: 'idle',
+  message: null
 };
 
 export function VendorProfileForm({ initial }: { initial: VendorProfileInitialValues }) {

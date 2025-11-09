@@ -240,7 +240,7 @@ export function AppShell({
               priority
               className="h-[4.5rem] w-auto"
             />
-            <span className="hidden text-sm font-semibold text-slate-500 sm:inline">配送管理コンソール</span>
+            <span className="hidden text-base font-semibold text-slate-500 sm:inline">配送管理コンソール</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <nav className="flex items-center gap-2">

@@ -250,6 +250,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           vendor_id: number | null
+          archived_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -267,6 +268,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           vendor_id?: number | null
+          archived_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -284,6 +286,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           vendor_id?: number | null
+          archived_at?: string | null
         }
         Relationships: [
           {

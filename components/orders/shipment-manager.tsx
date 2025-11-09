@@ -18,14 +18,14 @@ const carrierOptions = [
   { value: "sagawa", label: "佐川急便" },
   { value: "japanpost", label: "日本郵便" },
   { value: "dhl", label: "DHL" },
-  { value: "fedex", label: "FedEx" },
+  { value: "fedex", label: "FedEx" }
 ];
 
 type ButtonProps = React.ComponentProps<typeof Button>;
 
 const INITIAL_SHIPMENT_ACTION_STATE: ShipmentActionState = {
   status: "idle",
-  message: null,
+  message: null
 };
 
 function FormSubmitButton({
@@ -63,14 +63,12 @@ function FormSubmitButton({
 type Props = {
   orderId: number;
   lineItems: OrderDetail["lineItems"];
+  isArchived: boolean;
 };
 
-export function ShipmentManager({ orderId, lineItems }: Props) {
+export function ShipmentManager({ orderId, lineItems, isArchived }: Props) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [state, formAction] = useFormState(
-    saveShipment,
-    INITIAL_SHIPMENT_ACTION_STATE,
-  );
+  const [state, formAction] = useFormState(saveShipment, INITIAL_SHIPMENT_ACTION_STATE);
 
   const selectableItems = useMemo(
     () =>
@@ -78,10 +76,13 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
         id: item.id,
         productName: item.productName,
         quantity: item.quantity,
-        sku: item.sku,
+        sku: item.sku
       })),
-    [lineItems],
+    [lineItems]
   );
+
+  const allSelected =
+    selectedIds.length === selectableItems.length && selectableItems.length > 0;
 
   useEffect(() => {
     if (state.status === "success") {
@@ -89,18 +90,23 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
     }
   }, [state.status]);
 
+  useEffect(() => {
+    if (isArchived) {
+      setSelectedIds([]);
+    }
+  }, [isArchived]);
+
   const toggleSelection = (lineItemId: number) => {
+    if (isArchived) return;
     setSelectedIds((prev) =>
       prev.includes(lineItemId)
         ? prev.filter((id) => id !== lineItemId)
-        : [...prev, lineItemId],
+        : [...prev, lineItemId]
     );
   };
 
-  const allSelected =
-    selectedIds.length === selectableItems.length && selectableItems.length > 0;
-
   const toggleAll = () => {
+    if (isArchived) return;
     if (allSelected) {
       setSelectedIds([]);
     } else {
@@ -121,6 +127,7 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
                     aria-label="全て選択"
                     checked={allSelected}
                     onChange={toggleAll}
+                    disabled={isArchived || selectableItems.length === 0}
                   />
                 </th>
                 <th className="px-3 py-2">商品名</th>
@@ -136,16 +143,13 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
                       aria-label={`${item.productName}を選択`}
                       checked={selectedIds.includes(item.id)}
                       onChange={() => toggleSelection(item.id)}
+                      disabled={isArchived}
                     />
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {item.productName}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        SKU: {item.sku ?? "未設定"}
-                      </span>
+                      <span className="font-medium text-foreground">{item.productName}</span>
+                      <span className="text-xs text-slate-500">SKU: {item.sku ?? '未設定'}</span>
                     </div>
                   </td>
                   <td className="px-3 py-3">{item.quantity}</td>
@@ -157,9 +161,12 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h3 className="mb-4 text-sm font-semibold text-foreground">
-          発送登録フロー
-        </h3>
+        <h3 className="mb-4 text-sm font-semibold text-foreground">発送登録フロー</h3>
+        {isArchived ? (
+          <Alert variant="default" className="mb-4 text-sm text-slate-600">
+            この注文は Shopify でアーカイブ済みのため、発送登録はできません。アーカイブ解除後に操作してください。
+          </Alert>
+        ) : null}
         {state.status === "error" && state.message ? (
           <Alert variant="destructive" className="mb-4">
             {state.message}
@@ -180,19 +187,17 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
 
           <div className="grid gap-4 rounded-lg border border-slate-100 bg-slate-50/60 p-4">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[0.65rem] text-slate-700">
-                STEP 1
-              </span>
+              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[0.65rem] text-slate-700">STEP 1</span>
               発送情報の入力
             </div>
             <div className="grid gap-3">
               <div className="grid gap-2">
                 <label className="text-sm font-medium text-foreground">追跡番号</label>
-                <Input name="trackingNumber" placeholder="YT123456789JP" required />
+                <Input name="trackingNumber" placeholder="YT123456789JP" required disabled={isArchived} />
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium text-foreground">配送業者</label>
-                <Select name="carrier" defaultValue={carrierOptions[0]?.value ?? ''} required>
+                <Select name="carrier" defaultValue={carrierOptions[0]?.value ?? ''} required disabled={isArchived}>
                   {carrierOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -205,9 +210,7 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
 
           <div className="grid gap-4 rounded-lg border border-slate-100 bg-slate-50/60 p-4">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[0.65rem] text-slate-700">
-                STEP 2
-              </span>
+              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[0.65rem] text-slate-700">STEP 2</span>
               発送詳細の確認
             </div>
             {selectedIds.length === 0 ? (
@@ -241,7 +244,7 @@ export function ShipmentManager({ orderId, lineItems }: Props) {
             )}
             <div className="flex items-center justify-between text-sm text-slate-600">
               <span>発送対象: {selectedIds.length} 件</span>
-              <FormSubmitButton pendingLabel="登録中…" disabled={selectedIds.length === 0}>
+              <FormSubmitButton pendingLabel="登録中…" disabled={selectedIds.length === 0 || isArchived}>
                 この内容で発送登録する
               </FormSubmitButton>
             </div>

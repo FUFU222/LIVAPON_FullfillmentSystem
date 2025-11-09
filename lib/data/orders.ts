@@ -53,6 +53,7 @@ export type OrderDetail = {
   status: string | null;
   updatedAt: string | null;
   createdAt: string | null;
+  archivedAt: string | null;
   shippingPostal: string | null;
   shippingPrefecture: string | null;
   shippingCity: string | null;
@@ -93,6 +94,7 @@ export type OrderSummary = {
   lineItemCount: number;
   status: string | null;
   shopifyStatus: string | null;
+  isArchived: boolean;
   shippingAddress: string | null;
   shippingAddressLines: string[];
   trackingNumbers: string[];
@@ -137,6 +139,7 @@ const demoOrders: OrderDetail[] = [
     status: 'unfulfilled',
     updatedAt: new Date().toISOString(),
     createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    archivedAt: null,
     shippingPostal: '1500001',
     shippingPrefecture: '東京都',
     shippingCity: '渋谷区神宮前',
@@ -208,6 +211,7 @@ const demoOrders: OrderDetail[] = [
     status: 'partially_fulfilled',
     updatedAt: new Date().toISOString(),
     createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+    archivedAt: null,
     shippingPostal: '2200012',
     shippingPrefecture: '神奈川県',
     shippingCity: '横浜市西区みなとみらい',
@@ -265,6 +269,8 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     derivedStatus = 'partially_fulfilled';
   }
 
+  const isArchived = Boolean(order.archivedAt);
+
   const shippingLines: string[] = [];
   if (order.shippingPostal) {
     shippingLines.push(`〒${order.shippingPostal}`);
@@ -289,6 +295,7 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     lineItemCount: order.lineItems.length,
     status: derivedStatus,
     shopifyStatus: order.status,
+    isArchived,
     shippingAddress,
     shippingAddressLines: shippingLines,
     trackingNumbers: Array.from(trackingNumbers),
@@ -327,6 +334,7 @@ type RawOrderRecord = {
   status: string | null;
   updated_at: string | null;
   created_at?: string | null;
+  archived_at?: string | null;
   shipping_postal: string | null;
   shipping_prefecture: string | null;
   shipping_city: string | null;
@@ -440,6 +448,7 @@ function toOrderDetailFromRecord(
     status: record.status ?? null,
     updatedAt: record.updated_at ?? null,
     createdAt: (record as { created_at?: string | null }).created_at ?? null,
+    archivedAt: record.archived_at ?? null,
     shippingPostal: record.shipping_postal ?? null,
     shippingPrefecture: record.shipping_prefecture ?? null,
     shippingCity: record.shipping_city ?? null,
@@ -516,8 +525,8 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
   const client = getOptionalServiceClient();
 
   if (!client) {
-    return demoOrders
-      .map((order) => toOrderDetailFromDemo(order, vendorId))
+  return demoOrders
+    .map((order) => toOrderDetailFromDemo(order, vendorId))
       .filter((order): order is OrderDetail => order !== null)
       .map(mapDetailToSummary);
   }
@@ -525,7 +534,7 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
   const { data, error } = await client
     .from('orders')
     .select(
-      `id, order_number, customer_name, status, updated_at, created_at,
+      `id, order_number, customer_name, status, updated_at, created_at, archived_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items!inner(
          id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,
@@ -567,7 +576,7 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
   const { data, error } = await client
     .from('orders')
     .select(
-      `id, order_number, customer_name, status, updated_at, created_at,
+      `id, order_number, customer_name, status, updated_at, created_at, archived_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
          id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,
@@ -599,7 +608,7 @@ export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDet
   const { data, error } = await client
     .from('orders')
     .select(
-      `id, order_number, customer_name, status, updated_at,
+      `id, order_number, customer_name, status, updated_at, archived_at,
        shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2,
        line_items:line_items(
          id, vendor_id, sku, product_name, variant_title, quantity, fulfilled_quantity, fulfillable_quantity,

@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
+import { Badge } from "@/components/ui/badge";
 
 const ORDER_ROW_HEAD = "px-3 py-2 text-[11px] tracking-normal";
 const ORDER_ROW_CELL = "px-3 py-2 align-middle";
@@ -63,7 +64,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
       prev.forEach((value, key) => {
         const order = orders.find((o) => o.id === value.orderId);
         const lineItem = order?.lineItems.find((item) => item.id === key);
-        if (!order || !lineItem) {
+        if (!order || order.isArchived || !lineItem) {
           return;
         }
         const remaining = computeRemainingQuantity(lineItem);
@@ -139,6 +140,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
 
   const toggleLineItemSelection = useCallback(
     (order: OrderSummary, lineItem: OrderLineItemSummary) => {
+      if (order.isArchived) {
+        return;
+      }
       setSelectedLineItems((prev) => {
         const next = new Map(prev);
         if (next.has(lineItem.id)) {
@@ -171,6 +175,9 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
 
   const toggleOrderSelection = useCallback(
     (order: OrderSummary, checked: boolean) => {
+      if (order.isArchived) {
+        return;
+      }
       setSelectedLineItems((prev) => {
         const next = new Map(prev);
         const selectableItems = order.lineItems.filter((item) => computeRemainingQuantity(item) > 0);
@@ -252,9 +259,12 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
         <TableBody>
           {orders.map((order) => {
             const isExpanded = expandedOrders.has(order.id);
-            const selectableItems = order.lineItems.filter((item) => computeRemainingQuantity(item) > 0);
+            const selectableItems = order.isArchived
+              ? []
+              : order.lineItems.filter((item) => computeRemainingQuantity(item) > 0);
             const selectedCount = selectableItems.filter((item) => selectedLineItems.has(item.id)).length;
             const allSelected = selectableItems.length > 0 && selectedCount === selectableItems.length;
+            const orderDisabled = order.isArchived;
 
             return (
               <>
@@ -262,7 +272,8 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                 key={`order-${order.id}`}
                 className={cn(
                   "relative align-top cursor-pointer transition-colors duration-200",
-                  isExpanded && "bg-slate-50/60"
+                  isExpanded && "bg-slate-50/60",
+                  orderDisabled && "bg-slate-50/70"
                 )}
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
@@ -278,12 +289,15 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                     aria-label={`${order.orderNumber} を選択`}
                     checked={allSelected}
                     onChange={(event) => toggleOrderSelection(order, event.target.checked)}
-                    disabled={selectableItems.length === 0}
+                    disabled={selectableItems.length === 0 || orderDisabled}
                     onClick={(event) => event.stopPropagation()}
                   />
                 </TableCell>
                 <TableCell className={cn("font-medium text-foreground", ORDER_ROW_CELL)}>
                   {order.orderNumber}
+                  {orderDisabled ? (
+                    <Badge className="ml-2 bg-slate-200 text-slate-700">アーカイブ済み</Badge>
+                  ) : null}
                 </TableCell>
                   <TableCell className={ORDER_ROW_CELL}>{order.customerName ?? '-'} </TableCell>
                   <TableCell className={ORDER_ROW_CELL_MUTED}>
@@ -310,6 +324,11 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                           isExpanded ? "opacity-100" : "opacity-0"
                         )}
                       >
+                        {order.isArchived ? (
+                          <div className="border-b border-slate-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+                            この注文は Shopify でアーカイブ済みのため、新しい発送登録はできません。
+                          </div>
+                        ) : null}
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -341,7 +360,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                                     type="checkbox"
                                     aria-label={`${lineItem.productName} を選択`}
                                     checked={isSelected}
-                                    disabled={remaining <= 0}
+                                    disabled={remaining <= 0 || orderDisabled}
                                     onChange={(event) => {
                                       event.stopPropagation();
                                       toggleLineItemSelection(order, lineItem);

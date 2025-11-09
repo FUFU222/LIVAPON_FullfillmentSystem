@@ -46,6 +46,7 @@ CREATE TABLE orders (
   shipping_address1 VARCHAR(255),
   shipping_address2 VARCHAR(255),
   status VARCHAR(50) DEFAULT 'unfulfilled', -- Fulfilled / Partially Fulfilled / Unfulfilled
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

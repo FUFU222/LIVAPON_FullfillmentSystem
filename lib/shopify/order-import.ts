@@ -39,6 +39,7 @@ type ShopifyOrderPayload = {
   financial_status: string | null;
   fulfillment_status: string | null;
   cancelled_at?: string | null;
+  archived_at?: string | null;
   currency: string;
   total_price: string;
   customer?: { first_name?: string | null; last_name?: string | null } | null;
@@ -198,6 +199,7 @@ async function upsertOrderRecord(
     shipping_address1: shippingAddress.address1,
     shipping_address2: shippingAddress.address2,
     status: orderStatus,
+    archived_at: payload.archived_at ?? null,
     shop_domain: normalizedShopDomain,
     created_at: payload.created_at,
     updated_at: payload.updated_at

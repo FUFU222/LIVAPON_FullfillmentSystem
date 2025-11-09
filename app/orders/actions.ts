@@ -19,6 +19,8 @@ export async function saveShipment(
   const vendorId = auth.vendorId;
   assertAuthorizedVendor(vendorId);
 
+  const supabase = getServerActionClient();
+
   const shipmentIdRaw = formData.get("shipmentId");
   const trackingNumber = String(formData.get("trackingNumber") ?? "").trim();
   const carrier = String(formData.get("carrier") ?? "").trim();
@@ -44,7 +46,6 @@ export async function saveShipment(
       };
     }
 
-    const supabase = getServerActionClient();
     type ShipmentPivot = Pick<
       Database["public"]["Tables"]["shipment_line_items"]["Row"],
       "line_item_id"
@@ -67,6 +68,24 @@ export async function saveShipment(
     return {
       status: "error",
       message: "少なくとも1件の明細を選択してください",
+    };
+  }
+
+  const { data: orderMeta, error: orderMetaError } = await supabase
+    .from("orders")
+    .select("archived_at")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (orderMetaError) {
+    console.error("Failed to verify order archive status", orderMetaError);
+    return { status: "error", message: "注文情報の取得に失敗しました" };
+  }
+
+  if (orderMeta?.archived_at) {
+    return {
+      status: "error",
+      message: "Shopify 側でアーカイブ済みの注文のため、発送登録はできません",
     };
   }
 

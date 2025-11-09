@@ -10,7 +10,7 @@
 | コンポーネント | 役割 | 主な責務 |
 | --- | --- | --- |
 | Shopify ストア | 注文・在庫の真実の源 | 注文発生、在庫管理 (GUI 操作可)、FO 自動生成 (マーチャント管理ロケーション) |
-| LIVAPON Fulfillment Console | 業務ロジック層 | Shopify Webhook 受信、注文/FO データを Supabase に保存、ベンダー UI 提供、FO の分配ロジック実行、Bridge App への API 呼び出し指示 |
+| LIVAPON 配送管理コンソール | 業務ロジック層 | Shopify Webhook 受信、注文/FO データを Supabase に保存、ベンダー UI 提供、FO の分配ロジック実行、Bridge App への API 呼び出し指示 |
 | Bridge App | API クライアント層 | Console からの依頼に基づき Shopify Admin API を実行（`Order.fulfillmentOrders`、`fulfillmentCreateV2` 等）。コンソール以外からの直接アクセスは受けない |
 
 # 3. OMモデル採用による新しいデータフロー（PUSHからPULLへの転換背景を含む）

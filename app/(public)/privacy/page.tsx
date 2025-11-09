@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'プライバシーポリシー | LIVAPON Fulfillment Console'
+  title: 'プライバシーポリシー | LIVAPON 配送管理コンソール'
 };
 
 const sections = [
   {
     heading: '1. 基本方針',
     body: [
-      '株式会社CHAIRMAN（以下、「当社」といいます。）は、LIVAPON Fulfillment Console（以下、「本サービス」といいます。）において取り扱う個人情報を保護するため、以下の方針に基づき安全かつ適切な管理を行います。'
+      '株式会社CHAIRMAN（以下、「当社」といいます。）は、LIVAPON 配送管理コンソール（以下、「本サービス」といいます。）において取り扱う個人情報を保護するため、以下の方針に基づき安全かつ適切な管理を行います。'
     ]
   },
   {

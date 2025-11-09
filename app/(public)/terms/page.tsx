@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '利用規約 | LIVAPON Fulfillment Console'
+  title: '利用規約 | LIVAPON 配送管理コンソール'
 };
 
 const sections = [
   {
     heading: '第1条（適用）',
     body: [
-      '本利用規約（以下、「本規約」といいます。）は、株式会社CHAIRMAN（以下、「当社」といいます。）が提供する LIVAPON Fulfillment Console（以下、「本サービス」といいます。）の利用条件を定めるものです。ベンダーおよび管理者として本サービスを利用するすべての方（以下、「利用者」といいます。）は本規約に同意したものとみなされます。'
+      '本利用規約（以下、「本規約」といいます。）は、株式会社CHAIRMAN（以下、「当社」といいます。）が提供する LIVAPON 配送管理コンソール（以下、「本サービス」といいます。）の利用条件を定めるものです。ベンダーおよび管理者として本サービスを利用するすべての方（以下、「利用者」といいます。）は本規約に同意したものとみなされます。'
     ]
   },
   {
@@ -143,7 +143,7 @@ export default function TermsPage() {
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold text-foreground">利用規約</h1>
         <p className="text-sm text-slate-500">
-          本規約は、LIVAPON Fulfillment Console をご利用いただくにあたり適用される条件を定めるものです。
+          本規約は、LIVAPON 配送管理コンソールをご利用いただくにあたり適用される条件を定めるものです。
         </p>
       </header>
       <section className="flex flex-col gap-10">

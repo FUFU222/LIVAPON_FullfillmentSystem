@@ -8,7 +8,7 @@ import { getAuthContext } from '@/lib/auth';
 import { getVendorProfile } from '@/lib/data/vendors';
 
 export const metadata: Metadata = {
-  title: 'LIVAPON Fulfillment Console',
+  title: 'LIVAPON 配送管理コンソール',
   description: 'Shopify注文の配送管理を行う管理アプリ'
 };
 

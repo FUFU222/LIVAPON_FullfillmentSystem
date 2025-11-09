@@ -4,7 +4,7 @@ import { SignInForm } from '@/components/auth/sign-in-form';
 import { getAuthContext } from '@/lib/auth';
 
 export const metadata: Metadata = {
-  title: 'サインイン | LIVAPON Fulfillment Console'
+  title: 'サインイン | LIVAPON 配送管理コンソール'
 };
 
 function safeRedirect(target: unknown): string {

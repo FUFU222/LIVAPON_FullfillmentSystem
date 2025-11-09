@@ -1,7 +1,7 @@
-# Requirements: LIVAPON Fulfillment Console (MVP)
+# Requirements: LIVAPON 配送管理コンソール (MVP)
 
 ## 背景と目的
-- LIVAPON/CHAIRMAN で扱う Shopify 注文を Supabase に集約し、ベンダーが追跡番号登録・発送管理を自律的に行えるようにする。
+- LIVAPON/CHAIRMAN で扱う Shopify 注文を Supabase に集約し、ベンダーが追跡番号登録・発送管理を自律的に行えるようにする（配送管理コンソール）。
 - 管理者はベンダー申請の審査・ベンダー情報整理・注文状況の俯瞰を担う。
 - Shopify Fulfillment Orders（FO）との整合を取り、部分発送・リトライを含めた追跡番号同期を実現する。
 

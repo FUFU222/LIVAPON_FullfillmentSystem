@@ -8,30 +8,34 @@ embedded = true
 [webhooks]
 api_version = "2025-10"
 
+# --- ✅ 各 topics は string[]（配列）形式に統一 ---
 [[webhooks.subscriptions]]
-topic = "orders/create"
+topics = ["orders/create"]
 uri = "/api/shopify/orders/ingest"
 
 [[webhooks.subscriptions]]
-topic = "orders/updated"
+topics = ["orders/updated"]
 uri = "/api/shopify/orders/ingest"
 
 [[webhooks.subscriptions]]
-topic = "orders/cancelled"
+topics = ["orders/cancelled"]
 uri = "/api/shopify/orders/ingest"
 
 [[webhooks.subscriptions]]
-topic = "fulfillment_orders/order_routing_complete"
+topics = ["fulfillment_orders/order_routing_complete"]
 uri = "/api/shopify/orders/ingest"
 
 [[webhooks.subscriptions]]
-topic = "fulfillment_orders/hold_released"
+topics = ["fulfillment_orders/hold_released"]
 uri = "/api/shopify/orders/ingest"
+
+[[webhooks.subscriptions]]
+topics = ["fulfillment_orders/cancellation_request_accepted"]
+uri = "/api/webhooks"
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "read_fulfillments,write_fulfillments,read_inventory,read_locations,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,read_orders,read_products,read_shipping"
-optional_scopes = [ ]
+optional_scopes = []
 use_legacy_install_flow = false
 
 [auth]

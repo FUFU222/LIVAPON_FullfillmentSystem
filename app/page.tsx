@@ -6,9 +6,9 @@ import { ArrowRight } from 'lucide-react';
 import { buttonClasses } from '@/components/ui/button';
 
 export const metadata: Metadata = {
-  title: 'LIVAPON Fulfillment Console',
+  title: 'LIVAPON 配送管理コンソール',
   description:
-    'LIVAPON の公式ベンダー向け配送管理プラットフォーム。注文確認から発送処理までをシンプルに効率化します。'
+    'LIVAPON の公式配送管理コンソール。注文確認から発送処理までをシンプルに効率化します。'
 };
 
 const onboardingFlow = [
@@ -36,11 +36,11 @@ export default function HomePage() {
         <div className="relative mx-auto flex w-full max-w-5xl flex-col justify-center gap-8 px-6 py-8">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4 text-center sm:max-w-2xl sm:text-left">
-              <span className="inline-flex items-center gap-2 self-center rounded-full border border-black/10 bg-black/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#801010] sm:self-start">
+              <span className="inline-flex items-center gap-2 self-center rounded-full border border-black/10 bg-black/5 px-5 py-1.5 text-sm font-semibold uppercase tracking-[0.2em] text-[#801010] sm:self-start">
                 Official Partner Access
               </span>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-5xl sm:leading-tight">
-                ベンダー向け配送コンソール
+                配送管理コンソール
               </h1>
               <p className="text-sm text-slate-600 sm:text-base whitespace-nowrap">
                 LIVAPON 正式パートナーが、出荷に関わる入力と確認をまとめて行うための専用スペースです。

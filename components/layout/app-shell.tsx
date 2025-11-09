@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
@@ -337,6 +337,7 @@ function UserMenu({
   companyName: string | null;
   vendorId: number | null;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -396,13 +397,16 @@ function UserMenu({
           </div>
           <div className="mt-2 border-t border-slate-100 py-1 text-sm">
             {typeof vendorId === 'number' ? (
-              <Link
-                href="/vendor/profile"
-                className="block px-4 py-2 text-slate-600 transition hover:bg-slate-50 hover:text-foreground"
-                onClick={() => setOpen(false)}
+              <button
+                type="button"
+                className="block w-full px-4 py-2 text-left text-slate-600 transition hover:bg-slate-50 hover:text-foreground"
+                onClick={() => {
+                  setOpen(false);
+                  router.push('/vendor/profile');
+                }}
               >
                 プロフィール編集
-              </Link>
+              </button>
             ) : null}
             <SignOutButton
               variant="ghost"

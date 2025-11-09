@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { updateVendorProfileAction } from '@/app/vendor/profile/actions';
+import type { VendorProfileActionState } from '@/app/vendor/profile/actions';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ export type VendorProfileInitialValues = {
   vendorCode: string | null;
 };
 
-const INITIAL_VENDOR_PROFILE_STATE = {
+const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
   status: 'idle',
   message: null
 };

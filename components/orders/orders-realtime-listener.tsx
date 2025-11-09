@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 type OrdersRealtimeListenerProps = {
   vendorId: number;
@@ -11,18 +12,14 @@ type OrdersRealtimeListenerProps = {
 
 export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeListenerProps) {
   const router = useRouter();
+  const [hasUpdates, setHasUpdates] = useState(false);
 
   useEffect(() => {
     const supabase = getBrowserClient();
     const orderFilter = orderIds.length > 0 ? `id=in.(${orderIds.join(",")})` : null;
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const scheduleRefresh = () => {
-      if (refreshTimer) return;
-      refreshTimer = setTimeout(() => {
-        router.refresh();
-        refreshTimer = null;
-      }, 200);
+    const notifyUpdate = () => {
+      setHasUpdates(true);
     };
 
     const channel = supabase
@@ -35,7 +32,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
           table: "shipments",
           filter: `vendor_id=eq.${vendorId}`
         },
-        scheduleRefresh
+        notifyUpdate
       )
       .on(
         "postgres_changes",
@@ -45,7 +42,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
           table: "line_items",
           filter: `vendor_id=eq.${vendorId}`
         },
-        scheduleRefresh
+        notifyUpdate
       );
 
     if (orderFilter) {
@@ -57,20 +54,44 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
           table: "orders",
           filter: orderFilter
         },
-        scheduleRefresh
+        notifyUpdate
       );
     }
 
     channel.subscribe();
 
     return () => {
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
-      }
       supabase.removeChannel(channel);
     };
-  }, [vendorId, orderIds, router]);
+  }, [vendorId, orderIds]);
 
-  return null;
+  if (!hasUpdates) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-x-0 top-20 z-40 flex justify-center px-4">
+      <div className="flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow">
+        <span>Shopify 側で更新がありました。最新の状態を表示してください。</span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="border-amber-400 text-amber-900 hover:bg-amber-100"
+            onClick={() => setHasUpdates(false)}
+          >
+            後で
+          </Button>
+          <Button
+            className="bg-amber-600 text-white hover:bg-amber-700"
+            onClick={() => {
+              setHasUpdates(false);
+              router.refresh();
+            }}
+          >
+            更新する
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
-

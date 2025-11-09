@@ -251,15 +251,15 @@ export function AppShell({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'rounded-md px-3 py-2 transition-colors',
-                    isNavActive(pathname ?? null, item.href)
-                      ? 'bg-foreground text-white'
-                      : 'text-foreground/70 hover:bg-muted'
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))}
+                      'rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98]',
+                      isNavActive(pathname ?? null, item.href)
+                        ? 'bg-foreground text-white shadow-sm'
+                        : 'text-foreground/70 hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
             </nav>
             <AuthControls
               status={status}

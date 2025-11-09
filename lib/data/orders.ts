@@ -92,6 +92,7 @@ export type OrderSummary = {
   customerName: string | null;
   lineItemCount: number;
   status: string | null;
+  shopifyStatus: string | null;
   shippingAddress: string | null;
   shippingAddressLines: string[];
   trackingNumbers: string[];
@@ -246,6 +247,24 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     }
   });
 
+  const fullyShipped = order.lineItems.every((lineItem) => {
+    const shippedQuantity = lineItem.shipments.reduce((total, shipment) => {
+      return total + Math.max(0, shipment.quantity ?? 0);
+    }, 0);
+    return shippedQuantity >= lineItem.quantity;
+  });
+
+  const partiallyShipped = !fullyShipped && order.lineItems.some((lineItem) => {
+    return lineItem.shipments.some((shipment) => (shipment.quantity ?? 0) > 0);
+  });
+
+  let derivedStatus: string | null = order.status;
+  if (fullyShipped) {
+    derivedStatus = 'fulfilled';
+  } else if (partiallyShipped) {
+    derivedStatus = 'partially_fulfilled';
+  }
+
   const shippingLines: string[] = [];
   if (order.shippingPostal) {
     shippingLines.push(`〒${order.shippingPostal}`);
@@ -268,7 +287,8 @@ function mapDetailToSummary(order: OrderDetail): OrderSummary {
     orderNumber: order.orderNumber,
     customerName: order.customerName,
     lineItemCount: order.lineItems.length,
-    status: order.status,
+    status: derivedStatus,
+    shopifyStatus: order.status,
     shippingAddress,
     shippingAddressLines: shippingLines,
     trackingNumbers: Array.from(trackingNumbers),

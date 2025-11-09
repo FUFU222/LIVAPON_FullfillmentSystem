@@ -998,7 +998,11 @@ export async function updateOrderStatus(orderId: number, status: string, vendorI
   }
 }
 
-export async function cancelShipment(shipmentId: number, vendorId: number) {
+export async function cancelShipment(
+  shipmentId: number,
+  vendorId: number,
+  options?: { reasonType?: string | null; reasonDetail?: string | null }
+) {
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to cancel shipments');
   }
@@ -1040,6 +1044,17 @@ export async function cancelShipment(shipmentId: number, vendorId: number) {
       shipment.shopify_fulfillment_id
     );
   }
+
+  const reasonType = options?.reasonType?.trim() || 'unspecified';
+  const reasonDetail = options?.reasonDetail?.trim() || null;
+
+  await client.from('shipment_cancellation_logs').insert({
+    shipment_id: shipment.id,
+    order_id: order.id,
+    vendor_id: vendorId,
+    reason_type: reasonType,
+    reason_detail: reasonDetail
+  });
 
   const { error: deleteError } = await client
     .from('shipments')

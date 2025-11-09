@@ -313,10 +313,10 @@ export type Database = {
           line_item_id?: number
           quantity?: number | null
           shipment_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shipment_line_items_line_item_id_fkey"
+      }
+      Relationships: [
+        {
+          foreignKeyName: "shipment_line_items_line_item_id_fkey"
             columns: ["line_item_id"]
             isOneToOne: false
             referencedRelation: "line_items"
@@ -326,7 +326,59 @@ export type Database = {
             foreignKeyName: "shipment_line_items_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
+          referencedRelation: "shipments"
+          referencedColumns: ["id"]
+        },
+       ]
+      }
+      shipment_cancellation_logs: {
+        Row: {
+          id: number
+          shipment_id: number | null
+          order_id: number | null
+          vendor_id: number | null
+          reason_type: string
+          reason_detail: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          shipment_id?: number | null
+          order_id?: number | null
+          vendor_id?: number | null
+          reason_type: string
+          reason_detail?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          shipment_id?: number | null
+          order_id?: number | null
+          vendor_id?: number | null
+          reason_type?: string
+          reason_detail?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_cancellation_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_cancellation_logs_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
             referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_cancellation_logs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

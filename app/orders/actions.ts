@@ -127,6 +127,11 @@ export async function cancelShipmentAction(
   const orderId = Number(formData.get("orderId"));
   const shipmentId = Number(formData.get("shipmentId"));
   const redirectTo = String(formData.get("redirectTo") ?? "/orders");
+  const reasonTypeRaw = formData.get("reasonType");
+  const reasonDetailRaw = formData.get("reasonDetail");
+
+  const reasonType = typeof reasonTypeRaw === "string" ? reasonTypeRaw.trim() : "";
+  const reasonDetail = typeof reasonDetailRaw === "string" ? reasonDetailRaw.trim() : "";
 
   if (!Number.isInteger(orderId) || !Number.isInteger(shipmentId)) {
     return {
@@ -135,8 +140,25 @@ export async function cancelShipmentAction(
     };
   }
 
+  if (!reasonType) {
+    return {
+      status: "error",
+      message: "取消理由を選択してください",
+    };
+  }
+
+  if (reasonType === "other" && reasonDetail.length === 0) {
+    return {
+      status: "error",
+      message: "その他を選択した場合は理由を入力してください",
+    };
+  }
+
   try {
-    await cancelShipment(shipmentId, vendorId);
+    await cancelShipment(shipmentId, vendorId, {
+      reasonType,
+      reasonDetail: reasonType === "other" ? reasonDetail : null,
+    });
 
     revalidatePath(`/orders/${orderId}`);
     revalidatePath("/orders");

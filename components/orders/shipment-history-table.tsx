@@ -4,6 +4,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useFormState, useFormStatus } from "react-dom";
+import { useState } from "react";
 import { cancelShipmentAction } from "@/app/orders/actions";
 import type { ShipmentActionState } from "@/app/orders/actions";
 import type { ShipmentHistoryEntry } from "@/lib/data/orders";
@@ -16,6 +17,14 @@ const INITIAL_STATE: ShipmentActionState = {
   status: "idle",
   message: null,
 };
+
+const CANCELLATION_REASONS = [
+  { value: "customer_request", label: "顧客都合（再配送・キャンセル）" },
+  { value: "address_issue", label: "住所不備・受取不可" },
+  { value: "inventory_issue", label: "在庫調整・誤出荷" },
+  { value: "label_error", label: "ラベル/伝票の不備" },
+  { value: "other", label: "その他" },
+];
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -38,6 +47,8 @@ function CancelShipmentForm({
     cancelShipmentAction,
     INITIAL_STATE,
   );
+  const [reasonType, setReasonType] = useState<string>("");
+  const [otherReason, setOtherReason] = useState("");
 
   return (
     <form action={formAction} className="grid gap-2">
@@ -46,6 +57,43 @@ function CancelShipmentForm({
         <input type="hidden" name="orderId" value={orderId} />
       ) : null}
       <input type="hidden" name="redirectTo" value="/orders/shipments" />
+      <label className="text-xs font-medium text-slate-500" htmlFor={`reason-${shipmentId}`}>
+        取消理由
+      </label>
+      <select
+        id={`reason-${shipmentId}`}
+        name="reasonType"
+        required
+        value={reasonType}
+        onChange={(event) => {
+          setReasonType(event.target.value);
+          if (event.target.value !== "other") {
+            setOtherReason("");
+          }
+        }}
+        className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+      >
+        <option value="" disabled>
+          選択してください
+        </option>
+        {CANCELLATION_REASONS.map((reason) => (
+          <option key={reason.value} value={reason.value}>
+            {reason.label}
+          </option>
+        ))}
+      </select>
+      {reasonType === "other" ? (
+        <textarea
+          name="reasonDetail"
+          value={otherReason}
+          onChange={(event) => setOtherReason(event.target.value)}
+          required
+          placeholder="理由を入力してください"
+          className="min-h-[72px] rounded-md border border-slate-300 px-2 py-1 text-xs"
+        />
+      ) : (
+        <input type="hidden" name="reasonDetail" value="" />
+      )}
       <CancelButton />
       {state.status === "error" && state.message ? (
         <span className="text-xs text-red-600">{state.message}</span>

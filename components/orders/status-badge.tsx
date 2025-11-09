@@ -5,7 +5,7 @@ const statusLabel: Record<string, string> = {
   partially_fulfilled: '一部発送済',
   fulfilled: '発送済',
   cancelled: 'キャンセル済',
-  restocked: '再入荷済'
+  restocked: '在庫戻し済み'
 };
 
 export function StatusBadge({ status }: { status: string | null }) {

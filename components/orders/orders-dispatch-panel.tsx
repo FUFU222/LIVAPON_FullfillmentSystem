@@ -298,7 +298,7 @@ export function OrdersDispatchPanel({
           <div>
             <p className="text-xs uppercase text-slate-400">追跡番号</p>
             <p className="font-mono text-base text-foreground">
-              {pendingShipment?.trackingNumber ?? trackingNumber || '未入力'}
+              {pendingShipment?.trackingNumber ?? (trackingNumber || '未入力')}
             </p>
           </div>
           <div>

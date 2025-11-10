@@ -9,6 +9,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Modal } from '@/components/ui/modal';
 import type { VendorApplication } from '@/lib/data/vendors';
 
 function SubmitButton({ children, pendingLabel, variant = 'default' }: { children: string; pendingLabel: string; variant?: 'default' | 'outline' | 'ghost' }) {
@@ -106,8 +107,15 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
   const [approveState, approveAction] = useFormState(approveApplicationAction, initialAdminActionState);
   const [rejectState, rejectAction] = useFormState(rejectApplicationAction, initialAdminActionState);
   const rejectFormRef = useRef<HTMLFormElement>(null);
+  const approveFormRef = useRef<HTMLFormElement>(null);
+  const bypassConfirmRef = useRef(false);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [latestCode, setLatestCode] = useState<string | null>(null);
+  const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<{
+    vendorCode: string;
+    notes: string;
+  } | null>(null);
 
   useEffect(() => {
     if (approveState.status === 'success') {
@@ -116,6 +124,38 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
       setShowApprovalDialog(true);
     }
   }, [approveState.status, approveState.details]);
+
+  function handleApproveSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (bypassConfirmRef.current) {
+      bypassConfirmRef.current = false;
+      return;
+    }
+
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const vendorCode = (formData.get('vendorCode') as string | null)?.trim() ?? '';
+    const notes = (formData.get('notes') as string | null)?.trim() ?? '';
+    setPendingApproval({ vendorCode, notes });
+    setShowApprovalConfirm(true);
+  }
+
+  function closeApprovalConfirm() {
+    setShowApprovalConfirm(false);
+    setPendingApproval(null);
+  }
+
+  function confirmApprovalSubmission() {
+    bypassConfirmRef.current = true;
+    setShowApprovalConfirm(false);
+    const form = approveFormRef.current;
+    if (form) {
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        form.submit();
+      }
+    }
+  }
 
   return (
     <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -134,7 +174,12 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <form action={approveAction} className="grid gap-3 rounded-md border border-slate-200 p-3">
+        <form
+          ref={approveFormRef}
+          action={approveAction}
+          className="grid gap-3 rounded-md border border-slate-200 p-3"
+          onSubmit={handleApproveSubmit}
+        >
           <input type="hidden" name="applicationId" value={application.id} />
           <div className="grid gap-1 text-xs text-slate-600">
             <label htmlFor={`vendor-code-${application.id}`} className="font-medium text-foreground">
@@ -187,6 +232,42 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <p>{application.message}</p>
         </div>
       ) : null}
+      <Modal
+        open={showApprovalConfirm}
+        onClose={closeApprovalConfirm}
+        title="承認内容を確認してください"
+        description="入力したベンダーコードと申請情報を確認のうえ、確定ボタンを押してください。"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={closeApprovalConfirm}>
+              戻る
+            </Button>
+            <Button type="button" onClick={confirmApprovalSubmission}>
+              この内容で承認
+            </Button>
+          </div>
+        }
+      >
+        <div className="grid gap-4 text-sm">
+          <div className="grid gap-1">
+            <span className="text-xs text-slate-500">会社名</span>
+            <span className="text-base font-semibold text-foreground">{application.companyName}</span>
+          </div>
+          <div className="grid gap-1">
+            <span className="text-xs text-slate-500">付与予定のベンダーコード</span>
+            <span className="text-lg font-mono">
+              {pendingApproval?.vendorCode || application.vendorCode || '（未入力）→ 承認時に自動採番'}
+            </span>
+          </div>
+          <div className="grid gap-1">
+            <span className="text-xs text-slate-500">メモ</span>
+            <span className="text-slate-700">{pendingApproval?.notes || '（メモ未入力）'}</span>
+          </div>
+          <p className="text-xs text-amber-700">
+            Enter キーの押下でも直接送信されず、この確認モーダルでのみ確定できます。
+          </p>
+        </div>
+      </Modal>
       <ApprovalSuccessDialog
         open={showApprovalDialog}
         vendorCode={latestCode}

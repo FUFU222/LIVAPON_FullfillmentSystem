@@ -29,16 +29,15 @@ function formatDate(date: string | null) {
   }
 }
 
-function computeRemainingQuantity(lineItem: OrderLineItemSummary): number {
-  const shippedQuantity = lineItem.shipments.reduce((total, shipment) => {
-    return total + (shipment.quantity ?? 0);
-  }, 0);
+function getShippedQuantity(lineItem: OrderLineItemSummary): number {
+  return lineItem.shipments.reduce((total, shipment) => total + (shipment.quantity ?? 0), 0);
+}
 
+function getRemainingQuantity(lineItem: OrderLineItemSummary): number {
   if (typeof lineItem.fulfillableQuantity === "number") {
     return Math.max(lineItem.fulfillableQuantity, 0);
   }
-
-  return Math.max(lineItem.quantity - shippedQuantity, 0);
+  return Math.max(lineItem.quantity - getShippedQuantity(lineItem), 0);
 }
 
 type SelectedLineItem = {
@@ -49,13 +48,13 @@ type SelectedLineItem = {
   sku: string | null;
   variantTitle: string | null;
   totalOrdered: number;
-  fulfilledQuantity: number;
+  shippedQuantity: number;
   availableQuantity: number;
   quantity: number;
 };
 
 export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
-  const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
   const [selectedLineItems, setSelectedLineItems] = useState<Map<number, SelectedLineItem>>(new Map());
 
   useEffect(() => {
@@ -67,16 +66,17 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
         if (!order || order.isArchived || !lineItem) {
           return;
         }
-        const remaining = computeRemainingQuantity(lineItem);
+        const remaining = getRemainingQuantity(lineItem);
         if (remaining <= 0) {
           return;
         }
+        const shipped = getShippedQuantity(lineItem);
         next.set(key, {
           ...value,
           sku: lineItem.sku,
           variantTitle: lineItem.variantTitle,
           totalOrdered: lineItem.quantity,
-          fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
+          shippedQuantity: shipped,
           availableQuantity: remaining,
           quantity: Math.min(value.quantity, remaining)
         });
@@ -86,15 +86,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
   }, [orders]);
 
   const toggleExpanded = useCallback((orderId: number) => {
-    setExpandedOrders((prev) => {
-      const next = new Set(prev);
-      if (next.has(orderId)) {
-        next.delete(orderId);
-      } else {
-        next.add(orderId);
-      }
-      return next;
-    });
+    setExpandedOrderId((prev) => (prev === orderId ? null : orderId));
   }, []);
 
   const clearSelection = useCallback(() => {
@@ -114,10 +106,11 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
 
   const upsertLineItemSelection = useCallback(
     (order: OrderSummary, lineItem: OrderLineItemSummary) => {
-      const remaining = computeRemainingQuantity(lineItem);
+      const remaining = getRemainingQuantity(lineItem);
       if (remaining <= 0) {
         return;
       }
+      const shipped = getShippedQuantity(lineItem);
       setSelectedLineItems((prev) => {
         const next = new Map(prev);
         next.set(lineItem.id, {
@@ -128,7 +121,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           sku: lineItem.sku,
           variantTitle: lineItem.variantTitle,
           totalOrdered: lineItem.quantity,
-          fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
+          shippedQuantity: shipped,
           availableQuantity: remaining,
           quantity: Math.min(remaining, next.get(lineItem.id)?.quantity ?? remaining)
         });
@@ -150,10 +143,11 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           return next;
         }
 
-        const remaining = computeRemainingQuantity(lineItem);
+        const remaining = getRemainingQuantity(lineItem);
         if (remaining <= 0) {
           return prev;
         }
+        const shipped = getShippedQuantity(lineItem);
 
         next.set(lineItem.id, {
           lineItemId: lineItem.id,
@@ -163,7 +157,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           sku: lineItem.sku,
           variantTitle: lineItem.variantTitle,
           totalOrdered: lineItem.quantity,
-          fulfilledQuantity: lineItem.fulfilledQuantity ?? 0,
+          shippedQuantity: shipped,
           availableQuantity: remaining,
           quantity: remaining
         });
@@ -180,11 +174,11 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
       }
       setSelectedLineItems((prev) => {
         const next = new Map(prev);
-        const selectableItems = order.lineItems.filter((item) => computeRemainingQuantity(item) > 0);
+        const selectableItems = order.lineItems.filter((item) => getRemainingQuantity(item) > 0);
 
         if (checked) {
           selectableItems.forEach((item) => {
-            const remaining = computeRemainingQuantity(item);
+            const remaining = getRemainingQuantity(item);
             next.set(item.id, {
               lineItemId: item.id,
               orderId: order.id,
@@ -193,7 +187,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
               sku: item.sku,
               variantTitle: item.variantTitle,
               totalOrdered: item.quantity,
-              fulfilledQuantity: item.fulfilledQuantity ?? 0,
+              shippedQuantity: getShippedQuantity(item),
               availableQuantity: remaining,
               quantity: remaining
             });
@@ -258,10 +252,10 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
         </TableHeader>
         <TableBody>
           {orders.map((order) => {
-            const isExpanded = expandedOrders.has(order.id);
+            const isExpanded = expandedOrderId === order.id;
             const selectableItems = order.isArchived
               ? []
-              : order.lineItems.filter((item) => computeRemainingQuantity(item) > 0);
+              : order.lineItems.filter((item) => getRemainingQuantity(item) > 0);
             const selectedCount = selectableItems.filter((item) => selectedLineItems.has(item.id)).length;
             const allSelected = selectableItems.length > 0 && selectedCount === selectableItems.length;
             const orderDisabled = order.isArchived;
@@ -335,13 +329,14 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                               <th className={cn("w-16 text-left", LINE_ITEM_HEAD)}>選択</th>
                               <th className={cn("text-left", LINE_ITEM_HEAD)}>商品</th>
                               <th className={cn("text-left", LINE_ITEM_HEAD)}>注文数</th>
-                              <th className={cn("text-left", LINE_ITEM_HEAD)}>発送済み</th>
-                              <th className={cn("text-left", LINE_ITEM_HEAD)}>未発送</th>
+                          <th className={cn("text-left", LINE_ITEM_HEAD)}>発送済み</th>
+                          <th className={cn("text-left", LINE_ITEM_HEAD)}>未発送</th>
                             </tr>
                           </thead>
                           <tbody>
                           {order.lineItems.map((lineItem) => {
-                            const remaining = computeRemainingQuantity(lineItem);
+                            const remaining = getRemainingQuantity(lineItem);
+                            const shipped = getShippedQuantity(lineItem);
                             const isSelected = selectedLineItems.has(lineItem.id);
                             return (
                               <tr
@@ -376,7 +371,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                                   </div>
                                 </td>
                                 <td className={LINE_ITEM_CELL}>{lineItem.quantity}</td>
-                                <td className={LINE_ITEM_CELL}>{lineItem.fulfilledQuantity ?? 0}</td>
+                                <td className={LINE_ITEM_CELL}>{shipped}</td>
                                 <td className={LINE_ITEM_CELL}>{remaining}</td>
                               </tr>
                             );

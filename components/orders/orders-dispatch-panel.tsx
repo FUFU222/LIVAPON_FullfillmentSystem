@@ -26,7 +26,7 @@ type SelectedLineItem = {
   sku: string | null;
   variantTitle: string | null;
   totalOrdered: number;
-  fulfilledQuantity: number;
+  shippedQuantity: number;
   availableQuantity: number;
   quantity: number;
 };
@@ -54,6 +54,12 @@ export function OrdersDispatchPanel({
   const [carrier, setCarrier] = useState(carrierOptions[0]?.value ?? "");
   const [isSubmitting, setSubmitting] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingShipment, setPendingShipment] = useState<{
+    trackingNumber: string;
+    carrier: string;
+    items: Array<{ orderId: number; lineItemId: number; quantity: number }>;
+  } | null>(null);
 
   const selectedByOrder = useMemo(() => {
     const map = new Map<number, { order: OrderSummary; items: SelectedLineItem[] }>();
@@ -69,7 +75,7 @@ export function OrdersDispatchPanel({
     return Array.from(map.values());
   }, [orders, selectedLineItems]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!trackingNumber.trim()) {
       showToast({
         variant: "warning",
@@ -93,6 +99,23 @@ export function OrdersDispatchPanel({
       return;
     }
 
+    setPendingShipment({
+      trackingNumber: trackingNumber.trim(),
+      carrier,
+      items: selectedLineItems.map((item) => ({
+        orderId: item.orderId,
+        lineItemId: item.lineItemId,
+        quantity: item.quantity
+      }))
+    });
+    setConfirmOpen(true);
+  };
+
+  const submitShipment = async () => {
+    if (!pendingShipment) {
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -101,15 +124,7 @@ export function OrdersDispatchPanel({
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          trackingNumber: trackingNumber.trim(),
-          carrier,
-          items: selectedLineItems.map((item) => ({
-            orderId: item.orderId,
-            lineItemId: item.lineItemId,
-            quantity: item.quantity
-          }))
-        })
+        body: JSON.stringify(pendingShipment)
       });
 
       if (!response.ok) {
@@ -122,13 +137,15 @@ export function OrdersDispatchPanel({
       showToast({
         variant: "success",
         title: "発送を登録しました",
-        description: `${selectedLineItems.length}件の明細を Shopify と同期しました。`,
+        description: `${pendingShipment.items.length}件の明細を Shopify と同期しました。`,
         duration: 2500
       });
 
       onClearSelection();
       setTrackingNumber("");
       setCarrier(carrierOptions[0]?.value ?? "");
+      setPendingShipment(null);
+      setConfirmOpen(false);
       router.refresh();
     } catch (error) {
       console.error("Failed to submit shipment", error);
@@ -149,6 +166,8 @@ export function OrdersDispatchPanel({
   useEffect(() => {
     if (selectedLineItems.length === 0) {
       setDetailOpen(false);
+      setConfirmOpen(false);
+      setPendingShipment(null);
     }
   }, [selectedLineItems.length]);
 
@@ -245,8 +264,84 @@ export function OrdersDispatchPanel({
               )}
             </Button>
           </div>
-        </div>
       </div>
+    </div>
+
+      <Modal
+        open={confirmOpen}
+        onClose={() => {
+          if (!isSubmitting) {
+            setConfirmOpen(false);
+          }
+        }}
+        title="発送登録の最終確認"
+        description="この操作は即時に Shopify へ同期されます。内容に誤りがないか確認してから確定してください。"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setConfirmOpen(false)}>
+              戻る
+            </Button>
+            <Button type="button" disabled={isSubmitting} onClick={submitShipment} className="gap-2">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  <span>登録中…</span>
+                </>
+              ) : (
+                'この内容で発送登録'
+              )}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-sm text-slate-600">
+          <div>
+            <p className="text-xs uppercase text-slate-400">追跡番号</p>
+            <p className="font-mono text-base text-foreground">
+              {pendingShipment?.trackingNumber ?? trackingNumber || '未入力'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-slate-400">配送業者</p>
+            <p className="font-semibold text-foreground">
+              {carrierOptions.find((option) => option.value === (pendingShipment?.carrier ?? carrier))?.label ?? carrier}
+            </p>
+          </div>
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            登録後に内容を修正する場合は発送キャンセル手続きが必要になります。選択した各明細の数量・追跡番号を必ず見直してください。
+          </div>
+          <div className="max-h-52 overflow-y-auto rounded-md border border-slate-200">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-slate-500">
+                <tr>
+                  <th className="px-3 py-2 text-left">注文番号</th>
+                  <th className="px-3 py-2 text-left">商品</th>
+                  <th className="px-3 py-2 text-right">出荷数</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedLineItems.map((item) => (
+                  <tr key={`confirm-${item.lineItemId}`} className="border-t border-slate-100">
+                    <td className="px-3 py-2 font-medium text-slate-700">{item.orderNumber}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col">
+                        <span>{item.productName}</span>
+                        {item.variantTitle ? (
+                          <span className="text-[11px] text-slate-500">{item.variantTitle}</span>
+                        ) : null}
+                        {item.sku ? (
+                          <span className="text-[11px] text-slate-400">SKU: {item.sku}</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold text-foreground">{item.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={detailOpen}
@@ -279,7 +374,7 @@ export function OrdersDispatchPanel({
                         <span>オプション: {item.variantTitle}</span>
                       ) : null}
                       <span>注文数: {item.totalOrdered}</span>
-                      <span>発送済み: {item.fulfilledQuantity}</span>
+                      <span>発送済み: {item.shippedQuantity}</span>
                       <span>未発送: {Math.max(item.availableQuantity, 0)}</span>
                     </div>
                     <div className="flex items-center gap-2">

@@ -1,0 +1,326 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/supabase/types';
+import {
+  syncShipmentWithShopify,
+  cancelShopifyFulfillment,
+  loadShopifyAccessToken
+} from '@/lib/shopify/fulfillment';
+import { assertServiceClient, getOptionalServiceClient } from './clients';
+
+export async function upsertShipment(
+  shipment: {
+    id?: number;
+    lineItemIds: number[];
+    trackingNumber: string;
+    carrier: string;
+    status: string;
+    shippedAt?: string | null;
+    lineItemQuantities?: Record<number, number | null>;
+  },
+  vendorId: number
+) {
+  if (!Number.isInteger(vendorId)) {
+    throw new Error('A valid vendorId is required to update shipments');
+  }
+
+  const client: SupabaseClient<Database> = assertServiceClient();
+
+  if (!Array.isArray(shipment.lineItemIds) || shipment.lineItemIds.length === 0) {
+    throw new Error('lineItemIds must contain at least one item');
+  }
+
+  const { data: lineItems, error: lineItemsError } = await client
+    .from('line_items')
+    .select('id, vendor_id, order_id, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id, quantity')
+    .in('id', shipment.lineItemIds);
+
+  if (lineItemsError) {
+    throw lineItemsError;
+  }
+
+  if (!lineItems || lineItems.length !== shipment.lineItemIds.length) {
+    throw new Error('Line items not found');
+  }
+
+  const unauthorized = lineItems.some((item) => item.vendor_id !== vendorId);
+  if (unauthorized) {
+    throw new Error('Unauthorized line items included in shipment');
+  }
+
+  const orderId = lineItems[0]?.order_id ?? null;
+  if (!orderId || lineItems.some((item) => item.order_id !== orderId)) {
+    throw new Error('Line items must belong to the same order');
+  }
+
+  const nowIso = new Date().toISOString();
+
+  const payload: Database['public']['Tables']['shipments']['Insert'] = {
+    tracking_number: shipment.trackingNumber,
+    carrier: shipment.carrier,
+    status: shipment.status,
+    shipped_at: shipment.shippedAt ?? nowIso,
+    vendor_id: vendorId,
+    order_id: orderId,
+    tracking_company: shipment.carrier,
+    sync_status: 'pending',
+    synced_at: null,
+    sync_error: null,
+    updated_at: nowIso,
+    sync_retry_count: 0,
+    last_retry_at: null,
+    sync_pending_until: null
+  } satisfies Database['public']['Tables']['shipments']['Insert'];
+
+  let shipmentId = shipment.id ?? null;
+
+  if (shipmentId) {
+    const { error: updateError } = await client
+      .from('shipments')
+      .update(payload)
+      .eq('id', shipmentId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    const { error: deletePivotError } = await client
+      .from('shipment_line_items')
+      .delete()
+      .eq('shipment_id', shipmentId);
+
+    if (deletePivotError) {
+      throw deletePivotError;
+    }
+  } else {
+    const { data: insertData, error: insertError } = await client
+      .from('shipments')
+      .insert(payload)
+      .select('id')
+      .single();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    shipmentId = insertData.id;
+  }
+
+  const pivotInserts: Database['public']['Tables']['shipment_line_items']['Insert'][] = shipment.lineItemIds.map((lineItemId) => {
+    const matching = lineItems.find((item) => item.id === lineItemId);
+    const overrideQuantity = shipment.lineItemQuantities?.[lineItemId] ?? null;
+    const baseQuantity = matching?.fulfillable_quantity ?? matching?.quantity ?? null;
+    const quantity = overrideQuantity ?? baseQuantity;
+    return {
+      shipment_id: shipmentId as number,
+      line_item_id: lineItemId,
+      quantity,
+      fulfillment_order_line_item_id: matching?.fulfillment_order_line_item_id ?? null
+    };
+  });
+
+  const { error: pivotError } = await client
+    .from('shipment_line_items')
+    .insert(pivotInserts);
+
+  if (pivotError) {
+    throw pivotError;
+  }
+
+  try {
+    await syncShipmentWithShopify(shipmentId as number);
+  } catch (error) {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const rawMessage = error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました';
+    const isFoMissing = rawMessage.includes('No fulfillment order found for Shopify order');
+
+    const updatePayload: Database['public']['Tables']['shipments']['Update'] = {
+      sync_status: isFoMissing ? 'pending' : 'error',
+      sync_error: rawMessage,
+      updated_at: nowIso,
+      last_retry_at: nowIso,
+      sync_pending_until: null
+    };
+
+    if (isFoMissing) {
+      const { data: retryInfo } = await client
+        .from('shipments')
+        .select('sync_retry_count')
+        .eq('id', shipmentId as number)
+        .maybeSingle();
+
+      const currentRetryCount = retryInfo?.sync_retry_count ?? 0;
+      const nextRetryCount = currentRetryCount + 1;
+      const baseDelayMinutes = 5;
+      const delayMinutes = Math.min(60, baseDelayMinutes * Math.pow(2, currentRetryCount));
+      const pendingUntil = new Date(now.getTime() + delayMinutes * 60_000).toISOString();
+
+      updatePayload.sync_retry_count = nextRetryCount;
+      updatePayload.sync_pending_until = pendingUntil;
+    }
+
+    await client
+      .from('shipments')
+      .update(updatePayload)
+      .eq('id', shipmentId as number);
+
+    if (isFoMissing) {
+      throw new Error('Shopify 側の Fulfillment Order がまだ生成されていないため、追跡番号の同期を保留しました。数分後に自動で再試行します。');
+    }
+
+    throw error instanceof Error ? error : new Error(rawMessage);
+  }
+}
+
+export async function markShipmentsCancelledForOrder(orderId: number): Promise<void> {
+  if (!Number.isInteger(orderId)) {
+    throw new Error('A valid orderId is required to cancel shipments');
+  }
+
+  const client = assertServiceClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: shipmentIds, error: listError } = await client
+    .from('shipments')
+    .select('id')
+    .eq('order_id', orderId);
+
+  if (listError) {
+    throw listError;
+  }
+
+  if (!shipmentIds || shipmentIds.length === 0) {
+    return;
+  }
+
+  await client
+    .from('shipments')
+    .update({
+      status: 'cancelled',
+      sync_status: 'cancelled',
+      sync_error: null,
+      shopify_fulfillment_id: null,
+      synced_at: null,
+      updated_at: nowIso,
+      last_retry_at: nowIso,
+      sync_pending_until: null
+    })
+    .eq('order_id', orderId);
+}
+
+export async function updateOrderStatus(orderId: number, status: string, vendorId: number) {
+  if (!Number.isInteger(vendorId)) {
+    throw new Error('A valid vendorId is required to update order status');
+  }
+
+  const client = assertServiceClient();
+
+  const { data: permittedLineItem, error: lineItemError } = await client
+    .from('line_items')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('vendor_id', vendorId)
+    .limit(1)
+    .maybeSingle();
+
+  if (lineItemError) {
+    throw lineItemError;
+  }
+
+  if (!permittedLineItem) {
+    throw new Error('Unauthorized to update this order');
+  }
+
+  const { error } = await client
+    .from('orders')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', orderId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function cancelShipment(
+  shipmentId: number,
+  vendorId: number,
+  options?: { reasonType?: string | null; reasonDetail?: string | null }
+) {
+  if (!Number.isInteger(vendorId)) {
+    throw new Error('A valid vendorId is required to cancel shipments');
+  }
+
+  const client: SupabaseClient<Database> = assertServiceClient();
+
+  const { data: shipment, error: shipmentError } = await client
+    .from('shipments')
+    .select(
+      `id, vendor_id, order_id, shopify_fulfillment_id,
+       order:orders(id, shop_domain, shopify_order_id),
+       line_items:shipment_line_items(line_item_id)`
+    )
+    .eq('id', shipmentId)
+    .maybeSingle();
+
+  if (shipmentError) {
+    throw shipmentError;
+  }
+
+  if (!shipment) {
+    throw new Error('Shipment not found');
+  }
+
+  if (shipment.vendor_id !== vendorId) {
+    throw new Error('Unauthorized to cancel this shipment');
+  }
+
+  const order = shipment.order;
+  if (!order) {
+    throw new Error('Shipment missing related order');
+  }
+
+  if (shipment.shopify_fulfillment_id) {
+    const accessToken = await loadShopifyAccessToken(client, order.shop_domain ?? '');
+    await cancelShopifyFulfillment(
+      order.shop_domain ?? '',
+      accessToken,
+      shipment.shopify_fulfillment_id
+    );
+  }
+
+  const reasonType = options?.reasonType?.trim() || 'unspecified';
+  const reasonDetail = options?.reasonDetail?.trim() || null;
+
+  await client.from('shipment_cancellation_logs').insert({
+    shipment_id: shipment.id,
+    order_id: order.id,
+    vendor_id: vendorId,
+    reason_type: reasonType,
+    reason_detail: reasonDetail
+  });
+
+  const { error: deleteError } = await client
+    .from('shipments')
+    .delete()
+    .eq('id', shipment.id);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  const { count } = await client
+    .from('shipments')
+    .select('id', { count: 'exact', head: true })
+    .eq('order_id', order.id);
+
+  if (!count) {
+    const { error: updateOrderError } = await client
+      .from('orders')
+      .update({ status: 'unfulfilled', updated_at: new Date().toISOString() })
+      .eq('id', order.id);
+
+    if (updateOrderError) {
+      throw updateOrderError;
+    }
+  }
+}

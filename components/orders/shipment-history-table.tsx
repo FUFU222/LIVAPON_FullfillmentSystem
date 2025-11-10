@@ -56,8 +56,8 @@ function CancelShipmentForm({
     <div className="grid gap-2">
       <Button
         type="button"
-        variant="outline"
-        className="text-xs text-red-600 hover:bg-red-50"
+        variant="ghost"
+        className="text-xs font-semibold text-red-600 transition hover:text-red-700 hover:bg-red-50"
         onClick={() => setConfirmOpen(true)}
       >
         未発送に戻す
@@ -66,7 +66,7 @@ function CancelShipmentForm({
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         title="未発送に戻します"
-        description="この発送を取り消して未発送状態に戻します。理由を入力してから確定してください。"
+        description="この発送を取り消して未発送状態に戻します。理由を入力後、確定してください。"
         footer={null}
       >
         <form action={formAction} className="grid gap-3 text-sm text-slate-700">
@@ -141,7 +141,7 @@ function CancelButton({ label = "未発送に戻す" }: { label?: string }) {
       type="submit"
       variant="outline"
       disabled={pending}
-      className="gap-2 text-xs"
+      className="gap-2 text-xs border-red-400 text-red-700 transition hover:border-red-500 hover:bg-red-50"
     >
       {pending ? (
         <>

@@ -296,10 +296,19 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                   {orderDisabled ? (
                     <Badge className="ml-2 bg-slate-200 text-slate-700">アーカイブ済み</Badge>
                   ) : null}
+                  {order.shopifyStatus ? (
+                    <span className="ml-2 rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+                      {order.shopifyStatus}
+                    </span>
+                  ) : null}
                 </TableCell>
-                  <TableCell className={cn(ORDER_ROW_CELL, "text-slate-800 font-medium")}>{order.customerName ?? '-'} </TableCell>
+                  <TableCell className={cn(ORDER_ROW_CELL, "text-base font-semibold text-slate-900")}>{order.customerName ?? '-'} </TableCell>
                   <TableCell className={ORDER_ROW_CELL_MUTED}>
-                    {order.shippingAddressLines.length > 0 ? order.shippingAddressLines.join('\n') : '住所情報が未登録です'}
+                    {order.shippingAddressLines.length > 0 ? (
+                      <span className="whitespace-pre-line text-slate-700">{order.shippingAddressLines.join('\n')}</span>
+                    ) : (
+                      '住所情報が未登録です'
+                    )}
                   </TableCell>
                   <TableCell className={ORDER_ROW_CELL}>{order.lineItemCount}</TableCell>
                   <TableCell className={ORDER_ROW_CELL}>

@@ -356,6 +356,11 @@ export function OrdersDispatchPanel({
                 <div className="flex flex-col">
                   <span className="text-base font-semibold text-slate-900">{order.orderNumber}</span>
                   <span className="text-sm text-slate-600">{order.customerName ?? '-'}</span>
+                  {order.shippingAddressLines.length > 0 ? (
+                    <span className="text-xs text-slate-500">
+                      {order.shippingAddressLines.join(' / ')}
+                    </span>
+                  ) : null}
                 </div>
                 <button
                   type="button"

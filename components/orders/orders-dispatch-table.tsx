@@ -40,6 +40,10 @@ function getRemainingQuantity(lineItem: OrderLineItemSummary): number {
   return Math.max(lineItem.quantity - getShippedQuantity(lineItem), 0);
 }
 
+function getLineItemStatus(lineItem: OrderLineItemSummary): 'fulfilled' | 'unfulfilled' {
+  return getRemainingQuantity(lineItem) <= 0 ? 'fulfilled' : 'unfulfilled';
+}
+
 type SelectedLineItem = {
   lineItemId: number;
   orderId: number;
@@ -328,15 +332,13 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
                               <th className={cn("w-16 text-left", LINE_ITEM_HEAD)}>選択</th>
                               <th className={cn("text-left", LINE_ITEM_HEAD)}>商品</th>
-                              <th className={cn("text-left", LINE_ITEM_HEAD)}>注文数</th>
-                          <th className={cn("text-left", LINE_ITEM_HEAD)}>発送済み</th>
-                          <th className={cn("text-left", LINE_ITEM_HEAD)}>未発送</th>
+                              <th className={cn("text-left", LINE_ITEM_HEAD)}>状態</th>
                             </tr>
                           </thead>
                           <tbody>
                           {order.lineItems.map((lineItem) => {
                             const remaining = getRemainingQuantity(lineItem);
-                            const shipped = getShippedQuantity(lineItem);
+                            const status = getLineItemStatus(lineItem);
                             const isSelected = selectedLineItems.has(lineItem.id);
                             return (
                               <tr
@@ -368,11 +370,12 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                                     {lineItem.variantTitle ? (
                                       <span className="text-[11px] text-slate-500">{lineItem.variantTitle}</span>
                                     ) : null}
+                                    <span className="text-[11px] text-slate-400">注文数: {lineItem.quantity}</span>
                                   </div>
                                 </td>
-                                <td className={LINE_ITEM_CELL}>{lineItem.quantity}</td>
-                                <td className={LINE_ITEM_CELL}>{shipped}</td>
-                                <td className={LINE_ITEM_CELL}>{remaining}</td>
+                                <td className={LINE_ITEM_CELL}>
+                                  <StatusBadge status={status} />
+                                </td>
                               </tr>
                             );
                           })}

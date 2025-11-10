@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/orders/status-badge";
+import { Modal } from "@/components/ui/modal";
 
 const INITIAL_STATE: ShipmentActionState = {
   status: "idle",
@@ -53,21 +54,27 @@ function CancelShipmentForm({
 
   return (
     <div className="grid gap-2">
-      <button
+      <Button
         type="button"
-        className="text-xs text-red-600 underline-offset-2 hover:underline"
+        variant="outline"
+        className="text-xs text-red-600 hover:bg-red-50"
         onClick={() => setConfirmOpen(true)}
       >
         未発送に戻す
-      </button>
-      {confirmOpen ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-          <form action={formAction} className="grid gap-2">
-            <p className="font-semibold">この発送を未発送に戻します。戻す理由を必ず選択してください。</p>
-            <input type="hidden" name="shipmentId" value={shipmentId} />
-            {orderId ? <input type="hidden" name="orderId" value={orderId} /> : null}
-            <input type="hidden" name="redirectTo" value="/orders/shipments" />
-            <label className="text-[11px] font-medium text-red-700" htmlFor={`reason-${shipmentId}`}>
+      </Button>
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="未発送に戻します"
+        description="この発送を取り消して未発送状態に戻します。理由を入力してから確定してください。"
+        footer={null}
+      >
+        <form action={formAction} className="grid gap-3 text-sm text-slate-700">
+          <input type="hidden" name="shipmentId" value={shipmentId} />
+          {orderId ? <input type="hidden" name="orderId" value={orderId} /> : null}
+          <input type="hidden" name="redirectTo" value="/orders/shipments" />
+          <div className="grid gap-1">
+            <label className="text-xs font-medium text-slate-600" htmlFor={`reason-${shipmentId}`}>
               取消理由
             </label>
             <select
@@ -81,7 +88,7 @@ function CancelShipmentForm({
                   setOtherReason("");
                 }
               }}
-              className="rounded-md border border-red-200 px-2 py-1 text-xs"
+              className="rounded-md border border-slate-200 px-2 py-1 text-sm"
             >
               <option value="" disabled>
                 選択してください
@@ -92,40 +99,41 @@ function CancelShipmentForm({
                 </option>
               ))}
             </select>
-            {reasonType === "other" ? (
+          </div>
+          {reasonType === "other" ? (
+            <div className="grid gap-1">
+              <label className="text-xs font-medium text-slate-600" htmlFor={`detail-${shipmentId}`}>
+                詳細
+              </label>
               <textarea
+                id={`detail-${shipmentId}`}
                 name="reasonDetail"
                 value={otherReason}
                 onChange={(event) => setOtherReason(event.target.value)}
                 required
                 placeholder="理由を入力してください"
-                className="min-h-[72px] rounded-md border border-red-200 px-2 py-1 text-xs"
+                className="min-h-[96px] rounded-md border border-slate-200 px-2 py-1"
               />
-            ) : (
-              <input type="hidden" name="reasonDetail" value="" />
-            )}
-            <div className="mt-1 flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-red-600 hover:bg-red-100"
-                onClick={() => setConfirmOpen(false)}
-              >
-                キャンセル
-              </Button>
-              <CancelButton />
             </div>
-            {state.status === "error" && state.message ? (
-              <span className="text-xs text-red-600">{state.message}</span>
-            ) : null}
-          </form>
-        </div>
-      ) : null}
+          ) : (
+            <input type="hidden" name="reasonDetail" value="" />
+          )}
+          {state.status === "error" && state.message ? (
+            <span className="text-xs text-red-600">{state.message}</span>
+          ) : null}
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setConfirmOpen(false)}>
+              やめる
+            </Button>
+            <CancelButton label="未発送に戻す" />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
 
-function CancelButton() {
+function CancelButton({ label = "未発送に戻す" }: { label?: string }) {
   const { pending } = useFormStatus();
 
   return (
@@ -141,7 +149,7 @@ function CancelButton() {
           <span>取消中…</span>
         </>
       ) : (
-        "未発送に戻す"
+        label
       )}
     </Button>
   );
@@ -169,7 +177,6 @@ export function ShipmentHistoryTable({
             <th className="px-3 py-2">注文番号</th>
             <th className="px-3 py-2">追跡番号</th>
             <th className="px-3 py-2">配送業者</th>
-            <th className="px-3 py-2">同期状態</th>
             <th className="px-3 py-2">アクション</th>
           </tr>
         </thead>
@@ -201,9 +208,6 @@ export function ShipmentHistoryTable({
               </td>
               <td className="px-3 py-3 text-sm">
                 {shipment.carrier ?? "-"}
-              </td>
-              <td className="px-3 py-3 text-xs text-slate-500">
-                {shipment.syncStatus ?? "-"}
               </td>
               <td className="px-3 py-3">
                 {shipment.orderId ? (

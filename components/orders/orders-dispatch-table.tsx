@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 
 const ORDER_ROW_HEAD = "px-3 py-2 text-[11px] tracking-normal";
 const ORDER_ROW_CELL = "px-3 py-2 align-middle";
-const ORDER_ROW_CELL_MUTED = "px-3 py-2 align-middle text-xs leading-snug text-slate-500 whitespace-pre-line";
+const ORDER_ROW_CELL_MUTED = "px-3 py-2 align-middle text-sm leading-snug text-slate-600 whitespace-pre-line";
 const LINE_ITEM_HEAD = "px-3 py-1.5 text-xs font-medium text-slate-500";
 const LINE_ITEM_CELL = "px-3 py-1.5 text-xs";
 const LINE_ITEM_PRODUCT = "px-3 py-1.5 text-xs text-slate-700";
@@ -291,13 +291,13 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                     onClick={(event) => event.stopPropagation()}
                   />
                 </TableCell>
-                <TableCell className={cn("font-medium text-foreground", ORDER_ROW_CELL)}>
+                <TableCell className={cn("font-semibold text-slate-900", ORDER_ROW_CELL)}>
                   {order.orderNumber}
                   {orderDisabled ? (
                     <Badge className="ml-2 bg-slate-200 text-slate-700">アーカイブ済み</Badge>
                   ) : null}
                 </TableCell>
-                  <TableCell className={ORDER_ROW_CELL}>{order.customerName ?? '-'} </TableCell>
+                  <TableCell className={cn(ORDER_ROW_CELL, "text-slate-800 font-medium")}>{order.customerName ?? '-'} </TableCell>
                   <TableCell className={ORDER_ROW_CELL_MUTED}>
                     {order.shippingAddressLines.length > 0 ? order.shippingAddressLines.join('\n') : '住所情報が未登録です'}
                   </TableCell>
@@ -332,6 +332,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
                               <th className={cn("w-16 text-left", LINE_ITEM_HEAD)}>選択</th>
                               <th className={cn("text-left", LINE_ITEM_HEAD)}>商品</th>
+                              <th className={cn("text-left", LINE_ITEM_HEAD)}>数量</th>
                               <th className={cn("text-left", LINE_ITEM_HEAD)}>状態</th>
                             </tr>
                           </thead>
@@ -366,12 +367,14 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                                 </td>
                                 <td className={LINE_ITEM_PRODUCT}>
                                   <div className="flex flex-col gap-0.5">
-                                    <span className="font-medium text-slate-700">{lineItem.productName}</span>
+                                    <span className="text-sm font-semibold text-slate-800">{lineItem.productName}</span>
                                     {lineItem.variantTitle ? (
-                                      <span className="text-[11px] text-slate-500">{lineItem.variantTitle}</span>
+                                      <span className="text-[11px] text-slate-600">{lineItem.variantTitle}</span>
                                     ) : null}
-                                    <span className="text-[11px] text-slate-400">注文数: {lineItem.quantity}</span>
                                   </div>
+                                </td>
+                                <td className={LINE_ITEM_CELL}>
+                                  <span className="text-sm font-semibold text-slate-700">{lineItem.quantity}</span>
                                 </td>
                                 <td className={LINE_ITEM_CELL}>
                                   <StatusBadge status={status} />

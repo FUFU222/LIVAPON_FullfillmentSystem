@@ -354,8 +354,8 @@ export function OrdersDispatchPanel({
             <div key={order.id} className="rounded-lg border border-slate-200 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-slate-700">{order.orderNumber}</span>
-                  <span className="text-xs text-slate-500">{order.customerName ?? '-'}</span>
+                  <span className="text-base font-semibold text-slate-900">{order.orderNumber}</span>
+                  <span className="text-sm text-slate-600">{order.customerName ?? '-'}</span>
                 </div>
                 <button
                   type="button"
@@ -368,14 +368,17 @@ export function OrdersDispatchPanel({
               <div className="mt-3 space-y-3">
                 {items.map((item) => (
                   <div key={item.lineItemId} className="flex flex-col gap-2 rounded border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-col gap-1 text-xs text-slate-600">
-                      <span className="font-medium text-slate-700">{item.productName}</span>
+                    <div className="flex flex-col gap-1 text-sm text-slate-700">
+                      <span className="text-base font-semibold text-slate-900">{item.productName}</span>
                       {item.variantTitle ? (
-                        <span>オプション: {item.variantTitle}</span>
+                        <span className="text-slate-600">バリエーション: {item.variantTitle}</span>
                       ) : null}
-                      <span>注文数: {item.totalOrdered}</span>
-                      <span>発送済み: {item.shippedQuantity}</span>
-                      <span>未発送: {Math.max(item.availableQuantity, 0)}</span>
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        <span className="font-medium">数量: {item.totalOrdered}</span>
+                        <span className="font-medium">
+                          {Math.max(item.availableQuantity, 0) <= 0 ? '発送済み' : `未発送: ${Math.max(item.availableQuantity, 0)}`}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <label className="text-xs text-slate-500" htmlFor={`modal-qty-${item.lineItemId}`}>

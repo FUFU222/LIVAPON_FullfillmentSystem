@@ -55,7 +55,16 @@ export async function verifyShopifyWebhook(body: ArrayBuffer, headers: Headers):
     const signature = await crypto.subtle.sign('HMAC', key, body);
     const digest = arrayBufferToBase64(signature);
 
-    return timingSafeEqualString(digest, hmacHeader);
+    const match = timingSafeEqualString(digest, hmacHeader);
+    if (!match) {
+      console.warn('HMAC mismatch', {
+        digest,
+        header: hmacHeader,
+        secretLength: SHOPIFY_WEBHOOK_SECRET.length
+      });
+    }
+
+    return match;
   } catch (error) {
     console.error('Failed to verify Shopify webhook signature', error);
     return false;

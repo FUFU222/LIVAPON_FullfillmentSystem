@@ -31,16 +31,15 @@ function calculateShipmentProgress(
     Math.max(lineItem.fulfilledQuantity ?? 0, shippedFromShipments)
   );
 
-  const remainingFromFulfillable =
+  const fallbackRemaining = Math.max(lineItem.quantity - shippedQuantity, 0);
+  const remainingQuantity =
     typeof lineItem.fulfillableQuantity === 'number'
-      ? Math.max(lineItem.fulfillableQuantity, 0)
-      : null;
-
-  const remainingQuantity = remainingFromFulfillable ?? Math.max(lineItem.quantity - shippedQuantity, 0);
+      ? Math.max(0, Math.min(lineItem.fulfillableQuantity, fallbackRemaining))
+      : fallbackRemaining;
 
   return {
     shippedQuantity,
-    remainingQuantity: Math.min(lineItem.quantity, remainingQuantity)
+    remainingQuantity
   };
 }
 

@@ -308,7 +308,7 @@ export function OrdersDispatchPanel({
             </p>
           </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            登録後に内容を修正する場合は発送キャンセル手続きが必要になります。選択した各明細の数量・追跡番号を必ず見直してください。
+            登録後に内容を変更する際は、いったん発送を取り消してから再登録となります。誤送信を防ぐため、選択した明細の数量と追跡番号を落ち着いてご確認ください。
           </div>
           <div className="max-h-52 overflow-y-auto rounded-md border border-slate-200">
             <table className="w-full text-xs">

@@ -67,20 +67,25 @@ function resolveRole(user: User | null): string | null {
 
 export async function getAuthContext(): Promise<AuthContext | null> {
   const supabase = getServerComponentClient();
-  const { data, error } = await supabase.auth.getSession();
+  const [{ data: sessionData, error: sessionError }, { data: userData, error: userError }] =
+    await Promise.all([supabase.auth.getSession(), supabase.auth.getUser()]);
 
-  if (error) {
-    console.error('Failed to retrieve session', error);
-    throw error;
+  if (sessionError) {
+    console.error('Failed to retrieve session', sessionError);
+    throw sessionError;
   }
 
-  const session = data.session;
+  if (userError) {
+    console.error('Failed to retrieve user', userError);
+    throw userError;
+  }
 
-  if (!session) {
+  const session = sessionData.session;
+  const user = userData.user;
+
+  if (!session || !user) {
     return null;
   }
-
-  const { user } = session;
 
   return {
     session,

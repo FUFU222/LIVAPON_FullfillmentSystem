@@ -62,13 +62,13 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     hasLineItems && !fullyShipped && lineItemProgress.some((item) => item.shippedQuantity > 0);
 
   let derivedStatus: string | null = null;
-  if (fullyShipped) {
+  if (order.status === 'cancelled') {
+    // キャンセルされた注文は発送状況に関係なくキャンセル扱い
+    derivedStatus = 'cancelled';
+  } else if (fullyShipped) {
     derivedStatus = 'fulfilled';
   } else if (partiallyShipped) {
     derivedStatus = 'partially_fulfilled';
-  } else if (order.status === 'cancelled') {
-    // 取消はベンダー固有の出荷状況に関わらず伝達する
-    derivedStatus = 'cancelled';
   } else {
     derivedStatus = 'unfulfilled';
   }

@@ -151,3 +151,6 @@ Secrets は `.env.local` で管理し、Git にコミットしない。
 - 置き場所: `public/favicon/` ディレクトリに `icon.svg` もしくは `icon.png`（fallback で `icon.jpg` / `icon.webp` も可）を置くだけでアプリ全体の favicon に反映される。
 - 推奨サイズ: **512x512px** 以上の正方形。SVG の場合はビューボックスを 1:1 にそろえる。
 - 画像を差し替えたら `vercel --prod` で再デプロイするだけで OK（コード変更不要）。ファイルが存在しない場合は自動的に “L” のプレースホルダが描画される。
+
+## 14. 参考リンク
+- `docs/91_ci_quality.md` — Lint/Test/Type/Build、Git Hooks、CI など開発体験を落とさないための具体策。

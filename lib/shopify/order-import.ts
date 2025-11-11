@@ -60,6 +60,7 @@ type ShopifyOrderPayload = {
     variant_title?: string | null;
     quantity: number;
     fulfillable_quantity?: number;
+    fulfilled_quantity?: number;
     vendor?: string | null;
   }>;
   fulfillments?: Array<{
@@ -281,7 +282,11 @@ function deriveOrderStatus(payload: ShopifyOrderPayload): string {
   if (payload.fulfillment_status) {
     return payload.fulfillment_status;
   }
-  if (payload.line_items?.every((item) => item.fulfilled_quantity && item.fulfilled_quantity >= item.quantity)) {
+  if (
+    payload.line_items?.every(
+      (item) => (item.fulfilled_quantity ?? 0) >= item.quantity
+    )
+  ) {
     return 'fulfilled';
   }
   if (payload.line_items?.some((item) => (item.fulfilled_quantity ?? 0) > 0)) {

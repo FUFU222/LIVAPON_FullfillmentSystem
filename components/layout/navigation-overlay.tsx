@@ -21,22 +21,46 @@ export function useNavigationOverlay() {
 export function NavigationOverlayProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [active, setActive] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
 
   const beginNavigation = useCallback(() => {
+    setStartedAt(Date.now());
     setActive(true);
   }, []);
 
+  // Hide overlay shortly after the new pathname renders, while guaranteeing
+  // a minimum visible duration to avoid flicker.
   useEffect(() => {
-    if (!active) {
+    if (!active || startedAt === null) {
       return;
     }
 
+    const MIN_VISIBLE_MS = 350;
+    const elapsed = Date.now() - startedAt;
+    const remaining = Math.max(MIN_VISIBLE_MS - elapsed, 0);
+
     const timer = setTimeout(() => {
       setActive(false);
-    }, 200);
+      setStartedAt(null);
+    }, remaining);
 
     return () => clearTimeout(timer);
-  }, [active, pathname]);
+  }, [pathname, active, startedAt]);
+
+  // Safety guard: ensure overlay never stays indefinitely (e.g. navigation error).
+  useEffect(() => {
+    if (!active || startedAt === null) {
+      return;
+    }
+
+    const MAX_VISIBLE_MS = 3000;
+    const timer = setTimeout(() => {
+      setActive(false);
+      setStartedAt(null);
+    }, MAX_VISIBLE_MS);
+
+    return () => clearTimeout(timer);
+  }, [active, startedAt]);
 
   const contextValue = useMemo<OverlayContextValue>(() => ({ beginNavigation }), [beginNavigation]);
 

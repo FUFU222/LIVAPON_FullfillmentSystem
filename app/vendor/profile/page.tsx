@@ -45,7 +45,6 @@ export default async function VendorProfilePage() {
             <GradientAvatar seed={vendor.name ?? email} label={vendor.name ?? email} size="lg" />
             <div className="flex flex-col gap-1">
               <CardTitle className="text-2xl font-semibold">{vendor.name}</CardTitle>
-              <p className="text-sm text-slate-500">ベンダーコード: {vendor.code ?? '----'}</p>
             </div>
           </div>
         </CardHeader>

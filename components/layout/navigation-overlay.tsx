@@ -28,20 +28,24 @@ export function NavigationOverlayProvider({ children }: { children: ReactNode })
     setActive(true);
   }, []);
 
-  // Hide overlay shortly after the new pathname renders, while guaranteeing
-  // a minimum visible duration to avoid flicker.
+  // Hide overlay only after the new pathname has rendered and
+  // we have shown it long enough to avoid flicker.
   useEffect(() => {
     if (!active || startedAt === null) {
       return;
     }
 
-    const MIN_VISIBLE_MS = 350;
+    const MIN_VISIBLE_MS = 600;
     const elapsed = Date.now() - startedAt;
     const remaining = Math.max(MIN_VISIBLE_MS - elapsed, 0);
 
     const timer = setTimeout(() => {
-      setActive(false);
-      setStartedAt(null);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setActive(false);
+          setStartedAt(null);
+        });
+      });
     }, remaining);
 
     return () => clearTimeout(timer);

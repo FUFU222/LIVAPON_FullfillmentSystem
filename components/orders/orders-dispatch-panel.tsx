@@ -136,8 +136,8 @@ export function OrdersDispatchPanel({
 
       showToast({
         variant: "success",
-        title: "発送を登録しました",
-        description: `${pendingShipment.items.length}件の明細を Shopify と同期しました。`,
+        title: "発送登録を受け付けました",
+        description: `${pendingShipment.items.length}件の明細を保存し、Shopify 同期を実行しています。`,
         duration: 2500
       });
 

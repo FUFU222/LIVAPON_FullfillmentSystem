@@ -278,7 +278,16 @@ function deriveOrderStatus(payload: ShopifyOrderPayload): string {
   if (payload.cancelled_at) {
     return 'cancelled';
   }
-  return payload.fulfillment_status ?? 'unfulfilled';
+  if (payload.fulfillment_status) {
+    return payload.fulfillment_status;
+  }
+  if (payload.line_items?.every((item) => item.fulfilled_quantity && item.fulfilled_quantity >= item.quantity)) {
+    return 'fulfilled';
+  }
+  if (payload.line_items?.some((item) => (item.fulfilled_quantity ?? 0) > 0)) {
+    return 'partially_fulfilled';
+  }
+  return 'unfulfilled';
 }
 
 export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {

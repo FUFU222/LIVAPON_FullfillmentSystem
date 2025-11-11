@@ -82,7 +82,9 @@ export function AdminOrderDetail({ order }: Props) {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    {item.shipments.length === 0 ? (
+                    {order.status === 'cancelled' ? (
+                      <span className="text-slate-400">キャンセル済</span>
+                    ) : item.shipments.length === 0 ? (
                       <span className="text-slate-400">未発送</span>
                     ) : (
                       <ul className="flex flex-col gap-1 text-xs text-slate-600">

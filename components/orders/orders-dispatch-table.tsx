@@ -46,7 +46,13 @@ function getRemainingQuantity(lineItem: OrderLineItemSummary): number {
   return Math.max(lineItem.quantity - getShippedQuantity(lineItem), 0);
 }
 
-function getLineItemStatus(lineItem: OrderLineItemSummary): 'fulfilled' | 'unfulfilled' {
+function getLineItemStatus(
+  lineItem: OrderLineItemSummary,
+  orderStatus: string | null
+): 'fulfilled' | 'unfulfilled' | 'cancelled' {
+  if ((orderStatus ?? '').toLowerCase() === 'cancelled') {
+    return 'cancelled';
+  }
   return getRemainingQuantity(lineItem) <= 0 ? 'fulfilled' : 'unfulfilled';
 }
 
@@ -349,7 +355,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
                           <tbody>
                           {order.lineItems.map((lineItem) => {
                             const remaining = getRemainingQuantity(lineItem);
-                            const status = getLineItemStatus(lineItem);
+                            const status = getLineItemStatus(lineItem, order.status);
                             const isSelected = selectedLineItems.has(lineItem.id);
                             return (
                               <tr

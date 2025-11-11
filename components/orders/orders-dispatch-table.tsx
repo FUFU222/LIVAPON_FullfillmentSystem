@@ -69,7 +69,13 @@ type SelectedLineItem = {
   quantity: number;
 };
 
-export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
+export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary[]; vendorId: number }) {
+  const filteredOrders = useMemo(() =>
+    orders.map((order) => ({
+      ...order,
+      lineItems: order.lineItems.filter((item) => item.vendorId === vendorId)
+    })),
+  [orders, vendorId]);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
   const [selectedLineItems, setSelectedLineItems] = useState<Map<number, SelectedLineItem>>(new Map());
 
@@ -77,7 +83,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
     setSelectedLineItems((prev) => {
       const next = new Map<number, SelectedLineItem>();
       prev.forEach((value, key) => {
-        const order = orders.find((o) => o.id === value.orderId);
+        const order = filteredOrders.find((o) => o.id === value.orderId);
         const lineItem = order?.lineItems.find((item) => item.id === key);
         if (!order || order.isArchived || !lineItem) {
           return;
@@ -99,7 +105,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
       });
       return next;
     });
-  }, [orders]);
+  }, [filteredOrders]);
 
   const toggleExpanded = useCallback((orderId: number) => {
     setExpandedOrderId((prev) => (prev === orderId ? null : orderId));
@@ -267,7 +273,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const isExpanded = expandedOrderId === order.id;
             const selectableItems = order.isArchived
               ? []
@@ -411,7 +417,7 @@ export function OrdersDispatchTable({ orders }: { orders: OrderSummary[] }) {
       </Table>
 
       <OrdersDispatchPanel
-        orders={orders}
+        orders={filteredOrders}
         selectedLineItems={selectedItems}
         onClearSelection={clearSelection}
         onRemoveLineItem={removeLineItemSelection}

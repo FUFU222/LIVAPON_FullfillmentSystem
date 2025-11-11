@@ -100,7 +100,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       </CardHeader>
       <CardContent className="gap-6">
         <OrderFilters />
-        <OrdersDispatchTable orders={paginated} />
+        <OrdersDispatchTable orders={paginated} vendorId={auth.vendorId} />
         <PaginationControls currentPage={currentPage} totalPages={totalPages} params={params} />
       </CardContent>
     </Card>

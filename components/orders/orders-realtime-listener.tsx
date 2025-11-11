@@ -65,6 +65,17 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
     };
   }, [vendorId, orderIds]);
 
+  useEffect(() => {
+    if (!hasUpdates) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setHasUpdates(false);
+      router.refresh();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [hasUpdates, router]);
+
   if (!hasUpdates) {
     return null;
   }

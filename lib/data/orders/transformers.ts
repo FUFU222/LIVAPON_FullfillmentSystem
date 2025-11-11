@@ -111,6 +111,7 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
       productName: lineItem.productName,
       sku: lineItem.sku,
       variantTitle: lineItem.variantTitle,
+      vendorId: lineItem.vendorId,
       quantity: lineItem.quantity,
       fulfilledQuantity: lineItem.fulfilledQuantity,
       fulfillableQuantity: lineItem.fulfillableQuantity,

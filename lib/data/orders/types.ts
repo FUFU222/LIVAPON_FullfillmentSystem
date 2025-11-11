@@ -53,6 +53,7 @@ export type OrderLineItemSummary = {
   fulfillableQuantity: number | null;
   shippedQuantity: number;
   remainingQuantity: number;
+  vendorId: number | null;
   shipments: LineItemShipment[];
 };
 

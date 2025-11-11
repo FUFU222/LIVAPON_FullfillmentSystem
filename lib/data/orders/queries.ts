@@ -1,4 +1,3 @@
-import { cache } from 'react';
 import type { AdminOrderPreview, OrderDetail, OrderSummary, RawOrderRecord, ShipmentHistoryEntry } from './types';
 import { getOptionalServiceClient } from './clients';
 import { mapDetailToSummary, toOrderDetailFromRecord } from './transformers';
@@ -46,7 +45,7 @@ export async function getRecentOrdersForAdmin(limit = 5): Promise<AdminOrderPrev
   });
 }
 
-export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]> => {
+export async function getOrders(vendorId: number): Promise<OrderSummary[]> {
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to load orders');
   }
@@ -83,9 +82,9 @@ export const getOrders = cache(async (vendorId: number): Promise<OrderSummary[]>
     .map((record) => toOrderDetailFromRecord(record, vendorId))
     .filter((order): order is OrderDetail => order !== null)
     .map(mapDetailToSummary);
-});
+}
 
-export const getOrderDetail = cache(async (vendorId: number, id: number): Promise<OrderDetail | null> => {
+export async function getOrderDetail(vendorId: number, id: number): Promise<OrderDetail | null> {
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to load order detail');
   }
@@ -119,9 +118,9 @@ export const getOrderDetail = cache(async (vendorId: number, id: number): Promis
   }
 
   return toOrderDetailFromRecord(data as RawOrderRecord, vendorId);
-});
+}
 
-export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDetail | null> => {
+export async function getOrderDetailForAdmin(id: number): Promise<OrderDetail | null> {
   const client = getOptionalServiceClient();
 
   if (!client) {
@@ -151,7 +150,7 @@ export const getOrderDetailForAdmin = cache(async (id: number): Promise<OrderDet
   }
 
   return toOrderDetailFromRecord(data as RawOrderRecord);
-});
+}
 
 export async function getShipmentHistory(vendorId: number): Promise<ShipmentHistoryEntry[]> {
   if (!Number.isInteger(vendorId)) {

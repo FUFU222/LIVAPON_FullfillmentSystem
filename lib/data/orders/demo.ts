@@ -37,6 +37,8 @@ const demoOrders: OrderDetail[] = [
         quantity: 2,
         fulfilledQuantity: 1,
         fulfillableQuantity: 1,
+        shippedQuantity: 1,
+        remainingQuantity: 1,
         shipments: [
           {
             id: 5001,
@@ -58,8 +60,10 @@ const demoOrders: OrderDetail[] = [
         vendorName: 'デモベンダーA',
         productName: '交換用クッション',
         quantity: 1,
-        fulfilledQuantity: 0,
-        fulfillableQuantity: 1,
+        fulfilledQuantity: 1,
+        fulfillableQuantity: 0,
+        shippedQuantity: 1,
+        remainingQuantity: 0,
         shipments: [
           {
             id: 5001,
@@ -100,6 +104,8 @@ const demoOrders: OrderDetail[] = [
         quantity: 1,
         fulfilledQuantity: 0,
         fulfillableQuantity: 1,
+        shippedQuantity: 0,
+        remainingQuantity: 1,
         shipments: []
       }
     ]

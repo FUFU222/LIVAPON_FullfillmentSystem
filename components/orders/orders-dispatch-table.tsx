@@ -30,10 +30,16 @@ function formatDate(date: string | null) {
 }
 
 function getShippedQuantity(lineItem: OrderLineItemSummary): number {
+  if (typeof lineItem.shippedQuantity === "number") {
+    return lineItem.shippedQuantity;
+  }
   return lineItem.shipments.reduce((total, shipment) => total + (shipment.quantity ?? 0), 0);
 }
 
 function getRemainingQuantity(lineItem: OrderLineItemSummary): number {
+  if (typeof lineItem.remainingQuantity === "number") {
+    return Math.max(lineItem.remainingQuantity, 0);
+  }
   if (typeof lineItem.fulfillableQuantity === "number") {
     return Math.max(lineItem.fulfillableQuantity, 0);
   }

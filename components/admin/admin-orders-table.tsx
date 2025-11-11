@@ -5,7 +5,7 @@ import { Loader2, X } from 'lucide-react';
 import { loadAdminOrderDetailAction } from '@/app/admin/orders/actions';
 import { AdminOrderDetail } from '@/components/admin/admin-order-detail';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/orders/status-badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { AdminOrderPreview, OrderDetail } from '@/lib/data/orders';
@@ -152,7 +152,7 @@ export function AdminOrdersTable({ orders }: Props) {
               >
                 <td className="px-3 py-2 font-medium text-foreground">{order.orderNumber}</td>
                 <td className="px-3 py-2">
-                  <Badge intent={order.status}>{order.status ?? '未設定'}</Badge>
+                  <StatusBadge status={order.status} />
                 </td>
                 <td className="px-3 py-2">{order.customerName ?? '-'}</td>
                 <td className="px-3 py-2">

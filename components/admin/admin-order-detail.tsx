@@ -77,7 +77,8 @@ export function AdminOrderDetail({ order }: Props) {
                   <td className="px-3 py-2">
                     <div className="flex flex-col text-sm">
                       <span>注文: {item.quantity}</span>
-                      <span>発送済: {item.fulfilledQuantity ?? 0}</span>
+                      <span>発送済: {item.shippedQuantity}</span>
+                      <span>残数: {item.remainingQuantity}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2">

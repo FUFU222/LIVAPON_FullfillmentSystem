@@ -36,6 +36,8 @@ export type OrderDetail = {
     quantity: number;
     fulfilledQuantity: number | null;
     fulfillableQuantity: number | null;
+    shippedQuantity: number;
+    remainingQuantity: number;
     shipments: LineItemShipment[];
   }>;
 };
@@ -49,6 +51,8 @@ export type OrderLineItemSummary = {
   quantity: number;
   fulfilledQuantity: number | null;
   fulfillableQuantity: number | null;
+  shippedQuantity: number;
+  remainingQuantity: number;
   shipments: LineItemShipment[];
 };
 

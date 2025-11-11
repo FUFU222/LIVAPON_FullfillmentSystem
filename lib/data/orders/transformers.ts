@@ -14,6 +14,36 @@ function deriveVendorCode(sku: string | null): string | null {
   return sku.slice(0, 4);
 }
 
+function calculateShipmentProgress(
+  lineItem: {
+    quantity: number;
+    fulfilledQuantity: number | null;
+    fulfillableQuantity: number | null;
+    shipments: LineItemShipment[];
+  }
+) {
+  const shippedFromShipments = lineItem.shipments.reduce((total, shipment) => {
+    return total + Math.max(0, shipment.quantity ?? 0);
+  }, 0);
+
+  const shippedQuantity = Math.min(
+    lineItem.quantity,
+    Math.max(lineItem.fulfilledQuantity ?? 0, shippedFromShipments)
+  );
+
+  const remainingFromFulfillable =
+    typeof lineItem.fulfillableQuantity === 'number'
+      ? Math.max(lineItem.fulfillableQuantity, 0)
+      : null;
+
+  const remainingQuantity = remainingFromFulfillable ?? Math.max(lineItem.quantity - shippedQuantity, 0);
+
+  return {
+    shippedQuantity,
+    remainingQuantity: Math.min(lineItem.quantity, remainingQuantity)
+  };
+}
+
 export function mapDetailToSummary(order: OrderDetail): OrderSummary {
   const trackingNumbers = new Set<string>();
   order.shipments.forEach((shipment) => {
@@ -22,16 +52,15 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     }
   });
 
-  const fullyShipped = order.lineItems.every((lineItem) => {
-    const shippedQuantity = lineItem.shipments.reduce((total, shipment) => {
-      return total + Math.max(0, shipment.quantity ?? 0);
-    }, 0);
-    return shippedQuantity >= lineItem.quantity;
-  });
+  const lineItemProgress = order.lineItems.map((lineItem) => ({
+    shippedQuantity: lineItem.shippedQuantity,
+    remainingQuantity: lineItem.remainingQuantity
+  }));
 
-  const partiallyShipped = !fullyShipped && order.lineItems.some((lineItem) => {
-    return lineItem.shipments.some((shipment) => (shipment.quantity ?? 0) > 0);
-  });
+  const hasLineItems = lineItemProgress.length > 0;
+  const fullyShipped = hasLineItems && lineItemProgress.every((item) => item.remainingQuantity <= 0);
+  const partiallyShipped =
+    hasLineItems && !fullyShipped && lineItemProgress.some((item) => item.shippedQuantity > 0);
 
   let derivedStatus: string | null = null;
   if (fullyShipped) {
@@ -86,6 +115,8 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
       quantity: lineItem.quantity,
       fulfilledQuantity: lineItem.fulfilledQuantity,
       fulfillableQuantity: lineItem.fulfillableQuantity,
+      shippedQuantity: lineItem.shippedQuantity,
+      remainingQuantity: lineItem.remainingQuantity,
       shipments: lineItem.shipments
     }))
   };
@@ -159,6 +190,13 @@ export function toOrderDetailFromRecord(
       })
       .filter((value): value is LineItemShipment => value !== null);
 
+    const { shippedQuantity, remainingQuantity } = calculateShipmentProgress({
+      quantity: item.quantity,
+      fulfilledQuantity: item.fulfilled_quantity ?? null,
+      fulfillableQuantity: item.fulfillable_quantity ?? null,
+      shipments: shipmentsForLineItem
+    });
+
     return {
       id: item.id,
       sku: item.sku ?? null,
@@ -170,6 +208,8 @@ export function toOrderDetailFromRecord(
       quantity: item.quantity,
       fulfilledQuantity: item.fulfilled_quantity ?? null,
       fulfillableQuantity: item.fulfillable_quantity ?? null,
+      shippedQuantity,
+      remainingQuantity,
       shipments: shipmentsForLineItem
     };
   });

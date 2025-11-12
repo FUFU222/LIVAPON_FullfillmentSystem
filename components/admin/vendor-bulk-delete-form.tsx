@@ -244,7 +244,8 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
             </Button>
             <Button
               type="button"
-              variant="destructive"
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-50"
               disabled={selectedIds.length === 0}
               onClick={() => {
                 setBulkConfirmOpen(false);

@@ -30,22 +30,20 @@ export function OrderTable({ orders }: { orders: OrderSummary[] }) {
   return (
     <Table>
       <TableHeader>
-          <TableRow>
-            <TableHead>注文番号</TableHead>
-            <TableHead>顧客名</TableHead>
-            <TableHead>商品数</TableHead>
-            <TableHead>ステータス</TableHead>
-            <TableHead>追跡番号</TableHead>
-            <TableHead>注文日時</TableHead>
-            <TableHead>アクション</TableHead>
-          </TableRow>
+        <TableRow>
+          <TableHead>注文番号</TableHead>
+          <TableHead>顧客名</TableHead>
+          <TableHead>ステータス</TableHead>
+          <TableHead>追跡番号</TableHead>
+          <TableHead>注文日時</TableHead>
+          <TableHead>アクション</TableHead>
+        </TableRow>
       </TableHeader>
       <TableBody>
         {orders.map((order) => (
           <TableRow key={order.id}>
             <TableCell className="font-medium">{order.orderNumber}</TableCell>
             <TableCell>{order.customerName ?? '-'}</TableCell>
-            <TableCell>{order.lineItemCount}</TableCell>
             <TableCell>
               <StatusBadge status={order.status} />
             </TableCell>

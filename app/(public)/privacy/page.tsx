@@ -79,7 +79,7 @@ const sections = [
     heading: '10. お問い合わせ窓口',
     body: [
       '本ポリシーに関するお問い合わせは、以下の窓口までお願いいたします。',
-      'メール：info@chairman.jp',
+      'メール：information@chairman.jp',
       '営業時間：平日 10:00-18:00（祝日・年末年始を除く）'
     ]
   },

@@ -267,7 +267,6 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
             <TableHead className={ORDER_ROW_HEAD}>注文番号</TableHead>
             <TableHead className={ORDER_ROW_HEAD}>顧客名</TableHead>
             <TableHead className={ORDER_ROW_HEAD}>配送先住所</TableHead>
-            <TableHead className={ORDER_ROW_HEAD}>商品数</TableHead>
             <TableHead className={ORDER_ROW_HEAD}>ステータス</TableHead>
             <TableHead className={ORDER_ROW_HEAD}>注文日時</TableHead>
           </TableRow>
@@ -307,6 +306,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                     onChange={(event) => toggleOrderSelection(order, event.target.checked)}
                     disabled={selectableItems.length === 0 || orderDisabled}
                     onClick={(event) => event.stopPropagation()}
+                    className="h-4 w-4 sm:h-5 sm:w-5"
                   />
                 </TableCell>
                 <TableCell className={cn("font-semibold text-slate-900", ORDER_ROW_CELL)}>
@@ -315,23 +315,22 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                     <Badge className="ml-2 bg-slate-200 text-slate-700">アーカイブ済み</Badge>
                   ) : null}
                 </TableCell>
-                  <TableCell className={cn(ORDER_ROW_CELL, "text-sm font-medium text-slate-900")}>{order.customerName ?? '-'} </TableCell>
-                  <TableCell className={ORDER_ROW_CELL_MUTED}>
-                    {order.shippingAddressLines.length > 0 ? (
-                      <span className="whitespace-pre-line text-slate-700">{order.shippingAddressLines.join('\n')}</span>
-                    ) : (
-                      '住所情報が未登録です'
-                    )}
-                  </TableCell>
-                  <TableCell className={ORDER_ROW_CELL}>{order.lineItemCount}</TableCell>
-                  <TableCell className={ORDER_ROW_CELL}>
-                    <StatusBadge status={order.status} />
-                  </TableCell>
-                  <TableCell className={ORDER_ROW_CELL}>{formatDate(order.createdAt)}</TableCell>
-                </TableRow>
+                <TableCell className={cn(ORDER_ROW_CELL, "text-sm font-medium text-slate-900")}>{order.customerName ?? '-'}</TableCell>
+                <TableCell className={ORDER_ROW_CELL_MUTED}>
+                  {order.shippingAddressLines.length > 0 ? (
+                    <span className="whitespace-pre-line text-slate-700">{order.shippingAddressLines.join('\n')}</span>
+                  ) : (
+                    '住所情報が未登録です'
+                  )}
+                </TableCell>
+                <TableCell className={ORDER_ROW_CELL}>
+                  <StatusBadge status={order.status} />
+                </TableCell>
+                <TableCell className={ORDER_ROW_CELL}>{formatDate(order.createdAt)}</TableCell>
+              </TableRow>
 
                 <TableRow key={`order-${order.id}-items`} className="bg-slate-50">
-                  <td colSpan={7} className="bg-slate-50 p-0">
+                  <td colSpan={6} className="bg-slate-50 p-0">
                     <div
                       className={cn(
                         "overflow-hidden border-t border-slate-200 transition-[max-height] duration-300 ease-in-out",
@@ -353,8 +352,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                           <thead>
                             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
                               <th className={cn("w-16 text-left", LINE_ITEM_HEAD)}>選択</th>
-                              <th className={cn("text-left", LINE_ITEM_HEAD)}>商品</th>
-                              <th className={cn("text-left", LINE_ITEM_HEAD)}>数量</th>
+                              <th className={cn("text-left", LINE_ITEM_HEAD)}>商品 × 数量</th>
                               <th className={cn("text-left", LINE_ITEM_HEAD)}>状態</th>
                             </tr>
                           </thead>
@@ -370,10 +368,6 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                                   "border-t border-slate-200 transition-colors duration-200",
                                   isSelected && "bg-white"
                                 )}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  toggleLineItemSelection(order, lineItem);
-                                }}
                               >
                                 <td className={LINE_ITEM_CELL}>
                                   <input
@@ -385,18 +379,21 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                                       event.stopPropagation();
                                       toggleLineItemSelection(order, lineItem);
                                     }}
+                                    className="h-4 w-4 sm:h-5 sm:w-5"
                                   />
                                 </td>
                                 <td className={LINE_ITEM_PRODUCT}>
                                   <div className="flex flex-col gap-0.5">
-                                    <span className="text-sm font-semibold text-slate-800">{lineItem.productName}</span>
+                                    <span className="text-sm font-semibold text-slate-800">
+                                      {lineItem.productName}
+                                      <span className="ml-2 text-sm font-normal text-slate-600">
+                                        × {lineItem.quantity}
+                                      </span>
+                                    </span>
                                     {lineItem.variantTitle ? (
                                       <span className="text-[11px] text-slate-600">{lineItem.variantTitle}</span>
                                     ) : null}
                                   </div>
-                                </td>
-                                <td className={LINE_ITEM_CELL}>
-                                  <span className="text-sm font-semibold text-slate-700">{lineItem.quantity}</span>
                                 </td>
                                 <td className={LINE_ITEM_CELL}>
                                   <StatusBadge status={status} />

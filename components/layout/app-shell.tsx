@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
@@ -243,6 +243,16 @@ function AppShellContent({
   const { beginNavigation } = useNavigationOverlay();
   const brandHref = '/';
 
+  const handleNavigation = useCallback(
+    (href: string) => {
+      if (!pathname || pathname === href) {
+        return;
+      }
+      beginNavigation();
+    },
+    [beginNavigation, pathname]
+  );
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
@@ -250,7 +260,7 @@ function AppShellContent({
           <Link
             href={brandHref}
             className="flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground"
-            onClick={() => beginNavigation()}
+            onClick={() => handleNavigation(brandHref)}
           >
             <Image
               src="/LIVAPON_logo_horizontal.svg"
@@ -276,7 +286,7 @@ function AppShellContent({
                         ? 'bg-foreground text-white shadow-sm'
                       : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
-                    onClick={() => beginNavigation()}
+                    onClick={() => handleNavigation(item.href)}
                   >
                     {item.label}
                   </Link>

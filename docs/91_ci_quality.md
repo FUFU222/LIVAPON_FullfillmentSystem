@@ -9,6 +9,8 @@
 - `npm run build` … Next.js の production build が通ることを確認。`FAVICON` など静的アセットもここで検出できる。
 
 > **開発体験 Tips**: `npm run verify` を作り、上記 4 コマンドをまとめて実行。VSCode の Tasks で 1 キー実行できるようにしておくと便利です。
+>
+> **Push タイミング**: Lint / test / build がローカルで通ったら、こまめに `git commit` & `git push`。検証済みの差分は早めにサーバーへ反映し、CI が落ちても巻き戻せるようにする。
 
 ## 2. Git Hooks（手元の強制力）
 - `pre-commit`: `npm run lint` + `npm run typecheck`。`lint-staged` で差分ファイルに限定する。

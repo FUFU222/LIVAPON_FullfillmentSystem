@@ -51,7 +51,7 @@ export function VendorDeleteButton({ vendorId, vendorName }: Props) {
       <ConfirmDialog
         open={open}
         title={`「${vendorName}」を削除しますか？`}
-        description="関連するデータが存在する場合は削除できないことがあります。"
+        description="この操作は元に戻せません。関連データが存在する場合は削除できないことがあります。"
         confirmLabel="削除する"
         cancelLabel="キャンセル"
         confirmVariant="danger"

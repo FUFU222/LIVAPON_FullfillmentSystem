@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,8 @@ type LoadState = 'idle' | 'loading' | 'error';
 
 export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isBulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [activeVendorId, setActiveVendorId] = useState<number | null>(null);
   const [activeDetail, setActiveDetail] = useState<VendorDetail | null>(null);
   const [detailCache, setDetailCache] = useState<Record<number, VendorDetail>>({});
@@ -110,12 +112,13 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
   const modalTitle = activeDetail?.name ?? cachedDetail?.name ?? 'ベンダー詳細';
 
   return (
-    <form action={bulkDeleteVendorsAction} className="grid gap-3">
+    <form ref={formRef} action={bulkDeleteVendorsAction} className="grid gap-3">
       <div className="flex justify-end">
         <button
-          type="submit"
+          type="button"
           className={buttonClasses('outline', 'text-sm text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed')}
           disabled={selectedIds.length === 0}
+          onClick={() => setBulkConfirmOpen(true)}
         >
           選択したベンダーを削除
         </button>
@@ -227,6 +230,35 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
         }
       >
         {renderModalContent()}
+      </Modal>
+
+      <Modal
+        open={isBulkConfirmOpen}
+        onClose={() => setBulkConfirmOpen(false)}
+        title="選択したベンダーを削除します"
+        description="この操作は元に戻せません。関連する情報も削除対象となります。"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setBulkConfirmOpen(false)}>
+              キャンセル
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={selectedIds.length === 0}
+              onClick={() => {
+                setBulkConfirmOpen(false);
+                formRef.current?.requestSubmit();
+              }}
+            >
+              削除する
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          選択したベンダーが完全に削除されます。必要に応じてバックアップを取得してから実行してください。
+        </p>
       </Modal>
     </form>
   );

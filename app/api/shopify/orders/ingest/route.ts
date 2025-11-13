@@ -40,11 +40,13 @@ export async function POST(request: Request) {
   if (!isValid) {
     return new NextResponse('Invalid signature', { status: 401 });
   }
+  console.info('[shopify-ingest] signature verified');
 
   const shopDomainHeader = request.headers.get('x-shopify-shop-domain');
   if (!shopDomainHeader) {
     return new NextResponse('Missing shop domain', { status: 400 });
   }
+  console.info('[shopify-ingest] shop domain header accepted', { shop: shopDomainHeader });
 
   const apiVersion = request.headers.get('x-shopify-api-version');
   if (apiVersion && apiVersion !== '2025-10') {
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
   if (!topic) {
     return new NextResponse('Missing topic', { status: 400 });
   }
+  console.info('[shopify-ingest] topic header accepted', { topic });
 
   const webhookId = request.headers.get('x-shopify-webhook-id') ?? undefined;
   const logContext = {
@@ -106,8 +109,10 @@ export async function POST(request: Request) {
     });
     return new NextResponse('Invalid JSON payload', { status: 400 });
   }
+  console.info('[shopify-ingest] payload parsed successfully', logContext);
 
   if (FULFILLMENT_ORDER_TOPICS.has(topic)) {
+    console.info('[shopify-ingest] entering fulfillment-order branch', logContext);
     const fulfillmentOrder = (payload as { fulfillment_order?: { order_id?: unknown; id?: unknown } })?.fulfillment_order;
     let orderId = typeof fulfillmentOrder?.order_id === 'number'
       ? fulfillmentOrder.order_id
@@ -165,9 +170,11 @@ export async function POST(request: Request) {
     console.warn('Shopify webhook payload failed validation', logContext);
     return new NextResponse('Invalid payload', { status: 422 });
   }
+  console.info('[shopify-ingest] entering order branch', logContext);
 
   try {
     await upsertShopifyOrder(payload, shopDomainHeader);
+    console.info('Upserted Shopify order payload', logContext);
     const orderId = (payload as { id: number }).id;
     if (typeof orderId === 'number') {
       const foSync = await syncFulfillmentOrderMetadata(shopDomainHeader, orderId);
@@ -176,6 +183,11 @@ export async function POST(request: Request) {
           shop: shopDomainHeader,
           orderId,
           result: foSync
+        });
+      } else {
+        console.info('Fulfillment order metadata synced after order webhook', {
+          shop: shopDomainHeader,
+          orderId
         });
       }
     }

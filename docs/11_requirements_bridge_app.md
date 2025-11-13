@@ -17,7 +17,7 @@
 > **在庫管理ポリシー**: 在庫は Shopify GUI（マーチャント管理ロケーション）が唯一の真実の源。Console は在庫値を編集せず、閲覧・警告に徹する。
 
 1. Shopify → Supabase
-   - Webhook が HMAC 署名検証を通過（`SHOPIFY_WEBHOOK_SECRET`）。
+   - Webhook が HMAC 署名検証を通過（`SHOPIFY_WEBHOOK_SECRET` と `_APP` / `_STORE` の複数設定に対応）。
    - `order_id` / `line_item_id` / FO 情報を解析し、`vendor_id` 解決（`vendor_skus`・ベンダーコード・ベンダー名の優先順）。
    - 顧客名・配送先住所・ステータスを `orders` に保存、ラインアイテム詳細を `line_items` に保存。
 2. Supabase → Shopify

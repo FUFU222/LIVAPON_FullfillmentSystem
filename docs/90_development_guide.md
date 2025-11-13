@@ -81,7 +81,7 @@
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | サーバーアクション / Webhook 用 |
 | `SUPABASE_ACCESS_TOKEN` | CLI で `supabase db push` を行う際に使用 |
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | OAuth クレデンシャル |
-| `SHOPIFY_WEBHOOK_SECRET` | Webhook HMAC 検証 |
+| `SHOPIFY_WEBHOOK_SECRET` / `_APP` / `_STORE` | Webhook HMAC 検証（ストア通知・アプリ通知ごとに設定可能） |
 | `SHOPIFY_STORE_DOMAIN` | 既定のストアドメイン（例: `example.myshopify.com`） |
 | `SHOPIFY_SCOPES` | 要求スコープ（未設定時はデフォルト文字列） |
 | `SHOPIFY_ADMIN_API_VERSION` | API バージョン指定（省略時 `2025-10`） |

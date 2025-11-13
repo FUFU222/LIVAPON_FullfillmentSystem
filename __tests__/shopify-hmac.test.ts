@@ -1,5 +1,5 @@
 import { TextEncoder } from 'util';
-import { createHmac } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 
 const SHOPIFY_HEADER = 'x-shopify-hmac-sha256';
 
@@ -18,6 +18,10 @@ const subtleMock = {
   }),
   sign: jest.fn(async (_algorithm: string, _key: symbol, data: ArrayBuffer) => {
     const digest = createHmac('sha256', importedSecret).update(Buffer.from(data)).digest();
+    return digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength);
+  }),
+  digest: jest.fn(async (_algorithm: string, data: ArrayBuffer) => {
+    const digest = createHash('sha256').update(Buffer.from(data)).digest();
     return digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength);
   })
 };
@@ -48,13 +52,29 @@ describe('verifyShopifyWebhook', () => {
     importedSecret = Buffer.alloc(0);
     subtleMock.importKey.mockClear();
     subtleMock.sign.mockClear();
+    subtleMock.digest.mockClear();
   });
 
-  it('returns true when signature matches', async () => {
-    process.env.SHOPIFY_WEBHOOK_SECRET = 'secret-key';
+  it('returns true when signature matches using primary secret', async () => {
+    process.env.SHOPIFY_WEBHOOK_SECRET_APP = 'secret-key';
 
     const bodyBuffer = encodePayload({ foo: 'bar' });
-    const signature = createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET)
+    const signature = createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET_APP as string)
+      .update(Buffer.from(bodyBuffer))
+      .digest('base64');
+
+    const { verifyShopifyWebhook } = await import('@/lib/shopify/hmac');
+
+    const headers = new Headers([[SHOPIFY_HEADER, signature]]);
+    await expect(verifyShopifyWebhook(bodyBuffer, headers)).resolves.toBe(true);
+  });
+
+  it('returns true when fallback secret matches', async () => {
+    process.env.SHOPIFY_WEBHOOK_SECRET = 'not-used';
+    process.env.SHOPIFY_API_SECRET = 'fallback-secret';
+
+    const bodyBuffer = encodePayload({ foo: 'bar' });
+    const signature = createHmac('sha256', process.env.SHOPIFY_API_SECRET as string)
       .update(Buffer.from(bodyBuffer))
       .digest('base64');
 
@@ -65,7 +85,7 @@ describe('verifyShopifyWebhook', () => {
   });
 
   it('returns false when signature header is missing', async () => {
-    process.env.SHOPIFY_WEBHOOK_SECRET = 'secret-key';
+    process.env.SHOPIFY_WEBHOOK_SECRET_STORE = 'secret-key';
 
     const bodyBuffer = encodePayload({ foo: 'bar' });
     const { verifyShopifyWebhook } = await import('@/lib/shopify/hmac');
@@ -76,6 +96,9 @@ describe('verifyShopifyWebhook', () => {
 
   it('allows requests when test mode is enabled and secret is absent', async () => {
     delete process.env.SHOPIFY_WEBHOOK_SECRET;
+    delete process.env.SHOPIFY_WEBHOOK_SECRET_APP;
+    delete process.env.SHOPIFY_WEBHOOK_SECRET_STORE;
+    delete process.env.SHOPIFY_API_SECRET;
     process.env.SHOPIFY_WEBHOOK_TEST_MODE = 'true';
 
     const bodyBuffer = encodePayload({ foo: 'bar' });

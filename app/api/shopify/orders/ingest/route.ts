@@ -8,7 +8,7 @@ import {
   syncFulfillmentOrderMetadata
 } from '@/lib/data/orders';
 import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
-import { verifyShopifyWebhook } from '@/lib/shopify/hmac';
+import { getWebhookSecretMetadata, verifyShopifyWebhook } from '@/lib/shopify/hmac';
 
 export const runtime = 'edge';
 
@@ -26,12 +26,10 @@ const FULFILLMENT_ORDER_TOPICS = new Set([
 ]);
 
 export async function POST(request: Request) {
-  const secretLength = process.env.SHOPIFY_WEBHOOK_SECRET?.length ?? 0;
-  const secretFingerprint = await createSecretFingerprint(process.env.SHOPIFY_WEBHOOK_SECRET ?? '');
-  console.info('[shopify-ingest] webhook secret fingerprint', {
-    secretLength,
-    secretFingerprint,
-    env: process.env.NODE_ENV
+  const secretMetadata = await getWebhookSecretMetadata();
+  console.info('[shopify-ingest] webhook secret metadata', {
+    env: process.env.NODE_ENV,
+    secrets: secretMetadata
   });
 
   const bodyArrayBuffer = await request.arrayBuffer();
@@ -201,18 +199,4 @@ export async function POST(request: Request) {
   }
 
   return new NextResponse(null, { status: 204 });
-}
-
-async function createSecretFingerprint(secret: string) {
-  if (!secret) {
-    return null;
-  }
-  const encoder = new TextEncoder();
-  const data = encoder.encode(secret);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  const bytes = Array.from(new Uint8Array(digest));
-  return bytes
-    .slice(0, 4)
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
 }

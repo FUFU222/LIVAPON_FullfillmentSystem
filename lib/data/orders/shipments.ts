@@ -3,7 +3,8 @@ import type { Database } from '@/lib/supabase/types';
 import {
   syncShipmentWithShopify,
   cancelShopifyFulfillment,
-  loadShopifyAccessToken
+  loadShopifyAccessToken,
+  upsertShopifyOrderNoteAttribute
 } from '@/lib/shopify/fulfillment';
 import { assertServiceClient, getOptionalServiceClient } from './clients';
 
@@ -279,17 +280,22 @@ export async function cancelShipment(
     throw new Error('Shipment missing related order');
   }
 
-  if (shipment.shopify_fulfillment_id) {
-    const accessToken = await loadShopifyAccessToken(client, order.shop_domain ?? '');
-    await cancelShopifyFulfillment(
-      order.shop_domain ?? '',
-      accessToken,
-      shipment.shopify_fulfillment_id
-    );
-  }
-
   const reasonType = options?.reasonType?.trim() || 'unspecified';
   const reasonDetail = options?.reasonDetail?.trim() || null;
+  const reasonText = buildCancellationReasonText(reasonType, reasonDetail);
+
+  if (shipment.shopify_fulfillment_id) {
+    const accessToken = await loadShopifyAccessToken(client, order.shop_domain ?? '');
+    const shopDomain = order.shop_domain ?? '';
+    await cancelShopifyFulfillment(shopDomain, accessToken, shipment.shopify_fulfillment_id);
+
+    if (order.shopify_order_id) {
+      await upsertShopifyOrderNoteAttribute(shopDomain, accessToken, order.shopify_order_id, {
+        name: 'livapon_last_cancellation_reason',
+        value: reasonText
+      });
+    }
+  }
 
   await client.from('shipment_cancellation_logs').insert({
     shipment_id: shipment.id,
@@ -324,3 +330,18 @@ export async function cancelShipment(
     }
   }
 }
+
+function buildCancellationReasonText(reasonType: string, reasonDetail: string | null) {
+  const label = REASON_LABELS[reasonType] ?? '未分類';
+  const detail = reasonDetail ? ` / ${reasonDetail}` : '';
+  return `[LIVAPON] 未発送に戻す: ${label}${detail}`;
+}
+
+const REASON_LABELS: Record<string, string> = {
+  customer_request: '顧客都合（再配送・キャンセル）',
+  address_issue: '住所不備・受取不可',
+  inventory_issue: '在庫調整・誤出荷',
+  label_error: 'ラベル/伝票の不備',
+  other: 'その他',
+  unspecified: '未指定'
+};

@@ -538,6 +538,53 @@ export async function cancelShopifyFulfillment(
   });
 }
 
+export async function upsertShopifyOrderNoteAttribute(
+  shop: string,
+  accessToken: string,
+  orderId: number,
+  attribute: { name: string; value: string }
+) {
+  const existing = await fetchOrderNoteAttributes(shop, accessToken, orderId);
+  const attrs = [...existing.filter((entry) => entry.name !== attribute.name), attribute];
+
+  await shopifyRequest(shop, accessToken, `orders/${orderId}.json`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      order: {
+        id: orderId,
+        note_attributes: attrs
+      }
+    })
+  });
+}
+
+type ShopifyNoteAttribute = {
+  name: string;
+  value: string;
+};
+
+async function fetchOrderNoteAttributes(shop: string, accessToken: string, orderId: number) {
+  type Response = {
+    order?: {
+      id: number;
+      note_attributes?: ShopifyNoteAttribute[];
+    };
+  };
+
+  try {
+    const data = await shopifyRequest<Response>(
+      shop,
+      accessToken,
+      `orders/${orderId}.json?fields=id,note_attributes`
+    );
+
+    return data.order?.note_attributes ?? [];
+  } catch (error) {
+    console.warn('Failed to fetch order note attributes', { shop, orderId, error });
+    return [];
+  }
+}
+
 type ApplySnapshotOptions = {
   client: SupabaseClient<Database>;
   orderRecordId: number;

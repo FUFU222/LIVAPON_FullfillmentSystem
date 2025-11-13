@@ -14,6 +14,31 @@ function deriveVendorCode(sku: string | null): string | null {
   return sku.slice(0, 4);
 }
 
+function dedupeOrderLineItems(lineItems: OrderDetail['lineItems']): OrderDetail['lineItems'] {
+  const map = new Map<number, OrderDetail['lineItems'][number]>();
+
+  lineItems.forEach((item) => {
+    const existing = map.get(item.id);
+    if (!existing) {
+      map.set(item.id, { ...item, shipments: [...item.shipments] });
+      return;
+    }
+
+    const seen = new Set(existing.shipments.map((shipment) => shipment.id));
+    const mergedShipments = [...existing.shipments];
+    item.shipments.forEach((shipment) => {
+      if (!seen.has(shipment.id)) {
+        seen.add(shipment.id);
+        mergedShipments.push(shipment);
+      }
+    });
+
+    map.set(item.id, { ...existing, shipments: mergedShipments });
+  });
+
+  return Array.from(map.values());
+}
+
 function calculateShipmentProgress(
   lineItem: {
     quantity: number;
@@ -44,6 +69,7 @@ function calculateShipmentProgress(
 }
 
 export function mapDetailToSummary(order: OrderDetail): OrderSummary {
+  const lineItems = dedupeOrderLineItems(order.lineItems);
   const trackingNumbers = new Set<string>();
   order.shipments.forEach((shipment) => {
     if (shipment.trackingNumber) {
@@ -51,7 +77,7 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     }
   });
 
-  const lineItemProgress = order.lineItems.map((lineItem) => ({
+  const lineItemProgress = lineItems.map((lineItem) => ({
     shippedQuantity: lineItem.shippedQuantity,
     remainingQuantity: lineItem.remainingQuantity
   }));
@@ -105,7 +131,7 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     trackingNumbers: Array.from(trackingNumbers),
     updatedAt: order.updatedAt,
     createdAt: order.createdAt,
-    lineItems: order.lineItems.map((lineItem) => ({
+    lineItems: lineItems.map((lineItem) => ({
       id: lineItem.id,
       orderId: order.id,
       productName: lineItem.productName,

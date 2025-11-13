@@ -29,9 +29,10 @@ uri = "/api/shopify/orders/ingest"
 topics = ["fulfillment_orders/hold_released"]
 uri = "/api/shopify/orders/ingest"
 
+# FO キャンセル系も LIVAPON 側で一元処理する
 [[webhooks.subscriptions]]
 topics = ["fulfillment_orders/cancellation_request_accepted"]
-uri = "/api/webhooks"
+uri = "/api/shopify/orders/ingest"
 
 [access_scopes]
 scopes = "read_fulfillments,write_fulfillments,read_inventory,read_locations,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,read_orders,read_products,read_shipping"

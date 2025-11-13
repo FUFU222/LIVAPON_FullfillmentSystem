@@ -1,29 +1,14 @@
 import { NextResponse } from 'next/server';
-import {
-  upsertShopifyOrder,
-  isRegisteredShopDomain
-} from '@/lib/shopify/order-import';
-import {
-  triggerShipmentResyncForShopifyOrder,
-  syncFulfillmentOrderMetadata
-} from '@/lib/data/orders';
-import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
+import { isRegisteredShopDomain } from '@/lib/shopify/order-import';
 import { getWebhookSecretMetadata, verifyShopifyWebhook } from '@/lib/shopify/hmac';
+import { enqueueWebhookJob } from '@/lib/data/webhook-jobs';
+import { processWebhookJobs } from '@/lib/jobs/webhook-runner';
+import { SUPPORTED_TOPICS, FULFILLMENT_ORDER_TOPICS } from '@/lib/shopify/webhook-processor';
 
 export const runtime = 'edge';
 
-const SUPPORTED_TOPICS = new Set([
-  'orders/create',
-  'orders/updated',
-  'orders/cancelled',
-  'fulfillment_orders/order_routing_complete',
-  'fulfillment_orders/hold_released'
-]);
-
-const FULFILLMENT_ORDER_TOPICS = new Set([
-  'fulfillment_orders/order_routing_complete',
-  'fulfillment_orders/hold_released'
-]);
+const INLINE_PROCESSING_ENABLED = process.env.ENABLE_INLINE_WEBHOOK_PROCESSING !== 'false';
+const INLINE_BATCH_LIMIT = Math.max(1, Math.min(Number(process.env.INLINE_WEBHOOK_BATCH ?? '1'), 10));
 
 export async function POST(request: Request) {
   const secretMetadata = await getWebhookSecretMetadata();
@@ -109,94 +94,47 @@ export async function POST(request: Request) {
   }
   console.info('[shopify-ingest] payload parsed successfully', logContext);
 
-  if (FULFILLMENT_ORDER_TOPICS.has(topic)) {
-    console.info('[shopify-ingest] entering fulfillment-order branch', logContext);
-    const fulfillmentOrder = (payload as { fulfillment_order?: { order_id?: unknown; id?: unknown } })?.fulfillment_order;
-    let orderId = typeof fulfillmentOrder?.order_id === 'number'
-      ? fulfillmentOrder.order_id
-      : (payload as { order_id?: unknown })?.order_id;
-
-    if (typeof orderId !== 'number') {
-      const fulfillmentOrderId = fulfillmentOrder?.id ?? (payload as { fulfillment_order_id?: unknown })?.fulfillment_order_id;
-
-      if (typeof fulfillmentOrderId === 'string' || typeof fulfillmentOrderId === 'number') {
-        try {
-          orderId = await resolveShopifyOrderIdFromFulfillmentOrder(shopDomainHeader, fulfillmentOrderId);
-        } catch (error) {
-          console.error('Failed to resolve order_id from fulfillment_order payload', {
-            error,
-            ...logContext,
-            fulfillmentOrderId
-          });
-          return new NextResponse('Failed to resolve fulfillment order', { status: 500 });
-        }
-      }
-    }
-
-    if (typeof orderId !== 'number') {
-      console.warn('Fulfillment order webhook missing resolvable order_id (likely not yet created)', {
-        ...logContext,
-        payload
-      });
-      return new NextResponse(null, { status: 202 });
-    }
-
-    try {
-      await triggerShipmentResyncForShopifyOrder(orderId);
-      console.info('Triggered shipment resync after fulfillment order webhook', {
-        ...logContext,
-        orderId
-      });
-    } catch (error) {
-      console.error('Failed to trigger shipment resync', {
-        error,
-        ...logContext,
-        orderId
-      });
-      return new NextResponse('Failed to trigger shipment resync', { status: 500 });
-    }
-
-    return new NextResponse(null, { status: 204 });
+  if (typeof payload !== 'object' || payload === null) {
+    return new NextResponse('Invalid payload', { status: 422 });
   }
 
-  if (
-    typeof payload !== 'object' ||
-    payload === null ||
-    typeof (payload as { id?: unknown }).id !== 'number' ||
-    !Array.isArray((payload as { line_items?: unknown }).line_items)
-  ) {
+  if (!FULFILLMENT_ORDER_TOPICS.has(topic) && !isOrderPayload(payload)) {
     console.warn('Shopify webhook payload failed validation', logContext);
     return new NextResponse('Invalid payload', { status: 422 });
   }
-  console.info('[shopify-ingest] entering order branch', logContext);
 
   try {
-    await upsertShopifyOrder(payload, shopDomainHeader);
-    console.info('Upserted Shopify order payload', logContext);
-    const orderId = (payload as { id: number }).id;
-    if (typeof orderId === 'number') {
-      const foSync = await syncFulfillmentOrderMetadata(shopDomainHeader, orderId);
-      if (foSync.status !== 'synced') {
-        console.info('Fulfillment order metadata not yet available after order webhook', {
-          shop: shopDomainHeader,
-          orderId,
-          result: foSync
-        });
-      } else {
-        console.info('Fulfillment order metadata synced after order webhook', {
-          shop: shopDomainHeader,
-          orderId
-        });
-      }
-    }
-    console.info('Shopify webhook processed successfully', logContext);
-  } catch (error) {
-    console.error('Failed to upsert Shopify order', {
-      error,
-      ...logContext
+    await enqueueWebhookJob({
+      shopDomain: shopDomainHeader,
+      topic,
+      apiVersion,
+      webhookId,
+      payload: payload as Record<string, unknown>
     });
-    return new NextResponse('Failed to process order', { status: 500 });
+    console.info('Enqueued webhook job', logContext);
+  } catch (error) {
+    console.error('Failed to enqueue webhook job', { error, ...logContext });
+    return new NextResponse('Failed to enqueue webhook', { status: 500 });
   }
 
-  return new NextResponse(null, { status: 204 });
+  if (INLINE_PROCESSING_ENABLED) {
+    try {
+      await processWebhookJobs({ limit: INLINE_BATCH_LIMIT });
+    } catch (error) {
+      console.error('Inline webhook processing failed; job will be retried asynchronously', {
+        error,
+        ...logContext
+      });
+    }
+  }
+
+  return new NextResponse(null, { status: 202 });
+}
+
+function isOrderPayload(payload: unknown): payload is { id: number; line_items: unknown[] } {
+  if (typeof payload !== 'object' || payload === null) {
+    return false;
+  }
+  const candidate = payload as { id?: unknown; line_items?: unknown };
+  return typeof candidate.id === 'number' && Array.isArray(candidate.line_items);
 }

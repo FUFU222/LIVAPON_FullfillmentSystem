@@ -18,6 +18,14 @@ jest.mock('@/lib/shopify/hmac', () => ({
   getWebhookSecretMetadata: jest.fn().mockResolvedValue([])
 }));
 
+jest.mock('@/lib/data/webhook-jobs', () => ({
+  enqueueWebhookJob: jest.fn().mockResolvedValue({ id: 1 })
+}));
+
+jest.mock('@/lib/jobs/webhook-runner', () => ({
+  processWebhookJobs: jest.fn().mockResolvedValue({ claimed: 1, succeeded: 1, failed: 0 })
+}));
+
 import { TextDecoder } from 'util';
 
 if (typeof (globalThis as Record<string, unknown>).TextDecoder === 'undefined') {
@@ -38,6 +46,10 @@ const { verifyShopifyWebhook, getWebhookSecretMetadata } = jest.requireMock<{
   verifyShopifyWebhook: jest.Mock;
   getWebhookSecretMetadata: jest.Mock;
 }>('@/lib/shopify/hmac');
+
+const { enqueueWebhookJob } = jest.requireMock<{
+  enqueueWebhookJob: jest.Mock;
+}>('@/lib/data/webhook-jobs');
 
 function buildRequest(
   body: unknown,
@@ -83,6 +95,7 @@ describe('POST /api/shopify/orders/ingest', () => {
       lineItemCount: 0
     });
     markShipmentsCancelledForOrder.mockResolvedValue(undefined);
+    enqueueWebhookJob.mockResolvedValue({ id: 123 });
   });
 
   it('returns 401 when signature verification fails', async () => {
@@ -110,7 +123,7 @@ describe('POST /api/shopify/orders/ingest', () => {
       buildRequest({ id: 1, line_items: [] }, { 'x-shopify-topic': 'orders/delete' })
     );
     expect(response.status).toBe(202);
-    expect(upsertShopifyOrder).not.toHaveBeenCalled();
+    expect(enqueueWebhookJob).not.toHaveBeenCalled();
   });
 
   it('returns 403 for unregistered shop domains', async () => {
@@ -123,8 +136,8 @@ describe('POST /api/shopify/orders/ingest', () => {
     const payload = { id: 99, line_items: [] };
     const response = await POST(buildRequest(payload));
 
-    expect(response.status).toBe(204);
-    expect(upsertShopifyOrder).toHaveBeenCalledWith(payload, 'example.myshopify.com');
+    expect(response.status).toBe(202);
+    expect(enqueueWebhookJob).toHaveBeenCalled();
   });
 
   it('marks shipments cancelled when orders/cancelled webhook is received', async () => {
@@ -133,8 +146,8 @@ describe('POST /api/shopify/orders/ingest', () => {
       buildRequest(payload, { 'x-shopify-topic': 'orders/cancelled' })
     );
 
-    expect(response.status).toBe(204);
-    expect(upsertShopifyOrder).toHaveBeenCalledWith(payload, 'example.myshopify.com');
+    expect(response.status).toBe(202);
+    expect(enqueueWebhookJob).toHaveBeenCalled();
   });
 });
 jest.mock('next/server', () => {

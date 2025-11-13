@@ -597,6 +597,51 @@ export type Database = {
           },
         ]
       }
+      webhook_jobs: {
+        Row: {
+          api_version: string | null
+          attempts: number
+          created_at: string
+          id: number
+          last_error: string | null
+          locked_at: string | null
+          payload: Json
+          shop_domain: string
+          status: string
+          topic: string
+          updated_at: string
+          webhook_id: string | null
+        }
+        Insert: {
+          api_version?: string | null
+          attempts?: number
+          created_at?: string
+          id?: number
+          last_error?: string | null
+          locked_at?: string | null
+          payload: Json
+          shop_domain: string
+          status?: string
+          topic: string
+          updated_at?: string
+          webhook_id?: string | null
+        }
+        Update: {
+          api_version?: string | null
+          attempts?: number
+          created_at?: string
+          id?: number
+          last_error?: string | null
+          locked_at?: string | null
+          payload?: Json
+          shop_domain?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+          webhook_id?: string | null
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           code: string | null
@@ -629,7 +674,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_pending_webhook_jobs: {
+        Args: {
+          batch_limit?: number | null
+        }
+        Returns: Database['public']['Tables']['webhook_jobs']['Row'][]
+      }
+      sync_order_line_items: {
+        Args: {
+          p_order_id: number
+          p_items: Json
+        }
+        Returns: void
+      }
     }
     Enums: {
       [_ in never]: never

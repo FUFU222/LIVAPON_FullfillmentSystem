@@ -233,59 +233,33 @@ async function replaceLineItems(
   payload: ShopifyOrderPayload,
   lineItemVendors: VendorResolution[]
 ) {
-  if (!Array.isArray(payload.line_items) || payload.line_items.length === 0) {
-    console.log('⚠️ No line_items provided; removing any leftovers.');
-    await client.from('line_items').delete().eq('order_id', orderId);
-    return;
+  const items = Array.isArray(payload.line_items)
+    ? payload.line_items.map((item, index) => {
+        const vendorMeta = lineItemVendors[index] ?? { vendorId: null, vendorSkuId: null };
+        return {
+          shopify_line_item_id: item.id,
+          vendor_id: vendorMeta.vendorId,
+          vendor_sku_id: vendorMeta.vendorSkuId,
+          sku: item.sku ?? null,
+          product_name: item.title,
+          variant_title: item.variant_title ?? null,
+          quantity: item.quantity,
+          fulfillable_quantity: item.fulfillable_quantity ?? item.quantity,
+          fulfilled_quantity: item.fulfilled_quantity ?? 0
+        } satisfies Record<string, unknown>;
+      })
+    : [];
+
+  console.log('📦 Syncing line_items via RPC:', items.length);
+  const { error } = await client.rpc('sync_order_line_items', {
+    p_order_id: orderId,
+    p_items: items
+  });
+
+  if (error) {
+    console.error('❌ Failed to sync line_items via RPC', error);
+    throw error;
   }
-
-  const inserts: Database['public']['Tables']['line_items']['Insert'][] = payload.line_items.map(
-    (item, index) => ({
-      order_id: orderId,
-      vendor_id: lineItemVendors[index].vendorId,
-      vendor_sku_id: lineItemVendors[index].vendorSkuId,
-      shopify_line_item_id: item.id,
-      sku: item.sku ?? null,
-      product_name: item.title,
-      variant_title: item.variant_title ?? null,
-      quantity: item.quantity,
-      fulfilled_quantity: item.fulfilled_quantity ?? 0,
-      fulfillable_quantity: item.fulfillable_quantity ?? item.quantity
-    })
-  );
-
-  console.log('📦 Upserting line_items:', inserts.length);
-  const { error: upsertError } = await client
-    .from('line_items')
-    .upsert(inserts, {
-      onConflict: 'order_id,shopify_line_item_id'
-    });
-
-  if (upsertError) {
-    console.error('❌ Error upserting line_items:', upsertError);
-    throw upsertError;
-  }
-
-  const incomingShopifyIds = inserts.map((insert) => insert.shopify_line_item_id);
-
-  if (incomingShopifyIds.length === 0) {
-    await client.from('line_items').delete().eq('order_id', orderId);
-    return;
-  }
-
-  const idList = `(${incomingShopifyIds.join(',')})`;
-  const { error: cleanupError } = await client
-    .from('line_items')
-    .delete()
-    .eq('order_id', orderId)
-    .not('shopify_line_item_id', 'in', idList);
-
-  if (cleanupError) {
-    console.error('❌ Error pruning stale line_items:', cleanupError);
-    throw cleanupError;
-  }
-
-  console.log('✅ Line items synced for order:', orderId);
 }
 
 // ==========================

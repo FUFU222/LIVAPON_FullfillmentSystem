@@ -183,3 +183,118 @@ CREATE INDEX idx_fulfillment_requests_shop_domain ON fulfillment_requests(shop_d
 CREATE INDEX idx_fulfillment_requests_vendor_id ON fulfillment_requests(vendor_id);
 CREATE INDEX idx_fulfillment_request_line_items_request_id ON fulfillment_request_line_items(fulfillment_request_id);
 CREATE INDEX idx_fulfillment_request_line_items_line_item_id ON fulfillment_request_line_items(line_item_id);
+
+-- Webhook job queue
+CREATE TABLE webhook_jobs (
+  id BIGSERIAL PRIMARY KEY,
+  shop_domain TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  api_version TEXT,
+  webhook_id TEXT,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempts INT NOT NULL DEFAULT 0,
+  last_error TEXT,
+  locked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_webhook_jobs_status ON webhook_jobs(status, created_at);
+CREATE INDEX idx_webhook_jobs_shop_domain ON webhook_jobs(shop_domain);
+CREATE INDEX idx_webhook_jobs_webhook_id ON webhook_jobs(webhook_id);
+
+-- Stored procedures
+CREATE OR REPLACE FUNCTION public.sync_order_line_items(
+  p_order_id integer,
+  p_items jsonb
+) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  items_count integer;
+BEGIN
+  IF p_order_id IS NULL THEN
+    RAISE EXCEPTION 'order_id is required';
+  END IF;
+
+  IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' THEN
+    DELETE FROM line_items WHERE order_id = p_order_id;
+    RETURN;
+  END IF;
+
+  items_count := jsonb_array_length(p_items);
+
+  IF items_count = 0 THEN
+    DELETE FROM line_items WHERE order_id = p_order_id;
+    RETURN;
+  END IF;
+
+  INSERT INTO line_items (
+    order_id,
+    vendor_id,
+    vendor_sku_id,
+    shopify_line_item_id,
+    sku,
+    product_name,
+    variant_title,
+    quantity,
+    fulfillable_quantity,
+    fulfilled_quantity
+  )
+  SELECT
+    p_order_id,
+    NULLIF((item->>'vendor_id')::int, 0),
+    NULLIF((item->>'vendor_sku_id')::int, 0),
+    (item->>'shopify_line_item_id')::bigint,
+    NULLIF(item->>'sku', ''),
+    item->>'product_name',
+    NULLIF(item->>'variant_title', ''),
+    COALESCE((item->>'quantity')::int, 0),
+    COALESCE((item->>'fulfillable_quantity')::int, 0),
+    COALESCE((item->>'fulfilled_quantity')::int, 0)
+  FROM jsonb_array_elements(p_items) AS item
+  ON CONFLICT (order_id, shopify_line_item_id)
+  DO UPDATE SET
+    vendor_id = EXCLUDED.vendor_id,
+    vendor_sku_id = EXCLUDED.vendor_sku_id,
+    sku = EXCLUDED.sku,
+    product_name = EXCLUDED.product_name,
+    variant_title = EXCLUDED.variant_title,
+    quantity = EXCLUDED.quantity,
+    fulfillable_quantity = EXCLUDED.fulfillable_quantity,
+    fulfilled_quantity = EXCLUDED.fulfilled_quantity;
+
+  DELETE FROM line_items
+  WHERE order_id = p_order_id
+    AND shopify_line_item_id NOT IN (
+      SELECT (item->>'shopify_line_item_id')::bigint FROM jsonb_array_elements(p_items) AS item
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.claim_pending_webhook_jobs(batch_limit integer DEFAULT 10)
+RETURNS SETOF webhook_jobs
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  limit_value integer;
+BEGIN
+  limit_value := GREATEST(1, LEAST(COALESCE(batch_limit, 10), 50));
+
+  RETURN QUERY
+    WITH cte AS (
+      SELECT id
+      FROM webhook_jobs
+      WHERE status = 'pending'
+      ORDER BY created_at
+      LIMIT limit_value
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE webhook_jobs
+    SET status = 'running',
+        locked_at = NOW(),
+        updated_at = NOW(),
+        attempts = attempts + 1
+    WHERE id IN (SELECT id FROM cte)
+    RETURNING *;
+END;
+$$;

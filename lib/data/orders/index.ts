@@ -11,9 +11,10 @@ export {
   markShipmentsCancelledForOrder,
   updateOrderStatus,
   cancelShipment,
-  registerShipmentsFromSelections
+  registerShipmentsFromSelections,
+  resyncPendingShipments
 } from './shipments';
-export type { ShipmentSelection } from './shipments';
+export type { ShipmentSelection, ShipmentResyncSummary } from './shipments';
 export {
   triggerShipmentResyncForShopifyOrder,
   syncFulfillmentOrderMetadata

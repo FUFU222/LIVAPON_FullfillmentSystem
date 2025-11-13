@@ -14,6 +14,56 @@ export type ShipmentSelection = {
   quantity?: number | null;
 };
 
+export type ShipmentResyncSummary = {
+  total: number;
+  succeeded: number;
+  failed: number;
+  errors: Array<{ shipmentId: number; message: string }>;
+};
+
+export async function resyncPendingShipments(options?: { limit?: number }): Promise<ShipmentResyncSummary> {
+  const rawLimit = options?.limit;
+  const normalizedLimit = Number.isFinite(rawLimit ?? NaN) ? (rawLimit as number) : undefined;
+  const limit = Math.max(1, Math.min(100, normalizedLimit ?? 10));
+  const client = assertServiceClient();
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await client
+    .from('shipments')
+    .select('id')
+    .in('sync_status', ['pending', 'error'])
+    .or(`sync_pending_until.is.null,sync_pending_until.lte.${nowIso}`)
+    .order('sync_pending_until', { ascending: true, nullsFirst: true })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  const shipments = data ?? [];
+  const summary: ShipmentResyncSummary = {
+    total: shipments.length,
+    succeeded: 0,
+    failed: 0,
+    errors: []
+  };
+
+  for (const shipment of shipments) {
+    try {
+      await syncShipmentWithShopify(shipment.id);
+      summary.succeeded += 1;
+    } catch (err) {
+      summary.failed += 1;
+      summary.errors.push({
+        shipmentId: shipment.id,
+        message: err instanceof Error ? err.message : 'Unknown error'
+      });
+    }
+  }
+
+  return summary;
+}
+
 export async function registerShipmentsFromSelections(
   selections: ShipmentSelection[],
   vendorId: number,

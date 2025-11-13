@@ -78,7 +78,8 @@ CREATE TABLE line_items (
   quantity INT NOT NULL,
   fulfillable_quantity INT DEFAULT 0,
   fulfilled_quantity INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT line_items_order_id_shopify_line_item_id_unique UNIQUE (order_id, shopify_line_item_id)
 );
 
 CREATE TABLE shipments (

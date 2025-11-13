@@ -233,11 +233,9 @@ async function replaceLineItems(
   payload: ShopifyOrderPayload,
   lineItemVendors: VendorResolution[]
 ) {
-  console.log('🧹 Removing existing line_items for order:', orderId);
-  await client.from('line_items').delete().eq('order_id', orderId);
-
   if (!Array.isArray(payload.line_items) || payload.line_items.length === 0) {
-    console.log('⚠️ No line_items to insert.');
+    console.log('⚠️ No line_items provided; removing any leftovers.');
+    await client.from('line_items').delete().eq('order_id', orderId);
     return;
   }
 
@@ -251,20 +249,43 @@ async function replaceLineItems(
       product_name: item.title,
       variant_title: item.variant_title ?? null,
       quantity: item.quantity,
-      fulfilled_quantity: 0,
+      fulfilled_quantity: item.fulfilled_quantity ?? 0,
       fulfillable_quantity: item.fulfillable_quantity ?? item.quantity
     })
   );
 
-  console.log('📦 Inserting line_items:', inserts.length);
-  const { error } = await client.from('line_items').insert(inserts);
+  console.log('📦 Upserting line_items:', inserts.length);
+  const { error: upsertError } = await client
+    .from('line_items')
+    .upsert(inserts, {
+      onConflict: 'order_id,shopify_line_item_id'
+    });
 
-  if (error) {
-    console.error('❌ Error inserting line_items:', error);
-    throw error;
+  if (upsertError) {
+    console.error('❌ Error upserting line_items:', upsertError);
+    throw upsertError;
   }
 
-  console.log('✅ Line items inserted successfully for order:', orderId);
+  const incomingShopifyIds = inserts.map((insert) => insert.shopify_line_item_id);
+
+  if (incomingShopifyIds.length === 0) {
+    await client.from('line_items').delete().eq('order_id', orderId);
+    return;
+  }
+
+  const idList = `(${incomingShopifyIds.join(',')})`;
+  const { error: cleanupError } = await client
+    .from('line_items')
+    .delete()
+    .eq('order_id', orderId)
+    .not('shopify_line_item_id', 'in', idList);
+
+  if (cleanupError) {
+    console.error('❌ Error pruning stale line_items:', cleanupError);
+    throw cleanupError;
+  }
+
+  console.log('✅ Line items synced for order:', orderId);
 }
 
 // ==========================

@@ -23,6 +23,16 @@
   - `/api/shopify/fulfillment/callback` を実装し、Shopify → Console の配送依頼受信・記録が可能。
   - FO メタ更新や `fulfillment_requests` テーブルを通じた解析も可。
 
+### Webhook 運用ルール（2025-11-13 追記）
+| 経路 | トピック | 目的 |
+| ---- | ------- | ---- |
+| Shopify → LIVAPON（直送） | `orders/create`, `orders/updated`, `orders/cancelled` | 注文の即時反映 |
+| Shopify → LIVAPON（直送） | `fulfillment_orders/order_routing_complete`, `fulfillment_orders/hold_released`, `fulfillment_orders/cancellation_request_accepted` | FO 残量・状態の即時反映 |
+| LIVAPON → Bridge App → Shopify | `fulfillmentCreateV2` 等 | 発送登録・追跡番号更新 |
+| Bridge App 経由再同期 | 任意 | Webhook 取りこぼし時の再取得、監査 |
+
+環境変数は `SHOPIFY_WEBHOOK_SECRET` / `_APP` / `_STORE` / `SHOPIFY_API_SECRET` を順番に試し、ストア通知とアプリ通知の双方に対応する。
+
 ## 2. 直近でやっておきたいこと
 1. **Shopify アプリ設定の反映**
    - `shopify app deploy` で TOML 変更（Webhook購読など）を Shopify 側に反映。

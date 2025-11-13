@@ -464,13 +464,22 @@ export async function cancelShipment(
     reason_detail: reasonDetail
   });
 
-  const { error: deleteError } = await client
+  const { error: deletePivotError } = await client
+    .from('shipment_line_items')
+    .delete()
+    .eq('shipment_id', shipment.id);
+
+  if (deletePivotError) {
+    throw deletePivotError;
+  }
+
+  const { error: deleteShipmentError } = await client
     .from('shipments')
     .delete()
     .eq('id', shipment.id);
 
-  if (deleteError) {
-    throw deleteError;
+  if (deleteShipmentError) {
+    throw deleteShipmentError;
   }
 
   const { count } = await client

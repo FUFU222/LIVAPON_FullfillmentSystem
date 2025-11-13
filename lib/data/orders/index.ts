@@ -10,8 +10,10 @@ export {
   upsertShipment,
   markShipmentsCancelledForOrder,
   updateOrderStatus,
-  cancelShipment
+  cancelShipment,
+  registerShipmentsFromSelections
 } from './shipments';
+export type { ShipmentSelection } from './shipments';
 export {
   triggerShipmentResyncForShopifyOrder,
   syncFulfillmentOrderMetadata

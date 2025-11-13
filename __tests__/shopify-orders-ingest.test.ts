@@ -14,7 +14,8 @@ jest.mock('@/lib/data/orders', () => ({
 }));
 
 jest.mock('@/lib/shopify/hmac', () => ({
-  verifyShopifyWebhook: jest.fn()
+  verifyShopifyWebhook: jest.fn(),
+  getWebhookSecretMetadata: jest.fn().mockResolvedValue([])
 }));
 
 import { TextDecoder } from 'util';
@@ -33,8 +34,9 @@ const { syncFulfillmentOrderMetadata, markShipmentsCancelledForOrder } = jest.re
   markShipmentsCancelledForOrder: jest.Mock;
 }>('@/lib/data/orders');
 
-const { verifyShopifyWebhook } = jest.requireMock<{
+const { verifyShopifyWebhook, getWebhookSecretMetadata } = jest.requireMock<{
   verifyShopifyWebhook: jest.Mock;
+  getWebhookSecretMetadata: jest.Mock;
 }>('@/lib/shopify/hmac');
 
 function buildRequest(
@@ -72,6 +74,7 @@ describe('POST /api/shopify/orders/ingest', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     verifyShopifyWebhook.mockResolvedValue(true);
+    getWebhookSecretMetadata.mockResolvedValue([]);
     isRegisteredShopDomain.mockResolvedValue(true);
     upsertShopifyOrder.mockResolvedValue(undefined);
     syncFulfillmentOrderMetadata.mockResolvedValue({

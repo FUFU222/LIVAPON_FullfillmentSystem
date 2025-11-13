@@ -8,6 +8,115 @@ import {
 } from '@/lib/shopify/fulfillment';
 import { assertServiceClient, getOptionalServiceClient } from './clients';
 
+export type ShipmentSelection = {
+  orderId: number;
+  lineItemId: number;
+  quantity?: number | null;
+};
+
+export async function registerShipmentsFromSelections(
+  selections: ShipmentSelection[],
+  vendorId: number,
+  options: { trackingNumber: string; carrier: string }
+): Promise<number[]> {
+  if (!Array.isArray(selections) || selections.length === 0) {
+    throw new Error('line item selections are required');
+  }
+
+  if (!Number.isInteger(vendorId)) {
+    throw new Error('A valid vendorId is required to register shipments');
+  }
+
+  const client = assertServiceClient();
+  const grouped = new Map<number, ShipmentSelection[]>();
+  selections.forEach((selection) => {
+    if (!Number.isInteger(selection.orderId) || !Number.isInteger(selection.lineItemId)) {
+      return;
+    }
+    const entry = grouped.get(selection.orderId) ?? [];
+    entry.push(selection);
+    grouped.set(selection.orderId, entry);
+  });
+
+  const processedOrders: number[] = [];
+
+  for (const [orderId, orderSelections] of grouped.entries()) {
+    const lineItemIds = orderSelections.map((selection) => selection.lineItemId);
+
+    const { data: lineItems, error: lineItemsError } = await client
+      .from('line_items')
+      .select(
+        'id, vendor_id, order_id, quantity, fulfilled_quantity, fulfillable_quantity'
+      )
+      .eq('order_id', orderId)
+      .eq('vendor_id', vendorId)
+      .in('id', lineItemIds);
+
+    if (lineItemsError) {
+      throw lineItemsError;
+    }
+
+    if (!lineItems || lineItems.length === 0) {
+      continue;
+    }
+
+    const metadata = new Map<number, { quantity: number; fulfilled: number; fulfillable: number | null }>();
+    lineItems.forEach((item) => {
+      metadata.set(item.id, {
+        quantity: item.quantity ?? 0,
+        fulfilled: item.fulfilled_quantity ?? 0,
+        fulfillable: item.fulfillable_quantity ?? null
+      });
+    });
+
+    const quantityMap: Record<number, number> = {};
+    orderSelections.forEach((selection) => {
+      const info = metadata.get(selection.lineItemId);
+      if (!info) {
+        return;
+      }
+      const available = typeof info.fulfillable === 'number'
+        ? Math.max(info.fulfillable, 0)
+        : Math.max(info.quantity - info.fulfilled, 0);
+
+      if (available <= 0) {
+        return;
+      }
+
+      const requested = typeof selection.quantity === 'number' && selection.quantity > 0
+        ? Math.floor(selection.quantity)
+        : available;
+
+      quantityMap[selection.lineItemId] = Math.max(1, Math.min(available, requested));
+    });
+
+    const selectedLineItemIds = Object.keys(quantityMap).map((id) => Number(id));
+
+    if (selectedLineItemIds.length === 0) {
+      continue;
+    }
+
+    await upsertShipment(
+      {
+        lineItemIds: selectedLineItemIds,
+        lineItemQuantities: quantityMap,
+        trackingNumber: options.trackingNumber,
+        carrier: options.carrier,
+        status: 'shipped'
+      },
+      vendorId
+    );
+
+    processedOrders.push(orderId);
+  }
+
+  if (processedOrders.length === 0) {
+    throw new Error('発送できる明細が見つかりませんでした');
+  }
+
+  return processedOrders;
+}
+
 export async function upsertShipment(
   shipment: {
     id?: number;

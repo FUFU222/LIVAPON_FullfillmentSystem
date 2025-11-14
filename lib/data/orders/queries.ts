@@ -166,7 +166,7 @@ export async function getShipmentHistory(vendorId: number): Promise<ShipmentHist
   const { data, error } = await client
     .from('shipments')
     .select(
-      `id, tracking_number, carrier, shipped_at, sync_status, status as shipment_status, order_id,
+      `id, tracking_number, carrier, shipped_at, sync_status, status:shipment_status, order_id,
        order:orders(id, order_number, status, customer_name,
                     shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2)`
     )

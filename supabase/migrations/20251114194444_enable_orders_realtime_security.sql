@@ -1,6 +1,7 @@
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "OrdersReadable" ON orders;
+DROP POLICY IF EXISTS "OrdersInsertUpdate" ON orders;
 
 CREATE POLICY "OrdersReadable" ON orders
   FOR SELECT
@@ -18,4 +19,5 @@ CREATE POLICY "OrdersInsertUpdate" ON orders
   USING (true)
   WITH CHECK (true);
 
+DROP PUBLICATION IF EXISTS livapon_realtime;
 CREATE PUBLICATION livapon_realtime FOR TABLE orders, line_items, shipments;

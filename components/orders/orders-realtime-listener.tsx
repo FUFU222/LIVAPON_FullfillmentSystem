@@ -173,15 +173,13 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         <div className="flex items-center justify-end gap-2 text-sm">
           <Button
             variant="ghost"
-            size="sm"
-            className="text-slate-500 hover:text-slate-700"
+            className="px-3 py-1 text-slate-500 hover:text-slate-700"
             onClick={() => resetUpdates()}
           >
             後で
           </Button>
           <Button
-            size="sm"
-            className="bg-amber-600 text-white hover:bg-amber-700"
+            className="px-3 py-1 bg-amber-600 text-white hover:bg-amber-700"
             onClick={() => {
               router.refresh();
               resetUpdates();

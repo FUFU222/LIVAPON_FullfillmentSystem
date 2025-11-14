@@ -138,6 +138,7 @@ export function getDemoShipmentHistory(vendorId: number) {
         orderId: order.id,
         orderNumber: order.orderNumber,
         orderStatus: order.status,
+        shipmentStatus: shipment.status ?? null,
         customerName: order.customerName ?? null,
         shippingAddress: formatDemoShippingAddress(order),
         trackingNumber: shipment.trackingNumber ?? null,

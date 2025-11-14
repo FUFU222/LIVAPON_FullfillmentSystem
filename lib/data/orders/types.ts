@@ -90,6 +90,7 @@ export type ShipmentHistoryEntry = {
   orderId: number | null;
   orderNumber: string;
   orderStatus: string | null;
+  shipmentStatus: string | null;
   customerName: string | null;
   shippingAddress: string | null;
   trackingNumber: string | null;

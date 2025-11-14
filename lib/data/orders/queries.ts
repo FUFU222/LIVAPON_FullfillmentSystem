@@ -166,7 +166,7 @@ export async function getShipmentHistory(vendorId: number): Promise<ShipmentHist
   const { data, error } = await client
     .from('shipments')
     .select(
-      `id, tracking_number, carrier, shipped_at, sync_status, status, order_id,
+      `id, tracking_number, carrier, shipped_at, sync_status, status as shipment_status, order_id,
        order:orders(id, order_number, status, customer_name,
                     shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2)`
     )
@@ -186,12 +186,13 @@ export async function getShipmentHistory(vendorId: number): Promise<ShipmentHist
       (row.order?.order_number as string | undefined) ??
       (row.order_id ? `#${row.order_id}` : '注文未取得'),
     orderStatus: (row.order?.status ?? null) as string | null,
+    shipmentStatus: (row.shipment_status ?? row.status ?? null) as string | null,
     customerName: (row.order?.customer_name ?? null) as string | null,
     shippingAddress: buildShippingAddress(row.order),
     trackingNumber: (row.tracking_number ?? null) as string | null,
     carrier: (row.carrier ?? null) as string | null,
     shippedAt: (row.shipped_at ?? null) as string | null,
-    syncStatus: (row.sync_status ?? row.status ?? null) as string | null
+    syncStatus: (row.sync_status ?? null) as string | null
   }));
 }
 

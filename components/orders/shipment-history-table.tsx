@@ -13,6 +13,7 @@ import { Loader2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
+import type { ShipmentHistoryEntry } from "@/lib/data/orders";
 import { Modal } from "@/components/ui/modal";
 
 const INITIAL_STATE: ShipmentActionState = {
@@ -203,7 +204,7 @@ export function ShipmentHistoryTable({
                   </span>
                 )}
                 <div className="mt-1 text-xs text-slate-500">
-                  <StatusBadge status={shipment.orderStatus} />
+                  <StatusBadge status={deriveVendorShipmentStatus(shipment)} />
                 </div>
               </td>
               <td className="px-3 py-3 text-sm">
@@ -240,4 +241,12 @@ export function ShipmentHistoryTable({
       </table>
     </div>
   );
+}
+
+function deriveVendorShipmentStatus(shipment: ShipmentHistoryEntry) {
+  const shipmentStatus = shipment.shipmentStatus?.toLowerCase();
+  if (shipmentStatus === 'cancelled' || shipmentStatus === 'canceled') {
+    return 'cancelled';
+  }
+  return 'fulfilled';
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/supabase/types';
+import type { Database, Json } from '@/lib/supabase/types';
 import { getShopifyServiceClient } from '@/lib/shopify/service-client';
 
 export type WebhookJobRecord = Database['public']['Tables']['webhook_jobs']['Row'];
@@ -9,7 +9,7 @@ type EnqueuePayload = {
   topic: string;
   apiVersion?: string | null;
   webhookId?: string | null;
-  payload: Record<string, unknown>;
+  payload: Json;
 };
 
 function assertServiceClient(): SupabaseClient<Database> {

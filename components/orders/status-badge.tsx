@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 
-const statusLabel: Record<string, string> = {
+export const statusLabel: Record<string, string> = {
   unfulfilled: '未発送',
   partially_fulfilled: '一部発送済',
   fulfilled: '発送済',

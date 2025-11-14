@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import type { OrderLineItemSummary, OrderSummary } from "@/lib/data/orders";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusBadge } from "@/components/orders/status-badge";
+import { StatusBadge, statusLabel } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
 import { Badge } from "@/components/ui/badge";
@@ -324,7 +324,14 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                   )}
                 </TableCell>
                 <TableCell className={ORDER_ROW_CELL}>
-                  <StatusBadge status={order.status} />
+                  <div className="flex flex-col gap-1">
+                    <StatusBadge status={order.status} />
+                    {order.localStatus && order.status && order.localStatus !== order.status ? (
+                      <span className="text-[11px] font-medium text-amber-700">
+                        Console記録: {statusLabel[order.localStatus] ?? order.localStatus}
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className={ORDER_ROW_CELL}>{formatDate(order.createdAt)}</TableCell>
               </TableRow>

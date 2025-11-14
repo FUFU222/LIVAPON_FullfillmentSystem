@@ -7,6 +7,22 @@ import type {
   RawShipmentPivot
 } from './types';
 
+const KNOWN_ORDER_STATUSES = new Set([
+  'unfulfilled',
+  'partially_fulfilled',
+  'fulfilled',
+  'cancelled',
+  'restocked'
+]);
+
+function normalizeOrderStatus(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.toLowerCase().trim();
+  return KNOWN_ORDER_STATUSES.has(normalized) ? normalized : null;
+}
+
 function deriveVendorCode(sku: string | null): string | null {
   if (!sku || sku.length < 4) {
     return null;
@@ -87,17 +103,21 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
   const partiallyShipped =
     hasLineItems && !fullyShipped && lineItemProgress.some((item) => item.shippedQuantity > 0);
 
-  let derivedStatus: string | null = null;
-  if (order.status === 'cancelled') {
-    // キャンセルされた注文は発送状況に関係なくキャンセル扱い
-    derivedStatus = 'cancelled';
-  } else if (fullyShipped) {
-    derivedStatus = 'fulfilled';
-  } else if (partiallyShipped) {
-    derivedStatus = 'partially_fulfilled';
-  } else {
-    derivedStatus = 'unfulfilled';
-  }
+  const localStatus: string | null = (() => {
+    if (order.status === 'cancelled') {
+      return 'cancelled';
+    }
+    if (fullyShipped) {
+      return 'fulfilled';
+    }
+    if (partiallyShipped) {
+      return 'partially_fulfilled';
+    }
+    return 'unfulfilled';
+  })();
+
+  const shopifyStatus = normalizeOrderStatus(order.status);
+  const resolvedStatus = shopifyStatus ?? localStatus ?? 'unfulfilled';
 
   const isArchived = Boolean(order.archivedAt);
 
@@ -123,8 +143,9 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     orderNumber: order.orderNumber,
     customerName: order.customerName,
     lineItemCount: order.lineItems.length,
-    status: derivedStatus,
-    shopifyStatus: order.status,
+    status: resolvedStatus,
+    shopifyStatus,
+    localStatus,
     isArchived,
     shippingAddress,
     shippingAddressLines: shippingLines,

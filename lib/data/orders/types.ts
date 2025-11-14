@@ -64,6 +64,7 @@ export type OrderSummary = {
   lineItemCount: number;
   status: string | null;
   shopifyStatus: string | null;
+  localStatus: string | null;
   isArchived: boolean;
   shippingAddress: string | null;
   shippingAddressLines: string[];

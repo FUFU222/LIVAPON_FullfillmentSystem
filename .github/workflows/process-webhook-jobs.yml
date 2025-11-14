@@ -12,7 +12,7 @@ jobs:
       - name: Trigger webhook job runner
         env:
           APP_BASE_URL: ${{ vars.APP_BASE_URL }}
-          JOB_WORKER_SECRET: ${{ secrets.JOB_WORKER_SECRET }}
+          JOB_WORKER_SECRET: ${{ secrets.JOB_WORKER_SECRET || vars.JOB_WORKER_SECRET }}
         run: |
           set -euo pipefail
 

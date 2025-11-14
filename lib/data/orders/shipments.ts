@@ -549,7 +549,7 @@ type ShipmentLineItemRow = {
   order_id: number | null;
   fulfillable_quantity: number | null;
   fulfillment_order_line_item_id: number | null;
-  shopify_line_item_id: number | null;
+  shopify_line_item_id: number;
   quantity: number;
   fulfilled_quantity: number | null;
 };

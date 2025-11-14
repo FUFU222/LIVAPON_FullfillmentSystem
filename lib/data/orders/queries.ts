@@ -167,7 +167,8 @@ export async function getShipmentHistory(vendorId: number): Promise<ShipmentHist
     .from('shipments')
     .select(
       `id, tracking_number, carrier, shipped_at, sync_status, status, order_id,
-       order:orders(id, order_number, status)`
+       order:orders(id, order_number, status, customer_name,
+                    shipping_postal, shipping_prefecture, shipping_city, shipping_address1, shipping_address2)`
     )
     .eq('vendor_id', vendorId)
     .order('shipped_at', { ascending: false })
@@ -185,9 +186,42 @@ export async function getShipmentHistory(vendorId: number): Promise<ShipmentHist
       (row.order?.order_number as string | undefined) ??
       (row.order_id ? `#${row.order_id}` : '注文未取得'),
     orderStatus: (row.order?.status ?? null) as string | null,
+    customerName: (row.order?.customer_name ?? null) as string | null,
+    shippingAddress: buildShippingAddress(row.order),
     trackingNumber: (row.tracking_number ?? null) as string | null,
     carrier: (row.carrier ?? null) as string | null,
     shippedAt: (row.shipped_at ?? null) as string | null,
     syncStatus: (row.sync_status ?? row.status ?? null) as string | null
   }));
+}
+
+function buildShippingAddress(
+  order:
+    | {
+        shipping_postal?: string | null;
+        shipping_prefecture?: string | null;
+        shipping_city?: string | null;
+        shipping_address1?: string | null;
+        shipping_address2?: string | null;
+      }
+    | null
+) {
+  if (!order) {
+    return null;
+  }
+
+  const lines: string[] = [];
+  if (order.shipping_postal) {
+    lines.push(`〒${order.shipping_postal}`);
+  }
+  const baseLine = [order.shipping_prefecture, order.shipping_city, order.shipping_address1]
+    .filter((part) => (part ?? '').trim().length > 0)
+    .join(' ');
+  if (baseLine.length > 0) {
+    lines.push(baseLine);
+  }
+  if (order.shipping_address2 && order.shipping_address2.trim().length > 0) {
+    lines.push(order.shipping_address2.trim());
+  }
+  return lines.length > 0 ? lines.join(' ') : null;
 }

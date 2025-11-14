@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/orders/status-badge";
+import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 
 const INITIAL_STATE: ShipmentActionState = {
@@ -175,6 +176,8 @@ export function ShipmentHistoryTable({
           <tr>
             <th className="px-3 py-2">発送日時</th>
             <th className="px-3 py-2">注文番号</th>
+            <th className="px-3 py-2">顧客</th>
+            <th className="px-3 py-2">配送先</th>
             <th className="px-3 py-2">追跡番号</th>
             <th className="px-3 py-2">配送業者</th>
             <th className="px-3 py-2">アクション</th>
@@ -202,6 +205,16 @@ export function ShipmentHistoryTable({
                 <div className="mt-1 text-xs text-slate-500">
                   <StatusBadge status={shipment.orderStatus} />
                 </div>
+              </td>
+              <td className="px-3 py-3 text-sm">
+                {shipment.customerName ?? <span className="text-slate-400">-</span>}
+              </td>
+              <td className="px-3 py-3 text-xs text-slate-600">
+                {shipment.shippingAddress ? (
+                  <span className="whitespace-pre-line">{shipment.shippingAddress}</span>
+                ) : (
+                  <span className="text-slate-400">-</span>
+                )}
               </td>
               <td className="px-3 py-3 text-sm">
                 {shipment.trackingNumber ?? "-"}

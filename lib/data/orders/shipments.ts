@@ -551,7 +551,7 @@ type ShipmentLineItemRow = {
   fulfillment_order_line_item_id: number | null;
   shopify_line_item_id: number | null;
   quantity: number;
-  fulfilled_quantity?: number | null;
+  fulfilled_quantity: number | null;
 };
 
 type OrderMetaRecord = {

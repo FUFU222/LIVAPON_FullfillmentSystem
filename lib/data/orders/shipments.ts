@@ -596,10 +596,6 @@ async function ensureFulfillmentOrderIsActive(options: {
     throw new Error('対象の注文情報が見つかりません。注文を再同期してください。');
   }
 
-  if (!isFulfillmentOrderClosed(orderMeta.shopify_fo_status)) {
-    return lineItems;
-  }
-
   if (!orderMeta.shopify_order_id) {
     throw new Error('Shopify 注文IDが未割り当てです。注文を再同期してから再度お試しください。');
   }
@@ -614,18 +610,25 @@ async function ensureFulfillmentOrderIsActive(options: {
     syncResult
   });
 
-  if (syncResult.status === 'synced') {
-    lineItems = await options.loadLineItems();
-    orderMeta = await fetchOrderMetaRecord(client, orderId);
-    if (!isFulfillmentOrderClosed(orderMeta?.shopify_fo_status ?? null)) {
-      return lineItems;
-    }
+  if (syncResult.status === 'error') {
+    const detail = syncResult.error ? ` (${syncResult.error})` : '';
+    throw new Error(
+      `Shopify 側の Fulfillment Order 情報を取得できませんでした。時間をおいて再度お試しください${detail}`
+    );
   }
 
-  const detail = syncResult.status === 'error' ? ` (${syncResult.error})` : '';
-  throw new Error(
-    `Shopify 側の Fulfillment Order がクローズされています。注文を未発送に戻した直後の場合は数分後に再同期してから再度お試しください${detail}`
-  );
+  if (syncResult.status === 'pending') {
+    throw new Error('Shopify 側で Fulfillment Order がまだ生成されていません。数分後に再同期してから再度お試しください。');
+  }
+
+  lineItems = await options.loadLineItems();
+  orderMeta = await fetchOrderMetaRecord(client, orderId);
+
+  if (isFulfillmentOrderClosed(orderMeta?.shopify_fo_status ?? null)) {
+    throw new Error('Shopify 側の Fulfillment Order がクローズされています。未発送に戻した直後の場合は Shopify で新しい FO を確認し、再同期してから再度お試しください。');
+  }
+
+  return lineItems;
 }
 
 function buildCancellationReasonText(reasonType: string, reasonDetail: string | null) {

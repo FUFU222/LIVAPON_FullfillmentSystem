@@ -138,6 +138,8 @@ export function getDemoShipmentHistory(vendorId: number) {
         orderId: order.id,
         orderNumber: order.orderNumber,
         orderStatus: order.status,
+        customerName: order.customerName ?? null,
+        shippingAddress: formatDemoShippingAddress(order),
         trackingNumber: shipment.trackingNumber ?? null,
         carrier: shipment.carrier ?? null,
         shippedAt: shipment.shippedAt ?? null,
@@ -149,6 +151,24 @@ export function getDemoShipmentHistory(vendorId: number) {
       return matchingOrder?.lineItems.some((item) => item.vendorId === vendorId) ?? false;
     })
     .sort((a, b) => (b.shippedAt ?? '').localeCompare(a.shippedAt ?? ''));
+}
+
+function formatDemoShippingAddress(order: OrderDetail) {
+  const lines: string[] = [];
+  if (order.shippingPostal) {
+    lines.push(`〒${order.shippingPostal}`);
+  }
+  const primary = [order.shippingPrefecture, order.shippingCity, order.shippingAddress1]
+    .filter((part) => (part ?? '').trim().length > 0)
+    .join(' ')
+    .trim();
+  if (primary.length > 0) {
+    lines.push(primary);
+  }
+  if (order.shippingAddress2 && order.shippingAddress2.trim().length > 0) {
+    lines.push(order.shippingAddress2.trim());
+  }
+  return lines.length > 0 ? lines.join(' ') : null;
 }
 
 function toOrderDetailFromDemo(order: OrderDetail, vendorId: number): OrderDetail | null {

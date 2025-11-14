@@ -25,6 +25,7 @@ const initialUpdateState: UpdateState = {
 export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeListenerProps) {
   const router = useRouter();
   const [updates, setUpdates] = useState<UpdateState>(initialUpdateState);
+  const debugRealtime = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
 
   const registerOrderChange = useCallback((orderId: number | null, isNew: boolean) => {
     setUpdates((prev) => {
@@ -83,7 +84,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
-          if (process.env.NODE_ENV !== 'production') {
+          if (debugRealtime) {
             console.info('[realtime] shipments event', {
               table: 'shipments',
               event: (payload as any)?.eventType,
@@ -104,7 +105,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         (payload) => {
           const orderId = extractOrderId(payload as any);
           const isInsert = (payload as any)?.eventType === 'INSERT';
-          if (process.env.NODE_ENV !== 'production') {
+          if (debugRealtime) {
             console.info('[realtime] line_items event', {
               table: 'line_items',
               event: (payload as any)?.eventType,
@@ -127,7 +128,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
       (payload) => {
         const orderId = extractOrderId(payload as any);
         const isInsert = (payload as any)?.eventType === 'INSERT';
-        if (process.env.NODE_ENV !== 'production') {
+        if (debugRealtime) {
           console.info('[realtime] orders event', {
             table: 'orders',
             event: (payload as any)?.eventType,

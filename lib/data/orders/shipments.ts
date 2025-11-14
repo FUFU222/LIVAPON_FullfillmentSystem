@@ -217,7 +217,7 @@ export async function upsertShipment(
     const { data, error } = await client
       .from('line_items')
       .select(
-        'id, vendor_id, order_id, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id, quantity'
+        'id, vendor_id, order_id, fulfillable_quantity, fulfilled_quantity, fulfillment_order_line_item_id, shopify_line_item_id, quantity'
       )
       .in('id', shipment.lineItemIds);
 

@@ -4,12 +4,15 @@ import { getWebhookSecretMetadata, verifyShopifyWebhook } from '@/lib/shopify/hm
 import { enqueueWebhookJob } from '@/lib/data/webhook-jobs';
 import { processWebhookJobs } from '@/lib/jobs/webhook-runner';
 import { SUPPORTED_TOPICS, FULFILLMENT_ORDER_TOPICS } from '@/lib/shopify/webhook-processor';
+import { syncFulfillmentOrderMetadata } from '@/lib/data/orders';
+import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
 import type { Json } from '@/lib/supabase/types';
 
 export const runtime = 'edge';
 
 const INLINE_PROCESSING_ENABLED = process.env.ENABLE_INLINE_WEBHOOK_PROCESSING !== 'false';
 const INLINE_BATCH_LIMIT = Math.max(1, Math.min(Number(process.env.INLINE_WEBHOOK_BATCH ?? '1'), 10));
+const ORDER_STATUS_TOPICS = new Set(['orders/create', 'orders/updated', 'orders/cancelled']);
 
 export async function POST(request: Request) {
   const secretMetadata = await getWebhookSecretMetadata();
@@ -118,6 +121,8 @@ export async function POST(request: Request) {
     return new NextResponse('Failed to enqueue webhook', { status: 500 });
   }
 
+  await triggerFulfillmentMetadataSync(topic, payload, shopDomainHeader, logContext);
+
   if (INLINE_PROCESSING_ENABLED) {
     try {
       await processWebhookJobs({ limit: INLINE_BATCH_LIMIT });
@@ -138,4 +143,79 @@ function isOrderPayload(payload: unknown): payload is { id: number; line_items: 
   }
   const candidate = payload as { id?: unknown; line_items?: unknown };
   return typeof candidate.id === 'number' && Array.isArray(candidate.line_items);
+}
+
+async function triggerFulfillmentMetadataSync(
+  topic: string,
+  payload: Json,
+  shopDomain: string,
+  logContext: Record<string, unknown>
+) {
+  try {
+    const orderId = await resolveOrderIdForTopic(topic, payload, shopDomain);
+    if (typeof orderId !== 'number') {
+      return;
+    }
+    const result = await syncFulfillmentOrderMetadata(shopDomain, orderId);
+    console.info('[shopify-ingest] fulfillment metadata sync result', {
+      ...logContext,
+      orderId,
+      result
+    });
+  } catch (error) {
+    console.warn('[shopify-ingest] failed to sync fulfillment metadata immediately', {
+      ...logContext,
+      error
+    });
+  }
+}
+
+async function resolveOrderIdForTopic(
+  topic: string,
+  payload: Json,
+  shopDomain: string
+): Promise<number | null> {
+  if (ORDER_STATUS_TOPICS.has(topic)) {
+    const candidate = (payload as { id?: unknown })?.id;
+    if (typeof candidate === 'number') {
+      return candidate;
+    }
+    if (typeof candidate === 'string') {
+      const parsed = Number(candidate);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }
+
+  if (FULFILLMENT_ORDER_TOPICS.has(topic)) {
+    const foRecord =
+      (payload as Record<string, any>)?.fulfillment_order ?? (payload as Record<string, any>) ?? null;
+    const inlineOrderId = foRecord?.order_id ?? (payload as Record<string, any>)?.order_id;
+    const orderId = normalizeNumericId(inlineOrderId);
+    if (orderId !== null) {
+      return orderId;
+    }
+    const fulfillmentOrderId = normalizeNumericId(
+      foRecord?.id ?? (payload as Record<string, any>)?.fulfillment_order_id
+    );
+    if (fulfillmentOrderId === null) {
+      return null;
+    }
+    return await resolveShopifyOrderIdFromFulfillmentOrder(shopDomain, fulfillmentOrderId);
+  }
+
+  return null;
+}
+
+function normalizeNumericId(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return Math.trunc(parsed);
+    }
+  }
+  return null;
 }

@@ -6,6 +6,7 @@ import {
   loadShopifyAccessToken,
   upsertShopifyOrderNoteAttribute
 } from '@/lib/shopify/fulfillment';
+import { syncFulfillmentOrderMetadata } from './fulfillment';
 import { assertServiceClient, getOptionalServiceClient } from './clients';
 
 export type ShipmentSelection = {
@@ -20,6 +21,8 @@ export type ShipmentResyncSummary = {
   failed: number;
   errors: Array<{ shipmentId: number; message: string }>;
 };
+
+const CLOSED_FO_STATUSES = new Set(['closed', 'canceled', 'cancelled']);
 
 export async function resyncPendingShipments(options?: { limit?: number }): Promise<ShipmentResyncSummary> {
   const rawLimit = options?.limit;
@@ -93,21 +96,42 @@ export async function registerShipmentsFromSelections(
   for (const [orderId, orderSelections] of grouped.entries()) {
     const lineItemIds = orderSelections.map((selection) => selection.lineItemId);
 
-    const { data: lineItems, error: lineItemsError } = await client
-      .from('line_items')
-      .select(
-        'id, vendor_id, order_id, quantity, fulfilled_quantity, fulfillable_quantity'
-      )
-      .eq('order_id', orderId)
-      .eq('vendor_id', vendorId)
-      .in('id', lineItemIds);
+    const loadLineItems = async () => {
+      const { data, error } = await client
+        .from('line_items')
+        .select(
+          'id, vendor_id, order_id, quantity, fulfilled_quantity, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id'
+        )
+        .eq('order_id', orderId)
+        .eq('vendor_id', vendorId)
+        .in('id', lineItemIds);
 
-    if (lineItemsError) {
-      throw lineItemsError;
-    }
+      if (error) {
+        throw error;
+      }
+
+      return data ?? [];
+    };
+
+    let lineItems = await loadLineItems();
 
     if (!lineItems || lineItems.length === 0) {
       continue;
+    }
+
+    try {
+      lineItems = await ensureFulfillmentOrderIsActive({
+        client,
+        orderId,
+        lineItems,
+        loadLineItems
+      });
+    } catch (error) {
+      console.warn('Fulfillment order closed during bulk shipment registration', {
+        orderId,
+        error
+      });
+      throw error;
     }
 
     const metadata = new Map<number, { quantity: number; fulfilled: number; fulfillable: number | null }>();
@@ -189,14 +213,22 @@ export async function upsertShipment(
     throw new Error('lineItemIds must contain at least one item');
   }
 
-  const { data: lineItems, error: lineItemsError } = await client
-    .from('line_items')
-    .select('id, vendor_id, order_id, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id, quantity')
-    .in('id', shipment.lineItemIds);
+  const loadLineItems = async () => {
+    const { data, error } = await client
+      .from('line_items')
+      .select(
+        'id, vendor_id, order_id, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id, quantity'
+      )
+      .in('id', shipment.lineItemIds);
 
-  if (lineItemsError) {
-    throw lineItemsError;
-  }
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
+  };
+
+  let lineItems = await loadLineItems();
 
   if (!lineItems || lineItems.length !== shipment.lineItemIds.length) {
     throw new Error('Line items not found');
@@ -210,6 +242,18 @@ export async function upsertShipment(
   const orderId = lineItems[0]?.order_id ?? null;
   if (!orderId || lineItems.some((item) => item.order_id !== orderId)) {
     throw new Error('Line items must belong to the same order');
+  }
+
+  lineItems = await ensureFulfillmentOrderIsActive({
+    client,
+    orderId,
+    lineItems,
+    loadLineItems
+  });
+
+  const unauthorizedAfterSync = lineItems.some((item) => item.vendor_id !== vendorId);
+  if (unauthorizedAfterSync) {
+    throw new Error('Unauthorized line items included in shipment');
   }
 
   const nowIso = new Date().toISOString();
@@ -497,6 +541,91 @@ export async function cancelShipment(
       throw updateOrderError;
     }
   }
+}
+
+type ShipmentLineItemRow = {
+  id: number;
+  vendor_id: number | null;
+  order_id: number | null;
+  fulfillable_quantity: number | null;
+  fulfillment_order_line_item_id: number | null;
+  shopify_line_item_id: number | null;
+  quantity: number | null;
+  fulfilled_quantity?: number | null;
+};
+
+type OrderMetaRecord = {
+  shop_domain: string | null;
+  shopify_order_id: number | null;
+  shopify_fo_status: string | null;
+};
+
+async function fetchOrderMetaRecord(client: SupabaseClient<Database>, orderId: number) {
+  const { data, error } = await client
+    .from('orders')
+    .select('shop_domain, shopify_order_id, shopify_fo_status')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? null) as OrderMetaRecord | null;
+}
+
+function isFulfillmentOrderClosed(status: string | null | undefined) {
+  if (!status) {
+    return false;
+  }
+  const normalized = status.toLowerCase();
+  return CLOSED_FO_STATUSES.has(normalized);
+}
+
+async function ensureFulfillmentOrderIsActive(options: {
+  client: SupabaseClient<Database>;
+  orderId: number;
+  lineItems: ShipmentLineItemRow[];
+  loadLineItems: () => Promise<ShipmentLineItemRow[]>;
+}) {
+  const { client, orderId } = options;
+  let lineItems = options.lineItems;
+  let orderMeta = await fetchOrderMetaRecord(client, orderId);
+
+  if (!orderMeta) {
+    throw new Error('対象の注文情報が見つかりません。注文を再同期してください。');
+  }
+
+  if (!isFulfillmentOrderClosed(orderMeta.shopify_fo_status)) {
+    return lineItems;
+  }
+
+  if (!orderMeta.shopify_order_id) {
+    throw new Error('Shopify 注文IDが未割り当てです。注文を再同期してから再度お試しください。');
+  }
+
+  const syncResult = await syncFulfillmentOrderMetadata(
+    orderMeta.shop_domain ?? null,
+    orderMeta.shopify_order_id
+  );
+
+  console.info('Auto-sync fulfillment order metadata before shipment registration', {
+    orderId,
+    syncResult
+  });
+
+  if (syncResult.status === 'synced') {
+    lineItems = await options.loadLineItems();
+    orderMeta = await fetchOrderMetaRecord(client, orderId);
+    if (!isFulfillmentOrderClosed(orderMeta?.shopify_fo_status ?? null)) {
+      return lineItems;
+    }
+  }
+
+  const detail = syncResult.status === 'error' ? ` (${syncResult.error})` : '';
+  throw new Error(
+    `Shopify 側の Fulfillment Order がクローズされています。注文を未発送に戻した直後の場合は数分後に再同期してから再度お試しください${detail}`
+  );
 }
 
 function buildCancellationReasonText(reasonType: string, reasonDetail: string | null) {

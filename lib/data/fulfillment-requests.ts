@@ -407,6 +407,7 @@ export async function handleFulfillmentServiceRequest(
       line_item_id: item.shopifyLineItemId,
       remaining_quantity: item.remainingQuantity ?? item.requestedQuantity ?? 0
     }));
+    const foStatus = typeof foRecord.status === 'string' ? foRecord.status : null;
 
     try {
       await applyFulfillmentOrderSnapshot({
@@ -414,7 +415,8 @@ export async function handleFulfillmentServiceRequest(
         orderRecordId: orderRecord.id,
         shopifyOrderId,
         fulfillmentOrderId,
-        lineItems: snapshotItems
+        lineItems: snapshotItems,
+        foStatus
       });
     } catch (error) {
       console.warn('Failed to apply fulfillment order snapshot during callback', {

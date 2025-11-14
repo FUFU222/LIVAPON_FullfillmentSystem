@@ -127,7 +127,8 @@ export async function syncFulfillmentOrderMetadata(
       orderRecordId: orderRecord.id,
       shopifyOrderId,
       fulfillmentOrderId: primarySnapshot.id,
-      lineItems: primarySnapshot.line_items
+      lineItems: primarySnapshot.line_items,
+      foStatus: primarySnapshot.status ?? null
     });
 
     return {

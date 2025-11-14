@@ -133,6 +133,7 @@ export type FulfillmentOrderLineItemSnapshot = {
 
 export type FulfillmentOrderSnapshot = {
   id: number;
+  status?: string | null;
   line_items: FulfillmentOrderLineItemSnapshot[];
 };
 
@@ -144,6 +145,7 @@ async function fetchFulfillmentOrdersWithRetry(
   type Response = {
     fulfillment_orders: Array<{
       id: number;
+      status?: string;
       line_items: Array<{
         id: number;
         line_item_id: number;
@@ -166,6 +168,7 @@ async function fetchFulfillmentOrdersWithRetry(
 
       return (data.fulfillment_orders ?? []).map((order) => ({
         id: order.id,
+        status: order.status ?? null,
         line_items: (order.line_items ?? []).map((item) => ({
           id: item.id,
           line_item_id: item.line_item_id,
@@ -591,6 +594,7 @@ type ApplySnapshotOptions = {
   shopifyOrderId: number;
   fulfillmentOrderId: number;
   lineItems: FulfillmentOrderLineItemSnapshot[];
+  foStatus?: string | null;
   shipmentId?: number | null;
   lineItemQuantities?: Map<number, number | null>;
   lineItemInternalIds?: Map<number, number>;
@@ -612,6 +616,7 @@ export async function applyFulfillmentOrderSnapshot(options: ApplySnapshotOption
     .from('orders')
     .update({
       shopify_fulfillment_order_id: fulfillmentOrderId,
+      shopify_fo_status: (options.foStatus ?? null)?.toLowerCase() ?? null,
       updated_at: new Date().toISOString()
     })
     .eq('id', orderRecordId);

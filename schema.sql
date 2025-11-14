@@ -36,6 +36,7 @@ CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
   shopify_order_id BIGINT NOT NULL UNIQUE, -- Shopify側の注文ID
   shopify_fulfillment_order_id BIGINT,
+  shopify_fo_status VARCHAR(50),
   shop_domain TEXT,
   vendor_id INT REFERENCES vendors(id),
   order_number VARCHAR(50) NOT NULL, -- Shopifyの注文番号 (#1001 等)

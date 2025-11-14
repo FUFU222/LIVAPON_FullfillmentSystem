@@ -246,6 +246,7 @@ export type Database = {
           shipping_prefecture: string | null
           shop_domain: string | null
           shopify_fulfillment_order_id: number | null
+          shopify_fo_status: string | null
           shopify_order_id: number
           status: string | null
           updated_at: string | null
@@ -264,6 +265,7 @@ export type Database = {
           shipping_prefecture?: string | null
           shop_domain?: string | null
           shopify_fulfillment_order_id?: number | null
+          shopify_fo_status?: string | null
           shopify_order_id: number
           status?: string | null
           updated_at?: string | null
@@ -282,6 +284,7 @@ export type Database = {
           shipping_prefecture?: string | null
           shop_domain?: string | null
           shopify_fulfillment_order_id?: number | null
+          shopify_fo_status?: string | null
           shopify_order_id?: number
           status?: string | null
           updated_at?: string | null

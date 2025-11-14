@@ -4,6 +4,7 @@ import { getWebhookSecretMetadata, verifyShopifyWebhook } from '@/lib/shopify/hm
 import { enqueueWebhookJob } from '@/lib/data/webhook-jobs';
 import { processWebhookJobs } from '@/lib/jobs/webhook-runner';
 import { SUPPORTED_TOPICS, FULFILLMENT_ORDER_TOPICS } from '@/lib/shopify/webhook-processor';
+import type { Json } from '@/lib/supabase/types';
 
 export const runtime = 'edge';
 
@@ -81,10 +82,10 @@ export async function POST(request: Request) {
   }
 
   const payloadText = new TextDecoder().decode(bodyArrayBuffer);
-  let payload: unknown;
+  let payload: Json;
 
   try {
-    payload = JSON.parse(payloadText);
+    payload = JSON.parse(payloadText) as Json;
   } catch (error) {
     console.warn('Failed to parse Shopify webhook payload', {
       error,
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
       topic,
       apiVersion,
       webhookId,
-      payload: payload as Record<string, unknown>
+      payload
     });
     console.info('Enqueued webhook job', logContext);
   } catch (error) {

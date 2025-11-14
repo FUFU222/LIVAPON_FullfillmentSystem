@@ -122,16 +122,21 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
     };
   }, [orderIds, registerOrderChange, vendorId]);
 
-  const { message, showBanner } = useMemo(() => {
+  const { message, showBanner, newOrderCount, updatedCount } = useMemo(() => {
     if (!updates.hasUpdates) {
-      return { showBanner: false, message: '' };
+      return { showBanner: false, message: '', newOrderCount: 0, updatedCount: 0 };
     }
     const newOrderCount = updates.newOrders.size;
     const totalTouched = updates.touchedOrders.size;
     const updatedCount = Math.max(0, totalTouched - newOrderCount);
 
     if (newOrderCount === 0 && updatedCount === 0) {
-      return { showBanner: true, message: 'Shopify 側で更新がありました。最新の状態を表示してください。' };
+      return {
+        showBanner: true,
+        message: 'Shopify 側で更新がありました。最新の状態を表示してください。',
+        newOrderCount,
+        updatedCount
+      };
     }
 
     const parts: string[] = [];
@@ -144,7 +149,9 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
 
     return {
       showBanner: true,
-      message: `${parts.join(' / ')} が更新されました。`
+      message: `${parts.join(' / ')} が更新されました。` ,
+      newOrderCount,
+      updatedCount
     };
   }, [updates]);
 
@@ -153,18 +160,27 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
   }
 
   return (
-    <div className="fixed inset-x-0 top-20 z-40 flex justify-center px-4">
-      <div className="flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow">
-        <span>{message}</span>
-        <div className="flex gap-2">
+    <div className="fixed bottom-6 right-6 z-40 max-w-sm">
+      <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-white/95 px-4 py-3 shadow-xl">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">更新があります</span>
+          <div className="flex items-center gap-2 text-xs text-amber-700">
+            {newOrderCount > 0 ? <span className="rounded-full bg-amber-100 px-2 py-0.5">新規 {newOrderCount}</span> : null}
+            {updatedCount > 0 ? <span className="rounded-full bg-amber-50 px-2 py-0.5">更新 {updatedCount}</span> : null}
+          </div>
+        </div>
+        <p className="text-sm text-slate-800">{message}</p>
+        <div className="flex items-center justify-end gap-2 text-sm">
           <Button
-            variant="outline"
-            className="border-amber-400 text-amber-900 hover:bg-amber-100"
+            variant="ghost"
+            size="sm"
+            className="text-slate-500 hover:text-slate-700"
             onClick={() => resetUpdates()}
           >
             後で
           </Button>
           <Button
+            size="sm"
             className="bg-amber-600 text-white hover:bg-amber-700"
             onClick={() => {
               router.refresh();

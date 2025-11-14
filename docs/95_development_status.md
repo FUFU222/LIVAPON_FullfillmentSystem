@@ -1,66 +1,43 @@
-# 開発状況サマリー（2025-11-09時点）
+# 開発状況サマリー（2025-11-13時点）
 
-## 1. 現在の整備済みポイント
-- **OMモデル仕様策定**: `DEVELOPMENT_PLAN_OM_MODEL.md` に背景・役割分担・データフロー・API要件を整理済み。
-- **Bridge App 設定**
-  - `shopify.app.toml` に必要スコープと Webhook 購読 (`/api/shopify/orders/ingest`) を明示。
-  - Shopify 側で再認可済み。最新トークンは `shopify_connections` に保存（`shpat_8937...`）。
-- **データベース整備**
-  - `contact_name` カラム欠如を補うマイグレーションを追加し、本番 DB に `supabase db push` 済み。
-  - `shopify_connections` を橋頭堡として Token/Scope を管理（UI 未実装だが Supabase Dashboard で確認可能）。
-- **UI/UX 改善**
-  - 発送一覧テーブルの行高を縮め、1画面に多くの注文が表示可能に。
-  - Supabase Realtime で発送更新を監視し、ベンダー一覧を即時リフレッシュ。
-  - 発送登録直後でもステータスを `fulfilled/partially_fulfilled` に派生させ、表示齟齬を解消。
-  - ヒーローセクションとヘッダーのブランド名を「配送管理コンソール」に統一し、Official Partner Access バッジの視認性を向上。
-  - ボタン／ナビゲーションへの hover/active フィードバックを強化し、遷移時はオーバーレイを表示して操作感を明確化。
-  - 発送登録フローを「入力 → 確認」のステップに分け、最終確認セクションで誤操作を防止。
-  - 発送取消時に理由・確認ダイアログを必須とし、重要操作であることが明確になるよう UI を調整。
-  - 未発送に戻す処理では赤色の確認パネルを表示し、注意喚起と理由入力をセットにした。
-- **在庫ポリシー確定**
-  - 在庫編集は Shopify GUI（マーチャント管理ロケーション）が唯一の操作点。Console 側は閲覧とステータス同期のみを担い、FS モデル由来の在庫操作は廃止。
-- **Fulfillment Callback**
-  - `/api/shopify/fulfillment/callback` を実装し、Shopify → Console の配送依頼受信・記録が可能。
-  - FO メタ更新や `fulfillment_requests` テーブルを通じた解析も可。
+## 1. 整備済みの主なポイント
+1. **OMモデル & データフロー**: `DEVELOPMENT_PLAN_OM_MODEL.md` で役割分担・API 要件・PULL 前提を確定。Bridge App を介して Shopify GraphQL (`order.fulfillmentOrders` など) を取得し、Console 側で FO を正規化する方針で合意済み。
+2. **Bridge App / Shopify 設定**: `shopify.app.toml` に必要スコープと `/api/shopify/orders/ingest` Webhook を明示し、再認可も完了。最新トークンは `shopify_connections` テーブルで運用し、再発行時はここを更新すれば良い運用形となっている。
+3. **Webhook キュー & ランナー**: `/api/shopify/orders/ingest` は即時に `webhook_jobs` テーブルへ enqueue。`status/attempts/last_error` を持つ行を `claim_pending_webhook_jobs()` (FOR UPDATE SKIP LOCKED) で安全に取り出し、`lib/jobs/webhook-runner.ts` → `processShopifyWebhook` で注文/FO を処理。内部 API `/api/internal/webhook-jobs/process` は `JOB_WORKER_SECRET` を必須にし、Vercel Cron（1 日 1 回 / 03:30 UTC）で起動。`ENABLE_INLINE_WEBHOOK_PROCESSING` と `INLINE_WEBHOOK_BATCH` で即時処理のオンデマンド切り替えも可能。
+4. **Supabase マイグレーション反映**: 2025-11-13 に `webhook_jobs` テーブルと `claim_pending_webhook_jobs()` RPC を本番へ `supabase db push` 済み。`vendors.contact_name` など既存差分も含め、Stage/Prod が揃った状態。
+5. **データベース & トークン管理**: Token/Scope は `shopify_connections` に保存し、Supabase Dashboard で直接確認できる。今後は同テーブルを UI で閲覧できれば十分。
+6. **UI/UX & リアルタイム同期**: 発送一覧の行高を調整し、リアルタイム購読で `shipments`/`line_items`/`orders` を即時更新。発送登録は「入力 → 確認」二段階、未発送へ戻す際は注意パネルと理由入力を必須化。ブランド表記を「配送管理コンソール」に統一し、ボタン/ナビの hover/active や操作中オーバーレイで体感スピードを底上げ。
+7. **在庫ポリシー**: 在庫編集は Shopify GUI（マーチャント管理ロケーション）のみが真実の源。Console は閲覧＋同期に限定し、FS モデル由来の在庫操作フローは廃止済み。
+8. **Fulfillment Callback**: `/api/shopify/fulfillment/callback` で Shopify → Console の配送依頼やメタ更新を受信し、`fulfillment_requests` テーブル経由で追跡・解析可能。
+9. **Secret & Inline 設定**: 2025-11-13 に `JOB_WORKER_SECRET` をローカル/Vercel の両方へ投入済み。Cron が 1 日 1 回である現状は `ENABLE_INLINE_WEBHOOK_PROCESSING=true`、`INLINE_WEBHOOK_BATCH=5` を標準とし、Pro へ移行した時点で改めて見直す方針。2025-11-14 には GitHub Actions へ Cron を移行し、`JOB_WORKER_SECRET` / `CRON_SECRET` を Bearer 認証で利用する体制へ切り替えた。
 
-### Webhook 運用ルール（2025-11-13 追記）
+### 1.1 Webhook 経路と通知設定
 | 経路 | トピック | 目的 |
 | ---- | ------- | ---- |
-| Shopify → LIVAPON（直送） | `orders/create`, `orders/updated`, `orders/cancelled` | 注文の即時反映 |
-| Shopify → LIVAPON（直送） | `fulfillment_orders/order_routing_complete`, `fulfillment_orders/hold_released`, `fulfillment_orders/cancellation_request_accepted` | FO 残量・状態の即時反映 |
+| Shopify → LIVAPON（直送） | `orders/create`, `orders/updated`, `orders/cancelled` | OM モデル用の注文反映 |
+| Shopify → LIVAPON（直送） | `fulfillment_orders/order_routing_complete`, `fulfillment_orders/hold_released`, `fulfillment_orders/cancellation_request_accepted` | FO 状態の即時反映 |
 | LIVAPON → Bridge App → Shopify | `fulfillmentCreateV2` 等 | 発送登録・追跡番号更新 |
-| Bridge App 経由再同期 | 任意 | Webhook 取りこぼし時の再取得、監査 |
+| Bridge App 経由再同期 | 任意 | Webhook すり抜け時の再取得・監査 |
 
-環境変数は `SHOPIFY_WEBHOOK_SECRET` / `_APP` / `_STORE` / `SHOPIFY_API_SECRET` を順番に試し、ストア通知とアプリ通知の双方に対応する。
+Webhook 検証では `SHOPIFY_WEBHOOK_SECRET` → `_APP` → `_STORE` → `SHOPIFY_API_SECRET` の順で環境変数をフォールバックし、ストア通知とアプリ通知どちらも捕捉。
 
-## 2. 直近でやっておきたいこと
-1. **Shopify アプリ設定の反映**
-   - `shopify app deploy` で TOML 変更（Webhook購読など）を Shopify 側に反映。
-   - 必要に応じて開発ストアへ再インストールし、スコープを再適用。
-2. **Webhook/FO フローの本番検証**
-   - OMモデル前提で `orders/create` → GraphQL PULL → `fulfillmentCreateV2` まで一気通貫テスト。
-   - `/api/shopify/orders/ingest` の HMAC 検証ログを確認し、エラーがないかチェック。
-3. **アクセストークン管理 UX**
-   - `shopify_connections` を閲覧・更新できる管理画面（最低限の read-only）を Console に追加すると運用が楽。
-   - Token 履歴・再認可導線も今後の改善候補。
-4. **在庫表示方針の確定**
-   - GUI 改修後は LIVAPON Console を在庫の真実の源にするか、Shopify GUI を維持するかで表示ロジックが変わるため、仕様合意が必要。
-5. **MCP/CLI 連携（任意）**
-   - Shopify MCP を Codex に組み込む場合、`mcp.config.json` への追記＋トークン管理が必要。優先度は低だが情報収集済み。
+## 2. 未処理タスク（優先度順）
+1. **GitHub Actions 変数整備**: `APP_BASE_URL`（例: https://xxxxx.vercel.app）を GitHub repo variables に追加し、`JOB_WORKER_SECRET` / `CRON_SECRET` を GitHub Secrets に登録して Actions から参照できるようにする。Vercel との値ズレがないか定期棚卸し。
+2. **監査・可観測性**: `webhook_jobs` の状態をダッシュボード化するか Slack 通知を追加し、失敗ジョブを素早く検知できるようにする。
+3. **Shopify アプリ反映 & テスト**: `shopify app deploy` → 開発ストア再インストール → `orders/create` ～ `fulfillmentCreateV2` の一気通貫テストで OM モデル前提のフローを検証。
+4. **アクセストークン UX**: `shopify_connections` を read-only 表示できる簡易画面を Console に追加し、再認可導線や履歴管理を計画。
+5. **在庫表示仕様の最終合意**: Shopify GUI を真実の源に固定するのか、Console に二次編集機能を戻すのかを決め、UI の表示/警告ロジックを固める。
 
-## 3. これまで詰まっていた箇所と解消状況
-| 課題 | 状況 |
-| --- | --- |
-| FSモデル採用で在庫編集できない | OMモデルへ移行し、PULL方式で FO を取得する方針に決定。`DEVELOPMENT_PLAN_OM_MODEL.md` に記録済み。 |
-| Shopify API 422 "api_client does not have access to the fulfillment order" | `_merchant_managed_` スコープを使う OM 前提に切り替え。FS向けスコープ削除 → 再認可を実施。 |
-| Supabase vendors.contact_name カラム欠如 | マイグレーションで `contact_name` を追加済み（本番 DB 反映済）。 |
-| 配送登録後も注文ステータスが未発送のまま | 出荷実績を基に派生ステータスを計算するよう `mapDetailToSummary` を修正。 |
-| リアルタイム反映不足 | Supabase Realtime で `shipments`/`line_items`/`orders` を購読し、一覧画面に即時反映。 |
-| Webhook 設定の不整合 | `shopify.app.toml` で実装エンドポイント `/api/shopify/orders/ingest` に合わせて購読トピックを明示。 |
-| アクセストークンの把握が困難 | `shopify_connections` から直接確認できることを整理。今後 UI を追加予定。 |
+## 3. 最近解消した課題
+- **FS モデルの制約**: Shopify 側在庫編集ができない問題は OM モデルへ切り替えることで解消し、FS 用スコープを撤廃。
+- **Shopify API 422**: `_merchant_managed_` スコープへ移行し、必要なトピックを再認可してリクエストが通る状態に修正。
+- **`vendors.contact_name` 欠如**: マイグレーションを作成し、`supabase db push` で本番適用済み。
+- **配送登録後のステータス差異**: `mapDetailToSummary` を調整し、出荷実績ベースで `fulfilled/partially_fulfilled` を即時計算。
+- **リアルタイム反映不足**: Supabase Realtime を `shipments`/`line_items`/`orders` に導入し、一覧の即時更新を実現。
+- **Webhook 設定不整合**: `shopify.app.toml` と実装エンドポイントを一致させ、対象トピックの購読を明示。
+- **トークン把握の煩雑さ**: `shopify_connections` を橋頭堡とし、Supabase Dashboard でアクセスできるよう整理。
 
-## 4. 次の一歩（推奨）
-1. Shopify CLI で `shopify app deploy` → 開発ストア再インストール → Webhook テスト。
-2. Bridge App から GraphQL `order.fulfillmentOrders` を呼ぶ Console 実装を確定（PULL フローのコード化）。
-3. ベンダー在庫管理 UI の仕様整理（Shopify GUI vs Console どちらを真実の源とするか）。
-4. 必要に応じて Token 管理 UI / 再認可ボタンを Console に追加。
+## 4. 推奨実行順序
+1. **Shopify 側同期**: `shopify app deploy` + 開発ストア再インストール → Webhook HMAC ログの健全性を確認し、`orders/create` ～ `fulfillmentCreateV2` の通しテストを記録。
+2. **ジョブ監査体制**: GitHub Actions の実行ログ＋`webhook_jobs` ステータス監視（Dashboard or Slack）を整備し、失敗時に即時再実行できる CLI フローを明文化。
+3. **運用ガードレール**: GitHub Actions / inline 処理の負荷を踏まえ、Pro プラン移行 or Supabase PG Cron の導入判断、ならびに在庫表示仕様の決定をステークホルダーと合意。

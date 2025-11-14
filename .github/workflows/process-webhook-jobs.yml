@@ -1,0 +1,34 @@
+name: Process Webhook Jobs
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger webhook job runner
+        env:
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          JOB_WORKER_SECRET: ${{ secrets.JOB_WORKER_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_BASE_URL:-}" ]; then
+            echo "::error::APP_BASE_URL repository variable is not configured"
+            exit 1
+          fi
+
+          if [ -z "${JOB_WORKER_SECRET:-}" ]; then
+            echo "::error::JOB_WORKER_SECRET secret is not configured"
+            exit 1
+          fi
+
+          RESPONSE=$(curl -fsS --retry 5 --retry-all-errors --retry-delay 5 \
+            -X POST \
+            -H "Authorization: Bearer ${JOB_WORKER_SECRET}" \
+            "${APP_BASE_URL}/api/internal/webhook-jobs/process?limit=25")
+
+          echo "Queue runner response: ${RESPONSE}"

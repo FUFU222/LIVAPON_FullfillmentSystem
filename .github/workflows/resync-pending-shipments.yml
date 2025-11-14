@@ -1,0 +1,34 @@
+name: Resync Pending Shipments
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  resync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger shipment resync
+        env:
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_BASE_URL:-}" ]; then
+            echo "::error::APP_BASE_URL repository variable is not configured"
+            exit 1
+          fi
+
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET secret is not configured"
+            exit 1
+          fi
+
+          RESPONSE=$(curl -fsS --retry 5 --retry-all-errors --retry-delay 5 \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_BASE_URL}/api/internal/shipments/resync?limit=20")
+
+          echo "Shipment resync response: ${RESPONSE}"

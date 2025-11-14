@@ -1,12 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/internal/shipments/resync",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/internal/webhook-jobs/process",
-      "schedule": "30 3 * * *"
-    }
-  ]
-}
+{}

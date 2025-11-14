@@ -7,7 +7,6 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useState } from "react";
 import { cancelShipmentAction } from "@/app/orders/actions";
 import type { ShipmentActionState } from "@/app/orders/actions";
-import type { ShipmentHistoryEntry } from "@/lib/data/orders";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";

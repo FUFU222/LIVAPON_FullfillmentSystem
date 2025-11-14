@@ -83,6 +83,13 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('[realtime] shipments event', {
+              table: 'shipments',
+              event: (payload as any)?.eventType,
+              orderId
+            });
+          }
           registerOrderChange(orderId, false);
         }
       )
@@ -97,6 +104,14 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         (payload) => {
           const orderId = extractOrderId(payload as any);
           const isInsert = (payload as any)?.eventType === 'INSERT';
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('[realtime] line_items event', {
+              table: 'line_items',
+              event: (payload as any)?.eventType,
+              orderId,
+              isInsert
+            });
+          }
           registerOrderChange(orderId, Boolean(isInsert));
         }
       );
@@ -112,6 +127,14 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
       (payload) => {
         const orderId = extractOrderId(payload as any);
         const isInsert = (payload as any)?.eventType === 'INSERT';
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('[realtime] orders event', {
+            table: 'orders',
+            event: (payload as any)?.eventType,
+            orderId,
+            isInsert
+          });
+        }
         registerOrderChange(orderId, Boolean(isInsert));
       }
     );

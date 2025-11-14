@@ -56,6 +56,8 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
 
   useEffect(() => {
     const supabase = getBrowserClient();
+
+    const vendorFilter = `vendor_id=eq.${vendorId}`;
     const orderFilter = orderIds.length > 0 ? `id=in.(${orderIds.join(",")})` : null;
 
     const extractOrderId = (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {
@@ -99,21 +101,20 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         }
       );
 
-    if (orderFilter) {
-      channel.on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: orderFilter
-        },
-        (payload) => {
-          const orderId = extractOrderId(payload as any);
-          registerOrderChange(orderId, false);
-        }
-      );
-    }
+    channel.on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "orders",
+        filter: vendorFilter
+      },
+      (payload) => {
+        const orderId = extractOrderId(payload as any);
+        const isInsert = (payload as any)?.eventType === 'INSERT';
+        registerOrderChange(orderId, Boolean(isInsert));
+      }
+    );
 
     channel.subscribe();
 

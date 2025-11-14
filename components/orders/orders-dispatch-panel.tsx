@@ -275,7 +275,6 @@ export function OrdersDispatchPanel({
           }
         }}
         title="発送登録の最終確認"
-        description="この操作は即時に Shopify へ同期されます。内容に誤りがないか確認してから確定してください。"
         footer={
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setConfirmOpen(false)}>

@@ -10,6 +10,7 @@
 7. **在庫ポリシー**: 在庫編集は Shopify GUI（マーチャント管理ロケーション）のみが真実の源。Console は閲覧＋同期に限定し、FS モデル由来の在庫操作フローは廃止済み。
 8. **Fulfillment Callback**: `/api/shopify/fulfillment/callback` で Shopify → Console の配送依頼やメタ更新を受信し、`fulfillment_requests` テーブル経由で追跡・解析可能。
 9. **Secret & Inline 設定**: 2025-11-13 に `JOB_WORKER_SECRET` をローカル/Vercel の両方へ投入済み。Cron が 1 日 1 回である現状は `ENABLE_INLINE_WEBHOOK_PROCESSING=true`、`INLINE_WEBHOOK_BATCH=5` を標準とし、Pro へ移行した時点で改めて見直す方針。2025-11-14 には GitHub Actions へ Cron を移行し、`JOB_WORKER_SECRET` / `CRON_SECRET` を Bearer 認証で利用する体制へ切り替えた。
+10. **注文ステータス整合性と即時通知**: Shopify 側の `fulfilled_quantity` / `fulfillable_quantity` を優先する変換ロジックに変更し、注文一覧とラインアイテムの表示が Shopify 管理画面と即時一致するようにした。保留中の明細は `保留中` バッジで区別し、Supabase Realtime 経由で「新規注文 / 既存注文の更新件数」を含む通知バナーを出すよう改良（自動更新はユーザー操作で制御）。
 
 ### 1.1 Webhook 経路と通知設定
 | 経路 | トピック | 目的 |

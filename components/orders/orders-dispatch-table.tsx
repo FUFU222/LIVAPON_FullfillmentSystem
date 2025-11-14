@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import type { OrderLineItemSummary, OrderSummary } from "@/lib/data/orders";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusBadge, statusLabel } from "@/components/orders/status-badge";
+import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
 import { Badge } from "@/components/ui/badge";
@@ -31,9 +31,9 @@ function formatDate(date: string | null) {
 
 function getShippedQuantity(lineItem: OrderLineItemSummary): number {
   if (typeof lineItem.shippedQuantity === "number") {
-    return lineItem.shippedQuantity;
+    return Math.max(0, lineItem.shippedQuantity);
   }
-  return lineItem.shipments.reduce((total, shipment) => total + (shipment.quantity ?? 0), 0);
+  return Math.max(0, lineItem.shipments.reduce((total, shipment) => total + (shipment.quantity ?? 0), 0));
 }
 
 function getRemainingQuantity(lineItem: OrderLineItemSummary): number {
@@ -49,11 +49,36 @@ function getRemainingQuantity(lineItem: OrderLineItemSummary): number {
 function getLineItemStatus(
   lineItem: OrderLineItemSummary,
   orderStatus: string | null
-): 'fulfilled' | 'unfulfilled' | 'cancelled' {
-  if ((orderStatus ?? '').toLowerCase() === 'cancelled') {
+): 'fulfilled' | 'partially_fulfilled' | 'unfulfilled' | 'cancelled' | 'on_hold' {
+  const orderNormalized = (orderStatus ?? '').toLowerCase();
+  if (orderNormalized === 'cancelled') {
     return 'cancelled';
   }
-  return getRemainingQuantity(lineItem) <= 0 ? 'fulfilled' : 'unfulfilled';
+
+  const remaining = getRemainingQuantity(lineItem);
+  const shipped = getShippedQuantity(lineItem);
+  const fulfilled = lineItem.fulfilledQuantity ?? shipped;
+
+  if (remaining <= 0) {
+    return 'fulfilled';
+  }
+
+  const shopifyFulfillable =
+    typeof lineItem.fulfillableQuantity === 'number' ? lineItem.fulfillableQuantity : null;
+  const shopifyFulfilled = typeof lineItem.fulfilledQuantity === 'number' ? lineItem.fulfilledQuantity : null;
+
+  const isOnHold =
+    remaining > 0 && shopifyFulfillable === 0 && (shopifyFulfilled ?? 0) === 0 && orderNormalized !== 'fulfilled';
+
+  if (isOnHold) {
+    return 'on_hold';
+  }
+
+  if (fulfilled > 0 || shipped > 0) {
+    return 'partially_fulfilled';
+  }
+
+  return 'unfulfilled';
 }
 
 type SelectedLineItem = {
@@ -324,14 +349,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                   )}
                 </TableCell>
                 <TableCell className={ORDER_ROW_CELL}>
-                  <div className="flex flex-col gap-1">
-                    <StatusBadge status={order.status} />
-                    {order.localStatus && order.status && order.localStatus !== order.status ? (
-                      <span className="text-[11px] font-medium text-amber-700">
-                        Console記録: {statusLabel[order.localStatus] ?? order.localStatus}
-                      </span>
-                    ) : null}
-                  </div>
+                  <StatusBadge status={order.status ?? order.localStatus ?? 'unfulfilled'} />
                 </TableCell>
                 <TableCell className={ORDER_ROW_CELL}>{formatDate(order.createdAt)}</TableCell>
               </TableRow>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,17 @@ const initialUpdateState: UpdateState = {
 };
 
 export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeListenerProps) {
-  const visibleOrderCount = orderIds.length;
   const router = useRouter();
   const [updates, setUpdates] = useState<UpdateState>(initialUpdateState);
   const [debugEvents, setDebugEvents] = useState<
     Array<{ source: string; eventType: string | null; orderId: number | null }>
   >([]);
   const debugRealtime = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
+  const orderCountRef = useRef(orderIds.length);
+
+  useEffect(() => {
+    orderCountRef.current = orderIds.length;
+  }, [orderIds.length]);
 
   const registerOrderChange = useCallback((orderId: number | null, isNew: boolean) => {
     setUpdates((prev) => {
@@ -74,7 +78,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
 
   useEffect(() => {
     if (debugRealtime) {
-      console.info('RealtimeListener mount', { vendorId, orderCount: visibleOrderCount });
+      console.info('RealtimeListener mount', { vendorId, orderCount: orderCountRef.current });
     }
     const supabase = getBrowserClient();
 
@@ -167,7 +171,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [debugRealtime, pushDebugEvent, registerOrderChange, vendorId, visibleOrderCount]);
+  }, [debugRealtime, pushDebugEvent, registerOrderChange, vendorId]);
 
   const { message, showBanner, newOrderCount, updatedCount } = useMemo(() => {
     if (!updates.hasUpdates) {

@@ -18,7 +18,7 @@ export default function RealtimeProbePage() {
   const searchParams = useSearchParams();
   const debug = process.env.NEXT_PUBLIC_DEBUG_REALTIME === "true";
   const hasGuard = typeof probeGuardKey === "string" && probeGuardKey.length > 0;
-  const providedGuard = searchParams.get("key");
+  const providedGuard = searchParams?.get("key") ?? null;
   const isAllowed = hasGuard ? providedGuard === probeGuardKey : true;
 
   useEffect(() => {

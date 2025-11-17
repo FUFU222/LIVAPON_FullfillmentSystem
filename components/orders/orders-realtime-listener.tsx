@@ -58,8 +58,6 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
   useEffect(() => {
     const supabase = getBrowserClient();
 
-    const vendorFilter = `vendor_id=eq.${vendorId}`;
-    const orderFilter = orderIds.length > 0 ? `id=in.(${orderIds.join(",")})` : null;
 
     const extractOrderId = (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {
       const candidateNew = payload.new;
@@ -122,8 +120,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
       {
         event: "*",
         schema: "public",
-        table: "orders",
-        filter: vendorFilter
+        table: "orders"
       },
       (payload) => {
         const orderId = extractOrderId(payload as any);
@@ -145,7 +142,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orderIds, registerOrderChange, vendorId]);
+  }, [debugRealtime, orderIds, registerOrderChange, vendorId]);
 
   const { message, showBanner, newOrderCount, updatedCount } = useMemo(() => {
     if (!updates.hasUpdates) {

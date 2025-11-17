@@ -220,6 +220,12 @@ async function upsertOrderRecord(
   }
 
   console.log('✅ Order upsert successful, ID:', data?.id);
+  console.info('[realtime-debug] orders upserted', {
+    orderId: data?.id ?? null,
+    vendorId: orderVendorId,
+    shopDomain: normalizedShopDomain,
+    lineItemCount: payload.line_items.length
+  });
   if (!data) throw new Error('Failed to upsert order record');
   return data.id;
 }
@@ -260,6 +266,11 @@ async function replaceLineItems(
     console.error('❌ Failed to sync line_items via RPC', error);
     throw error;
   }
+
+  console.info('[realtime-debug] line_items synced', {
+    orderId,
+    syncedLineItems: items.length
+  });
 }
 
 // ==========================

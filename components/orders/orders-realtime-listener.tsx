@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type RealtimeChannel } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,6 +37,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     Array<{ source: string; eventType: string | null; orderId: number | null }>
   >([]);
   const debugRealtime = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
 
   const registerOrderChange = useCallback((orderId: number | null, isNew: boolean) => {
@@ -119,6 +120,9 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               event: (payload as any)?.eventType,
               orderId
             });
+            if (orderId === null) {
+              console.debug('[realtime] shipments payload (missing order id)', payload);
+            }
           }
           pushDebugEvent('shipments', (payload as any)?.eventType ?? null, orderId);
           registerOrderChange(orderId, false);
@@ -142,13 +146,17 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               orderId,
               isInsert
             });
+            if (orderId === null) {
+              console.debug('[realtime] line_items payload (missing order id)', payload);
+            }
           }
           pushDebugEvent('line_items', (payload as any)?.eventType ?? null, orderId);
           registerOrderChange(orderId, Boolean(isInsert));
         }
       );
 
-    channel.on(
+    channel
+      .on(
       "postgres_changes",
       {
         event: "*",
@@ -166,11 +174,16 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             orderId,
             isInsert
           });
+          if (orderId === null) {
+            console.debug('[realtime] orders payload (missing order id)', payload);
+          }
         }
         pushDebugEvent('orders', (payload as any)?.eventType ?? null, orderId);
         registerOrderChange(orderId, Boolean(isInsert));
       }
-    );
+      );
+
+    channelRef.current = channel;
 
     channel.subscribe((status) => {
       if (debugRealtime) {
@@ -179,7 +192,10 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, [debugRealtime, pushDebugEvent, registerOrderChange, vendorId]);
 

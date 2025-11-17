@@ -36,6 +36,9 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
   }, [orderIds.length]);
 
   const registerOrderChange = useCallback((orderId: number | null, isNew: boolean) => {
+    if (debugRealtime) {
+      console.info('[realtime] change registered', { orderId, isNew });
+    }
     setUpdates((prev) => {
       const nextNewOrders = new Set(prev.newOrders);
       const nextTouched = new Set(prev.touchedOrders);
@@ -53,7 +56,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         touchedOrders: nextTouched
       } satisfies UpdateState;
     });
-  }, []);
+  }, [debugRealtime]);
 
   const resetUpdates = useCallback(() => {
     setUpdates({

@@ -25,6 +25,9 @@ const initialUpdateState: UpdateState = {
 export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeListenerProps) {
   const router = useRouter();
   const [updates, setUpdates] = useState<UpdateState>(initialUpdateState);
+  const [debugEvents, setDebugEvents] = useState<
+    Array<{ source: string; eventType: string | null; orderId: number | null }>
+  >([]);
   const debugRealtime = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
 
   const registerOrderChange = useCallback((orderId: number | null, isNew: boolean) => {
@@ -54,6 +57,19 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
       touchedOrders: new Set()
     });
   }, []);
+
+  const pushDebugEvent = useCallback(
+    (source: string, eventType: string | null, orderId: number | null) => {
+      if (!debugRealtime) {
+        return;
+      }
+      setDebugEvents((prev) => {
+        const next = [{ source, eventType, orderId }, ...prev];
+        return next.slice(0, 6);
+      });
+    },
+    [debugRealtime]
+  );
 
   useEffect(() => {
     if (debugRealtime) {
@@ -92,6 +108,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
               orderId
             });
           }
+          pushDebugEvent('shipments', (payload as any)?.eventType ?? null, orderId);
           registerOrderChange(orderId, false);
         }
       )
@@ -114,6 +131,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
               isInsert
             });
           }
+          pushDebugEvent('line_items', (payload as any)?.eventType ?? null, orderId);
           registerOrderChange(orderId, Boolean(isInsert));
         }
       );
@@ -136,6 +154,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
             isInsert
           });
         }
+        pushDebugEvent('orders', (payload as any)?.eventType ?? null, orderId);
         registerOrderChange(orderId, Boolean(isInsert));
       }
     );
@@ -149,7 +168,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [debugRealtime, orderIds, registerOrderChange, vendorId]);
+  }, [debugRealtime, orderIds, pushDebugEvent, registerOrderChange, vendorId]);
 
   const { message, showBanner, newOrderCount, updatedCount } = useMemo(() => {
     if (!updates.hasUpdates) {
@@ -185,7 +204,27 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
   }, [updates]);
 
   if (!showBanner) {
-    return null;
+    return debugRealtime ? (
+      <div className="pointer-events-none fixed bottom-2 left-2 z-40 w-72 text-xs text-slate-500">
+        <div className="rounded-lg border border-slate-300 bg-white/95 shadow">
+          <div className="border-b px-3 py-2 font-semibold text-slate-700">Realtime Debug</div>
+          <div className="max-h-44 space-y-1 overflow-y-auto p-3">
+            {debugEvents.length === 0 ? (
+              <p className="text-slate-400">イベントなし</p>
+            ) : (
+              debugEvents.map((event, index) => (
+                <div key={`${event.source}-${event.orderId}-${index}`} className="rounded bg-slate-100 px-2 py-1">
+                  <div className="font-medium text-slate-700">{event.source}</div>
+                  <div className="text-slate-600">
+                    type: {event.eventType ?? 'unknown'} / order: {event.orderId ?? 'n/a'}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    ) : null;
   }
 
   return (

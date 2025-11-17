@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 
 type OrdersRealtimeListenerProps = {
   vendorId: number;
-  orderIds: number[];
 };
 
 type UpdateState = {
@@ -22,18 +21,14 @@ const initialUpdateState: UpdateState = {
   touchedOrders: new Set()
 };
 
-export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeListenerProps) {
+export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps) {
   const router = useRouter();
   const [updates, setUpdates] = useState<UpdateState>(initialUpdateState);
   const [debugEvents, setDebugEvents] = useState<
     Array<{ source: string; eventType: string | null; orderId: number | null }>
   >([]);
   const debugRealtime = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
-  const orderCountRef = useRef(orderIds.length);
 
-  useEffect(() => {
-    orderCountRef.current = orderIds.length;
-  }, [orderIds.length]);
 
   const registerOrderChange = useCallback((orderId: number | null, isNew: boolean) => {
     if (debugRealtime) {
@@ -81,7 +76,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
 
   useEffect(() => {
     if (debugRealtime) {
-      console.info('RealtimeListener mount', { vendorId, orderCount: orderCountRef.current });
+      console.info('RealtimeListener mount', { vendorId });
     }
     const supabase = getBrowserClient();
 

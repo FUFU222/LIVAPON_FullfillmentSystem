@@ -96,8 +96,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         {
           event: "*",
           schema: "public",
-          table: "shipments",
-          filter: `vendor_id=eq.${vendorId}`
+          table: "shipments"
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
@@ -117,8 +116,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
         {
           event: "*",
           schema: "public",
-          table: "line_items",
-          filter: `vendor_id=eq.${vendorId}`
+          table: "line_items"
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);

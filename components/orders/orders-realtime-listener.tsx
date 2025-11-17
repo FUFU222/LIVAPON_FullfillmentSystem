@@ -2,8 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase client requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
+}
+
+const realtimeClient = createClient(supabaseUrl, supabaseAnonKey);
 
 type OrdersRealtimeListenerProps = {
   vendorId: number;
@@ -78,7 +87,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     if (debugRealtime) {
       console.info('RealtimeListener mount', { vendorId });
     }
-    const supabase = getBrowserClient();
+    const supabase = realtimeClient;
 
 
     const extractOrderId = (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {
@@ -99,7 +108,8 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         {
           event: "*",
           schema: "public",
-          table: "shipments"
+          table: "shipments",
+          filter: `vendor_id=eq.${vendorId}`
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
@@ -119,7 +129,8 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         {
           event: "*",
           schema: "public",
-          table: "line_items"
+          table: "line_items",
+          filter: `vendor_id=eq.${vendorId}`
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
@@ -142,7 +153,8 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       {
         event: "*",
         schema: "public",
-        table: "orders"
+        table: "orders",
+        filter: `vendor_id=eq.${vendorId}`
       },
       (payload) => {
         const orderId = extractOrderId(payload as any);

@@ -34,6 +34,12 @@
 1. **トークン再認可**: `shopify.app.toml` → `shopify app deploy` → `/api/shopify/auth/start`。`shopify_connections` が更新されるか。
 2. **アクセストークン期限切れ**: エラー時のアラート／再認可案内。
 
+### G. Realtime Sync（Postgres Changes）
+1. **Publication 検証**: `supabase_realtime` publication に `orders/line_items/shipments` が登録されていることを `pg_publication_tables` で確認。
+2. **Replica Identity**: `orders` など UPDATE/DELETE 対象テーブルに `REPLICA IDENTITY FULL` を設定し、更新イベントが届くかテスト。
+3. **RLS フロー**: `NEXT_PUBLIC_DEBUG_REALTIME=true` でブラウザの `[realtime] ...` ログを確認しつつ、(a) RLS OFF で購読 → (b) RLS ON + ベンダーフィルタ → (c) Supabase Auth の `vendor_id` が JWT に含まれるケースでイベントが届くかを記録。
+4. **UI 冪等性**: 通知トースト表示と `router.refresh()` の再フェッチが両方機能し、イベント取りこぼし時でも最終的に整合が取れるかをスクリーンキャプチャ付きで証明する。
+
 ## 3. 実施タイミング
 - 本番リリース前：上記主要シナリオをすべて実施。
 - リリース後：月次または四半期ごとに要点チェック（複数ベンダー・キャンセル・アーカイブ・在庫不足など）。

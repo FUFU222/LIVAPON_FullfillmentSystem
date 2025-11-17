@@ -20,6 +20,21 @@ Shopify からの Webhook/Realtime イベントを Console UI に即時反映さ
    - ① 即時通知（トースト/バナー/バッジ）でユーザーに気付きを与える
    - ② ユーザー操作で `router.refresh()` または、楽観的更新で DOM を更新 → バックグラウンドで再フェッチして確定
 
+## Supabase 設定チェックリスト（Postgres Changes）
+1. **Publication** — 公式 `supabase_realtime` に対象テーブルを登録する。
+   ```sql
+   alter publication supabase_realtime add table public.orders;
+   alter publication supabase_realtime add table public.line_items;
+   alter publication supabase_realtime add table public.shipments;
+   ```
+   ダッシュボードの *Database → Replication → Publications* でも同じ操作ができる。独自 publication を作っても Realtime サーバーは購読しないため、必ず `supabase_realtime` に寄せる。
+2. **Replica Identity** — UPDATE/DELETE の差分を流すテーブルは `REPLICA IDENTITY FULL` を付与する。
+   ```sql
+   alter table public.orders replica identity full;
+   ```
+   行数が多いテーブルは WAL 増を考慮しつつ、必要最小限の列（主キーなど）を指定する。
+3. **RLS と JWT** — RLS は Realtime にも適用されるため、疎通確認は「RLS OFF → 無フィルタ購読 → RLS ON → vendor フィルタ適用」の順で行う。Supabase Auth のユーザー `user_metadata/app_metadata` に `vendor_id` を必ずセットし、`auth.jwt()->>'vendor_id'` で参照できるようにしておく。
+
 ## 想定ケース（抜け漏れ防止チェック）
 - [ ] 同一注文に複数ベンダーがいる場合
 - [ ] Shopify 側で注文を未発送に戻した直後（FO が差し替わるケース）

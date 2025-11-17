@@ -53,8 +53,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         {
           event: "*",
           schema: "public",
-          table: "shipments",
-          filter: `vendor_id=eq.${vendorId}`
+          table: "shipments"
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
@@ -76,8 +75,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         {
           event: "*",
           schema: "public",
-          table: "line_items",
-          filter: `vendor_id=eq.${vendorId}`
+          table: "line_items"
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
@@ -103,8 +101,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       {
         event: "*",
         schema: "public",
-        table: "orders",
-        filter: `vendor_id=eq.${vendorId}`
+        table: "orders"
       },
       (payload) => {
         const orderId = extractOrderId(payload as any);

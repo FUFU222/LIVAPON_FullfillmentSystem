@@ -23,6 +23,7 @@ const initialUpdateState: UpdateState = {
 };
 
 export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeListenerProps) {
+  const visibleOrderCount = orderIds.length;
   const router = useRouter();
   const [updates, setUpdates] = useState<UpdateState>(initialUpdateState);
   const [debugEvents, setDebugEvents] = useState<
@@ -73,7 +74,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
 
   useEffect(() => {
     if (debugRealtime) {
-      console.info('RealtimeListener mount', { vendorId, orderCount: orderIds.length });
+      console.info('RealtimeListener mount', { vendorId, orderCount: visibleOrderCount });
     }
     const supabase = getBrowserClient();
 
@@ -166,7 +167,7 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [debugRealtime, orderIds, pushDebugEvent, registerOrderChange, vendorId]);
+  }, [debugRealtime, pushDebugEvent, registerOrderChange, vendorId, visibleOrderCount]);
 
   const { message, showBanner, newOrderCount, updatedCount } = useMemo(() => {
     if (!updates.hasUpdates) {

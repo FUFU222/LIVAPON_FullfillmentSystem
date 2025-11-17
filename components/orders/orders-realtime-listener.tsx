@@ -203,9 +203,11 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
 
   if (!showBanner) {
     return debugRealtime ? (
-      <div className="pointer-events-none fixed bottom-2 left-2 z-40 w-72 text-xs text-slate-500">
+      <div className="pointer-events-none fixed top-16 left-1/2 z-40 w-80 -translate-x-1/2 text-xs text-slate-500">
         <div className="rounded-lg border border-slate-300 bg-white/95 shadow">
-          <div className="border-b px-3 py-2 font-semibold text-slate-700">Realtime Debug</div>
+          <div className="border-b px-3 py-2 text-sm font-semibold text-slate-700">
+            Realtime Debug
+          </div>
           <div className="max-h-44 space-y-1 overflow-y-auto p-3">
             {debugEvents.length === 0 ? (
               <p className="text-slate-400">イベントなし</p>

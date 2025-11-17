@@ -1,16 +1,48 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { getBrowserClient } from "@/lib/supabase/client";
 import { OrdersRealtimeListener } from "@/components/orders/orders-realtime-listener";
-import { getAuthContext } from "@/lib/auth";
 
-export default async function RealtimeVendorProbePage() {
-  const auth = await getAuthContext();
+export default function RealtimeVendorProbePage() {
+  const [vendorId, setVendorId] = useState<number | null>(null);
+  const [guardChecked, setGuardChecked] = useState(false);
+  const debug = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
 
-  if (!auth) {
-    redirect('/sign-in?redirectTo=/dev/realtime-vendor');
+  useEffect(() => {
+    const supabase = getBrowserClient();
+
+    supabase.auth.getSession().then((result) => {
+      const rawVendor = result.data.session?.user?.user_metadata?.vendor_id;
+      const normalizedVendorId = typeof rawVendor === 'number' ? rawVendor : Number(rawVendor);
+      if (Number.isFinite(normalizedVendorId)) {
+        setVendorId(normalizedVendorId);
+      } else {
+        setVendorId(null);
+      }
+
+      if (debug) {
+        console.info('[realtime-vendor] session vendor', { vendorId: normalizedVendorId, rawVendor });
+      }
+
+      setGuardChecked(true);
+    });
+  }, [debug]);
+
+  if (!guardChecked) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 text-sm text-slate-500">
+        <p>Loading session...</p>
+      </main>
+    );
   }
 
-  if (auth.vendorId === null) {
-    redirect('/');
+  if (vendorId === null) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 text-sm text-slate-500">
+        <p>ログイン中のアカウントに vendor_id が設定されていません。</p>
+      </main>
+    );
   }
 
   return (
@@ -18,14 +50,13 @@ export default async function RealtimeVendorProbePage() {
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold text-foreground">Vendor Realtime Probe</h1>
         <p className="mt-2 text-slate-500">
-          このページでは /orders と同じロジックで Supabase Realtime を購読しています。
+          このページはクライアントサイドのみで Supabase Realtime を購読し、Orders ページと同じ条件でイベントが届くかを検証するためのものです。
           <br />
-          ブラウザの Console を開き、`NEXT_PUBLIC_DEBUG_REALTIME=true` を設定した状態で Shopify 側の操作を行うと、
-          Orders ページと同一条件でイベントが流れるかを確認できます。
+          ブラウザの Console で `NEXT_PUBLIC_DEBUG_REALTIME=true` のログを確認しながら操作してください。
         </p>
       </div>
 
-      <OrdersRealtimeListener vendorId={auth.vendorId} />
+      <OrdersRealtimeListener vendorId={vendorId} />
     </main>
   );
 }

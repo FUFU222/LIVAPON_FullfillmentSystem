@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,14 +14,31 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const probeGuardKey = process.env.NEXT_PUBLIC_REALTIME_PROBE_KEY ?? null;
 
 export default function RealtimeProbePage() {
-  const searchParams = useSearchParams();
   const debug = process.env.NEXT_PUBLIC_DEBUG_REALTIME === "true";
   const hasGuard = typeof probeGuardKey === "string" && probeGuardKey.length > 0;
-  const providedGuard = searchParams?.get("key") ?? null;
-  const isAllowed = hasGuard ? providedGuard === probeGuardKey : true;
+  const [isAllowed, setIsAllowed] = useState(!hasGuard);
+  const [guardChecked, setGuardChecked] = useState(!hasGuard);
 
   useEffect(() => {
-    if (!isAllowed) {
+    if (!hasGuard) {
+      setIsAllowed(true);
+      setGuardChecked(true);
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      // should never happen on client, but stay safe
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const match = params.get("key") === probeGuardKey;
+    setIsAllowed(match);
+    setGuardChecked(true);
+  }, [hasGuard]);
+
+  useEffect(() => {
+    if (!guardChecked || !isAllowed) {
       if (debug) {
         console.warn("Realtime probe blocked: missing or invalid key");
       }
@@ -49,7 +65,7 @@ export default function RealtimeProbePage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [debug, isAllowed]);
+  }, [debug, guardChecked, isAllowed]);
 
   return null;
 }

@@ -56,6 +56,9 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
   }, []);
 
   useEffect(() => {
+    if (debugRealtime) {
+      console.info('RealtimeListener mount', { vendorId, orderCount: orderIds.length });
+    }
     const supabase = getBrowserClient();
 
 
@@ -137,7 +140,11 @@ export function OrdersRealtimeListener({ vendorId, orderIds }: OrdersRealtimeLis
       }
     );
 
-    channel.subscribe();
+    channel.subscribe((status) => {
+      if (debugRealtime) {
+        console.info('RealtimeListener status', status);
+      }
+    });
 
     return () => {
       supabase.removeChannel(channel);

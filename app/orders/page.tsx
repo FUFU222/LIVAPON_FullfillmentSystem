@@ -81,7 +81,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
 
   return (
     <Card>
-      <OrdersRealtimeListener vendorId={auth.vendorId} orderIds={paginated.map((order) => order.id)} />
+      <OrdersRealtimeListener vendorId={auth.vendorId} />
       <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">

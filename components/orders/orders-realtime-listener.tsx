@@ -2,17 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient, type RealtimeChannel } from "@supabase/supabase-js";
+import { type RealtimeChannel } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase client requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
-}
-
-const realtimeClient = createClient(supabaseUrl, supabaseAnonKey);
+import { getBrowserClient } from "@/lib/supabase/client";
 
 type OrdersRealtimeListenerProps = {
   vendorId: number;
@@ -88,7 +80,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     if (debugRealtime) {
       console.info('RealtimeListener mount', { vendorId });
     }
-    const supabase = realtimeClient;
+    const supabase = getBrowserClient();
 
 
     const extractOrderId = (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {

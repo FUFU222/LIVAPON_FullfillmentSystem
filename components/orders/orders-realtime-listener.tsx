@@ -12,26 +12,17 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const [debugEvents, setDebugEvents] = useState<
     Array<{ source: string; eventType: string | null; orderId: number | null }>
   >([]);
-  const debugRealtime = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const pushDebugEvent = useCallback(
-    (source: string, eventType: string | null, orderId: number | null) => {
-      if (!debugRealtime) {
-        return;
-      }
-      setDebugEvents((prev) => {
-        const next = [{ source, eventType, orderId }, ...prev];
-        return next.slice(0, 6);
-      });
-    },
-    [debugRealtime]
-  );
+  const pushDebugEvent = useCallback((source: string, eventType: string | null, orderId: number | null) => {
+    setDebugEvents((prev) => {
+      const next = [{ source, eventType, orderId }, ...prev];
+      return next.slice(0, 6);
+    });
+  }, []);
 
   useEffect(() => {
-    if (debugRealtime) {
-      console.info('RealtimeListener mount', { vendorId });
-    }
+    console.info('RealtimeListener mount', { vendorId });
     const supabase = getBrowserClient();
 
 
@@ -57,15 +48,13 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         },
         (payload) => {
           const orderId = extractOrderId(payload as any);
-          if (debugRealtime) {
-            console.info('[realtime] shipments event', {
-              table: 'shipments',
-              event: (payload as any)?.eventType,
-              orderId
-            });
-            if (orderId === null) {
-              console.debug('[realtime] shipments payload (missing order id)', payload);
-            }
+          console.info('[realtime] shipments event', {
+            table: 'shipments',
+            event: (payload as any)?.eventType,
+            orderId
+          });
+          if (orderId === null) {
+            console.debug('[realtime] shipments payload (missing order id)', payload);
           }
           pushDebugEvent('shipments', (payload as any)?.eventType ?? null, orderId);
         }
@@ -80,16 +69,14 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         (payload) => {
           const orderId = extractOrderId(payload as any);
           const isInsert = (payload as any)?.eventType === 'INSERT';
-          if (debugRealtime) {
-            console.info('[realtime] line_items event', {
-              table: 'line_items',
-              event: (payload as any)?.eventType,
-              orderId,
-              isInsert
-            });
-            if (orderId === null) {
-              console.debug('[realtime] line_items payload (missing order id)', payload);
-            }
+          console.info('[realtime] line_items event', {
+            table: 'line_items',
+            event: (payload as any)?.eventType,
+            orderId,
+            isInsert
+          });
+          if (orderId === null) {
+            console.debug('[realtime] line_items payload (missing order id)', payload);
           }
           pushDebugEvent('line_items', (payload as any)?.eventType ?? null, orderId);
         }
@@ -106,16 +93,14 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       (payload) => {
         const orderId = extractOrderId(payload as any);
         const isInsert = (payload as any)?.eventType === 'INSERT';
-        if (debugRealtime) {
-          console.info('[realtime] orders event', {
-            table: 'orders',
-            event: (payload as any)?.eventType,
-            orderId,
-            isInsert
-          });
-          if (orderId === null) {
-            console.debug('[realtime] orders payload (missing order id)', payload);
-          }
+        console.info('[realtime] orders event', {
+          table: 'orders',
+          event: (payload as any)?.eventType,
+          orderId,
+          isInsert
+        });
+        if (orderId === null) {
+          console.debug('[realtime] orders payload (missing order id)', payload);
         }
         pushDebugEvent('orders', (payload as any)?.eventType ?? null, orderId);
       }
@@ -124,9 +109,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     channelRef.current = channel;
 
     channel.subscribe((status) => {
-      if (debugRealtime) {
-        console.info('RealtimeListener status', status);
-      }
+      console.info('RealtimeListener status', status);
     });
 
     return () => {
@@ -135,9 +118,9 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         channelRef.current = null;
       }
     };
-  }, [debugRealtime, pushDebugEvent, vendorId]);
+  }, [pushDebugEvent, vendorId]);
 
-  return debugRealtime ? (
+  return (
     <div className="pointer-events-none fixed top-16 left-1/2 z-40 w-80 -translate-x-1/2 text-xs text-slate-500">
       <div className="rounded-lg border border-slate-300 bg-white/95 shadow">
         <div className="border-b px-3 py-2 text-sm font-semibold text-slate-700">
@@ -159,5 +142,5 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         </div>
       </div>
     </div>
-  ) : null;
+  );
 }

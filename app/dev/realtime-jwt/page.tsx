@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/client";
+import { OrdersRealtimeListener } from "@/components/orders/orders-realtime-listener";
 
 export default function RealtimeJwtProbePage() {
   const [sessionInfo, setSessionInfo] = useState<{ vendorId: number | null; rawVendor: unknown } | null>(null);
@@ -59,6 +60,10 @@ export default function RealtimeJwtProbePage() {
           vendor_id (session): {sessionInfo?.vendorId ?? 'N/A'}
         </p>
       </div>
+
+      {sessionInfo?.vendorId ? (
+        <OrdersRealtimeListener vendorId={sessionInfo.vendorId} />
+      ) : null}
     </main>
   );
 }

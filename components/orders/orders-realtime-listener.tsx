@@ -11,32 +11,19 @@ type OrdersRealtimeListenerProps = {
   vendorId: number;
 };
 
-type PendingEventState = {
-  orders: Set<number>;
-  lineItems: Set<number>;
-  shipments: Set<number>;
-};
-
 export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps) {
   const router = useRouter();
   const { showToast, dismissToast } = useToast();
   const [isRefreshing, startTransition] = useTransition();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const userIdRef = useRef<string | null>(null);
-  const pendingEventsRef = useRef<PendingEventState>({
-    orders: new Set(),
-    lineItems: new Set(),
-    shipments: new Set()
-  });
+  const pendingOrderIdsRef = useRef<Set<number>>(new Set());
+  const vendorOrderMapRef = useRef<Set<number>>(new Set());
   const toastIdRef = useRef<string | null>(null);
   const refreshPendingRef = useRef(false);
 
   const resetPendingEvents = useCallback(() => {
-    pendingEventsRef.current = {
-      orders: new Set(),
-      lineItems: new Set(),
-      shipments: new Set()
-    };
+    pendingOrderIdsRef.current = new Set();
   }, []);
 
   const handleManualRefresh = useCallback(() => {
@@ -55,28 +42,17 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   }, [dismissToast, isRefreshing, resetPendingEvents, router, startTransition]);
 
   const notifyPendingUpdates = useCallback(() => {
-    const counts = pendingEventsRef.current;
-    const total =
-      counts.orders.size + counts.lineItems.size + counts.shipments.size;
+    const total = pendingOrderIdsRef.current.size;
     if (total <= 0) {
       return;
     }
 
-    const summaryParts: string[] = [];
-    if (counts.orders.size > 0) {
-      summaryParts.push(`注文 ${counts.orders.size}件`);
-    }
-    if (counts.lineItems.size > 0) {
-      summaryParts.push(`ラインアイテム ${counts.lineItems.size}件`);
-    }
-    if (counts.shipments.size > 0) {
-      summaryParts.push(`発送 ${counts.shipments.size}件`);
-    }
+    const summaryText = `注文 ${total}件`;
 
     toastIdRef.current = showToast({
       id: "orders-realtime-pending",
       title: "新しい更新があります",
-      description: summaryParts.join(" / ") || "最新の更新があります",
+      description: summaryText,
       duration: Infinity,
       variant: "info",
       action: {
@@ -131,13 +107,13 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       }
 
       if (typeof source === 'string' && source.length > 0) {
-        return source !== 'console';
+        return source.startsWith('webhook');
       }
 
-      return true;
+      return false;
     };
 
-    const registerEvent = (type: keyof PendingEventState, payload: any) => {
+    const registerEvent = (payload: any) => {
       if (!shouldNotify(payload)) {
         return;
       }
@@ -145,7 +121,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       if (typeof orderId !== 'number') {
         return;
       }
-      pendingEventsRef.current[type].add(orderId);
+      pendingOrderIdsRef.current.add(orderId);
       notifyPendingUpdates();
     };
 
@@ -176,50 +152,6 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
           {
             event: "*",
             schema: "public",
-            table: "shipments",
-            filter: `vendor_id=eq.${vendorId}`
-          },
-          (payload) => {
-            const orderId = extractOrderId(payload as any);
-            console.info('[realtime] shipments event', {
-              table: 'shipments',
-              event: (payload as any)?.eventType,
-              orderId
-            });
-            if (orderId === null) {
-              console.debug('[realtime] shipments payload (missing order id)', payload);
-            }
-            registerEvent('shipments', payload);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "line_items",
-            filter: `vendor_id=eq.${vendorId}`
-          },
-          (payload) => {
-            const orderId = extractOrderId(payload as any);
-            const isInsert = (payload as any)?.eventType === 'INSERT';
-            console.info('[realtime] line_items event', {
-              table: 'line_items',
-              event: (payload as any)?.eventType,
-              orderId,
-              isInsert
-            });
-            if (orderId === null) {
-              console.debug('[realtime] line_items payload (missing order id)', payload);
-            }
-            registerEvent('lineItems', payload);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
             table: "orders"
           },
           (payload) => {
@@ -231,7 +163,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
                 ? nextVendor === vendorId
                 : typeof prevVendor === 'number'
                   ? prevVendor === vendorId
-                  : true;
+                  : vendorOrderMapRef.current.has(orderId ?? -1);
             console.info('[realtime] orders event', {
               table: 'orders',
               event: (payload as any)?.eventType,
@@ -241,7 +173,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             if (!vendorMatches) {
               return;
             }
-            registerEvent('orders', payload);
+            registerEvent(payload);
           }
         )
         .on(
@@ -259,7 +191,15 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               event: (payload as any)?.eventType,
               orderId
             });
-            registerEvent('orders', payload);
+            if (typeof orderId !== 'number') {
+              return;
+            }
+            const eventType = (payload as any)?.eventType;
+            if (eventType === 'DELETE') {
+              vendorOrderMapRef.current.delete(orderId);
+            } else {
+              vendorOrderMapRef.current.add(orderId);
+            }
           }
         );
 

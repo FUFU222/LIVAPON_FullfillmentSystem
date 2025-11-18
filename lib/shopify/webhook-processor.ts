@@ -13,6 +13,7 @@ export const SUPPORTED_TOPICS = new Set([
   'orders/create',
   'orders/updated',
   'orders/cancelled',
+  'orders/fulfilled',
   'fulfillment_orders/order_routing_complete',
   'fulfillment_orders/hold_released'
 ]);

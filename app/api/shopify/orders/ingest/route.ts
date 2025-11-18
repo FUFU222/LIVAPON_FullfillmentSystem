@@ -12,7 +12,7 @@ export const runtime = 'edge';
 
 const INLINE_PROCESSING_ENABLED = process.env.ENABLE_INLINE_WEBHOOK_PROCESSING !== 'false';
 const INLINE_BATCH_LIMIT = Math.max(1, Math.min(Number(process.env.INLINE_WEBHOOK_BATCH ?? '1'), 10));
-const ORDER_STATUS_TOPICS = new Set(['orders/create', 'orders/updated', 'orders/cancelled']);
+const ORDER_STATUS_TOPICS = new Set(['orders/create', 'orders/updated', 'orders/cancelled', 'orders/fulfilled']);
 
 export async function POST(request: Request) {
   const secretMetadata = await getWebhookSecretMetadata();

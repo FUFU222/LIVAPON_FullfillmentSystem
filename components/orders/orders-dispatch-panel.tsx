@@ -137,7 +137,7 @@ export function OrdersDispatchPanel({
       showToast({
         variant: "success",
         title: "発送登録を受け付けました",
-        description: `${pendingShipment.items.length}件の明細を保存し、Shopify 同期を実行しています。`,
+        description: `${pendingShipment.items.length}件の明細を保存し、システムと同期中です。`,
         duration: 2500
       });
 

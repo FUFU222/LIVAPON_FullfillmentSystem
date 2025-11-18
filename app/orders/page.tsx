@@ -54,7 +54,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
           <OrdersRefreshButton />
         </div>
-        <div className="flex flex-wrap items-center gap-3 justify-between text-sm text-slate-500">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-500">
           <p>
             全 {filtered.length} 件中 {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)} 件を表示
           </p>

@@ -185,33 +185,40 @@ export function ShipmentHistoryTable({
         </thead>
         <tbody>
           {shipments.map((shipment) => (
-            <tr key={shipment.id} className="border-b border-slate-100">
-              <td className="px-3 py-3 text-xs text-slate-500">
+            <tr key={shipment.id} className="border-b border-slate-100 align-top">
+              <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap">
                 {formatDate(shipment.shippedAt)}
               </td>
               <td className="px-3 py-3">
-                {shipment.orderId ? (
-                  <Link
-                    href={`/orders/${shipment.orderId}`}
-                    className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
-                  >
-                    {shipment.orderNumber}
-                  </Link>
-                ) : (
-                  <span className="text-sm text-slate-500">
-                    {shipment.orderNumber}
-                  </span>
-                )}
-                <div className="mt-1 text-xs text-slate-500">
-                  <StatusBadge status={deriveVendorShipmentStatus(shipment)} />
+                <div className="flex flex-col gap-1">
+                  {shipment.orderId ? (
+                    <Link
+                      href={`/orders/${shipment.orderId}`}
+                      className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
+                    >
+                      {shipment.orderNumber}
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-slate-500">
+                      {shipment.orderNumber}
+                    </span>
+                  )}
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {shipment.orderStatus ? (
+                      <StatusBadge status={shipment.orderStatus} />
+                    ) : null}
+                    <StatusBadge status={deriveVendorShipmentStatus(shipment)} />
+                  </div>
                 </div>
               </td>
-              <td className="px-3 py-3 text-sm">
+              <td className="px-3 py-3 text-sm leading-relaxed">
                 {shipment.customerName ?? <span className="text-slate-400">-</span>}
               </td>
               <td className="px-3 py-3 text-xs text-slate-600">
                 {shipment.shippingAddress ? (
-                  <span className="whitespace-pre-line">{shipment.shippingAddress}</span>
+                  <span className="block whitespace-pre-line leading-relaxed">
+                    {shipment.shippingAddress}
+                  </span>
                 ) : (
                   <span className="text-slate-400">-</span>
                 )}
@@ -219,17 +226,19 @@ export function ShipmentHistoryTable({
               <td className="px-3 py-3 text-sm">
                 {shipment.trackingNumber ?? "-"}
               </td>
-              <td className="px-3 py-3 text-sm">
+              <td className="px-3 py-3 text-sm capitalize">
                 {shipment.carrier ?? "-"}
               </td>
-              <td className="px-3 py-3">
-                {shipment.orderId ? (
+              <td className="px-3 py-3 text-xs">
+                {deriveVendorShipmentStatus(shipment) === 'cancelled' ? (
+                  <span className="font-semibold text-slate-500">キャンセル済み</span>
+                ) : shipment.orderId ? (
                   <CancelShipmentForm
                     shipmentId={shipment.id}
                     orderId={shipment.orderId}
                   />
                 ) : (
-                  <span className="text-xs text-slate-400">
+                  <span className="text-slate-400">
                     取消対象の注文が見つかりません
                   </span>
                 )}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { OrdersRealtimeListener } from "@/components/orders/orders-realtime-listener";
+import { OrdersRealtimeProvider } from "@/components/orders/orders-realtime-context";
 
 export default function RealtimeVendorProbePage() {
   const [vendorId, setVendorId] = useState<number | null>(null);
@@ -46,9 +47,10 @@ export default function RealtimeVendorProbePage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-4 py-10 text-sm text-slate-600">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">Vendor Realtime Probe</h1>
+    <OrdersRealtimeProvider>
+      <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-4 py-10 text-sm text-slate-600">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-semibold text-foreground">Vendor Realtime Probe</h1>
         <p className="mt-2 text-slate-500">
           このページはクライアントサイドのみで Supabase Realtime を購読し、Orders ページと同じ条件でイベントが届くかを検証するためのものです。
           <br />
@@ -56,7 +58,8 @@ export default function RealtimeVendorProbePage() {
         </p>
       </div>
 
-      <OrdersRealtimeListener vendorId={vendorId} />
-    </main>
+        <OrdersRealtimeListener vendorId={vendorId} />
+      </main>
+    </OrdersRealtimeProvider>
   );
 }

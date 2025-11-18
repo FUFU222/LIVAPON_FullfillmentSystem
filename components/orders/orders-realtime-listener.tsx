@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast-provider";
+import { useOrdersRealtimeContext } from "./orders-realtime-context";
 
 type OrdersRealtimeListenerProps = {
   vendorId: number;
@@ -14,17 +15,13 @@ type OrdersRealtimeListenerProps = {
 export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps) {
   const router = useRouter();
   const { showToast, dismissToast } = useToast();
+  const { pendingCount, registerPendingOrder, markOrdersAsRefreshed } = useOrdersRealtimeContext();
   const [isRefreshing, startTransition] = useTransition();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const userIdRef = useRef<string | null>(null);
-  const pendingOrderIdsRef = useRef<Set<number>>(new Set());
-  const vendorOrderMapRef = useRef<Set<number>>(new Set());
   const toastIdRef = useRef<string | null>(null);
   const refreshPendingRef = useRef(false);
-
-  const resetPendingEvents = useCallback(() => {
-    pendingOrderIdsRef.current = new Set();
-  }, []);
+  const vendorOrderMapRef = useRef<Set<number>>(new Set());
 
   const handleManualRefresh = useCallback(() => {
     if (isRefreshing) {
@@ -35,24 +32,21 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       dismissToast(toastIdRef.current);
       toastIdRef.current = null;
     }
-    resetPendingEvents();
+    markOrdersAsRefreshed();
     startTransition(() => {
       router.refresh();
     });
-  }, [dismissToast, isRefreshing, resetPendingEvents, router, startTransition]);
+  }, [dismissToast, isRefreshing, markOrdersAsRefreshed, router, startTransition]);
 
-  const notifyPendingUpdates = useCallback(() => {
-    const total = pendingOrderIdsRef.current.size;
-    if (total <= 0) {
-      return;
+  const showPendingToast = useCallback(() => {
+    if (toastIdRef.current) {
+      dismissToast(toastIdRef.current);
+      toastIdRef.current = null;
     }
-
-    const summaryText = `注文 ${total}件`;
-
     toastIdRef.current = showToast({
       id: "orders-realtime-pending",
       title: "新しい更新があります",
-      description: summaryText,
+      description: `注文 ${pendingCount}件`,
       duration: Infinity,
       variant: "info",
       action: {
@@ -62,13 +56,16 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         disabled: isRefreshing
       }
     });
-  }, [handleManualRefresh, isRefreshing, showToast]);
+  }, [dismissToast, handleManualRefresh, isRefreshing, pendingCount, showToast]);
 
   useEffect(() => {
-    if (toastIdRef.current) {
-      notifyPendingUpdates();
+    if (pendingCount > 0) {
+      showPendingToast();
+    } else if (toastIdRef.current) {
+      dismissToast(toastIdRef.current);
+      toastIdRef.current = null;
     }
-  }, [isRefreshing, notifyPendingUpdates]);
+  }, [pendingCount, showPendingToast, dismissToast]);
 
   useEffect(() => {
     if (!isRefreshing && refreshPendingRef.current) {
@@ -113,7 +110,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       return false;
     };
 
-    const registerEvent = (payload: any) => {
+    const handleOrdersEvent = (payload: any) => {
       if (!shouldNotify(payload)) {
         return;
       }
@@ -121,9 +118,8 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       if (typeof orderId !== 'number') {
         return;
       }
-      pendingOrderIdsRef.current.add(orderId);
-      notifyPendingUpdates();
-    };
+      registerPendingOrder(orderId);
+  };
 
     async function subscribeWithSession() {
       const { data, error } = await supabase.auth.getSession();
@@ -164,16 +160,10 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
                 : typeof prevVendor === 'number'
                   ? prevVendor === vendorId
                   : vendorOrderMapRef.current.has(orderId ?? -1);
-            console.info('[realtime] orders event', {
-              table: 'orders',
-              event: (payload as any)?.eventType,
-              orderId,
-              vendorMatches
-            });
             if (!vendorMatches) {
               return;
             }
-            registerEvent(payload);
+            handleOrdersEvent(payload);
           }
         )
         .on(
@@ -186,11 +176,6 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
           },
           (payload) => {
             const orderId = extractOrderId(payload as any);
-            console.info('[realtime] order_vendor_segments event', {
-              table: 'order_vendor_segments',
-              event: (payload as any)?.eventType,
-              orderId
-            });
             if (typeof orderId !== 'number') {
               return;
             }
@@ -219,7 +204,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         channelRef.current = null;
       }
     };
-  }, [notifyPendingUpdates, vendorId]);
+  }, [showPendingToast, registerPendingOrder, vendorId]);
 
   return null;
 }

@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react';
-
-export const revalidate = 0;
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { buttonClasses } from '@/components/ui/button';
@@ -8,47 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrderFilters } from '@/components/orders/order-filters';
 import { OrdersDispatchTable } from '@/components/orders/orders-dispatch-table';
 import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
+import { OrdersRealtimeResetter } from '@/components/orders/orders-realtime-resetter';
 import { OrdersRefreshButton } from '@/components/orders/orders-refresh-button';
 import { getOrders } from '@/lib/data/orders';
 import { getAuthContext } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 type SearchParams = { [key: string]: string | string[] | undefined };
-
-function filterOrders(
-  orders: Awaited<ReturnType<typeof getOrders>>,
-  searchParams: { q?: string; status?: string }
-) {
-  const query = searchParams.q?.toLowerCase().trim();
-  const status = searchParams.status?.toLowerCase().trim();
-
-  return orders.filter((order) => {
-    const matchQuery = query
-      ? order.orderNumber.toLowerCase().includes(query) ||
-        (order.customerName?.toLowerCase().includes(query) ?? false)
-      : true;
-    const matchStatus = status ? order.status?.toLowerCase() === status : true;
-    return matchQuery && matchStatus;
-  });
-}
-
-function buildRedirectTarget(searchParams: SearchParams) {
-  const nextParams = new URLSearchParams();
-  Object.entries(searchParams).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((entry) => {
-        if (typeof entry === 'string') {
-          nextParams.append(key, entry);
-        }
-      });
-    } else if (typeof value === 'string') {
-      nextParams.set(key, value);
-    }
-  });
-
-  const query = nextParams.toString();
-  return query ? `/orders?${query}` : '/orders';
-}
 
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
   const redirectTarget = buildRedirectTarget(searchParams);
@@ -84,6 +48,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   return (
     <Card>
       <OrdersRealtimeListener vendorId={auth.vendorId} />
+      <OrdersRealtimeResetter />
       <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
@@ -107,6 +72,41 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       </CardContent>
     </Card>
   );
+}
+
+function filterOrders(
+  orders: Awaited<ReturnType<typeof getOrders>>,
+  searchParams: { q?: string; status?: string }
+) {
+  const query = searchParams.q?.toLowerCase().trim();
+  const status = searchParams.status?.toLowerCase().trim();
+
+  return orders.filter((order) => {
+    const matchQuery = query
+      ? order.orderNumber.toLowerCase().includes(query) ||
+        (order.customerName?.toLowerCase().includes(query) ?? false)
+      : true;
+    const matchStatus = status ? (order.status ?? '').toLowerCase() === status : true;
+    return matchQuery && matchStatus;
+  });
+}
+
+function buildRedirectTarget(searchParams: SearchParams) {
+  const nextParams = new URLSearchParams();
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => {
+        if (typeof entry === 'string') {
+          nextParams.append(key, entry);
+        }
+      });
+    } else if (typeof value === 'string') {
+      nextParams.set(key, value);
+    }
+  });
+
+  const query = nextParams.toString();
+  return query ? `/orders?${query}` : '/orders';
 }
 
 function PaginationControls({

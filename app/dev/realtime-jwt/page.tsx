@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { OrdersRealtimeListener } from "@/components/orders/orders-realtime-listener";
+import { OrdersRealtimeProvider } from "@/components/orders/orders-realtime-context";
 
 export default function RealtimeJwtProbePage() {
   const [sessionInfo, setSessionInfo] = useState<{ vendorId: number | null; rawVendor: unknown } | null>(null);
@@ -44,9 +45,10 @@ export default function RealtimeJwtProbePage() {
   }, [debug]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-4 py-10 text-sm text-slate-600">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">Realtime JWT Probe</h1>
+    <OrdersRealtimeProvider>
+      <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-4 py-10 text-sm text-slate-600">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-semibold text-foreground">Realtime JWT Probe</h1>
         <p className="mt-2 text-slate-500">
           ログイン済みユーザーの Supabase セッション（JWT）を使って orders テーブルを購読します。
           <br />
@@ -61,9 +63,10 @@ export default function RealtimeJwtProbePage() {
         </p>
       </div>
 
-      {sessionInfo?.vendorId ? (
-        <OrdersRealtimeListener vendorId={sessionInfo.vendorId} />
-      ) : null}
-    </main>
+        {sessionInfo?.vendorId ? (
+          <OrdersRealtimeListener vendorId={sessionInfo.vendorId} />
+        ) : null}
+      </main>
+    </OrdersRealtimeProvider>
   );
 }

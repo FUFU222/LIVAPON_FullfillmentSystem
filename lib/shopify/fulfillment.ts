@@ -617,7 +617,9 @@ export async function applyFulfillmentOrderSnapshot(options: ApplySnapshotOption
     .update({
       shopify_fulfillment_order_id: fulfillmentOrderId,
       shopify_fo_status: (options.foStatus ?? null)?.toLowerCase() ?? null,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      last_updated_source: 'worker:fo-sync',
+      last_updated_by: null
     })
     .eq('id', orderRecordId);
 

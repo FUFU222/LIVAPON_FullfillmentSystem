@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrdersDispatchTable } from '@/components/orders/orders-dispatch-table';
 import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
 import { OrdersRealtimeResetter } from '@/components/orders/orders-realtime-resetter';
-import { OrdersFilterBar } from '@/components/orders/orders-filter-bar';
+import { OrderFilters } from '@/components/orders/order-filters';
 import { OrdersRefreshButton } from '@/components/orders/orders-refresh-button';
 import { getOrders } from '@/lib/data/orders';
 import { getAuthContext } from '@/lib/auth';
@@ -59,7 +59,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
             全 {filtered.length} 件中 {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)} 件を表示
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <OrdersFilterBar />
+            <OrderFilters />
             <Link href="/orders/shipments" className={buttonClasses('outline')}>
               発送履歴一覧
             </Link>

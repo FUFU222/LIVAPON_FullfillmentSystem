@@ -49,17 +49,21 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
     <Card>
       <OrdersRealtimeListener vendorId={auth.vendorId} />
       <OrdersRealtimeResetter />
-      <CardHeader>
+      <CardHeader className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
           <OrdersRefreshButton />
-          <p className="text-sm text-slate-500">
+        </div>
+        <div className="flex flex-wrap items-center gap-3 justify-between text-sm text-slate-500">
+          <p>
             全 {filtered.length} 件中 {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)} 件を表示
           </p>
-          <OrdersFilterBar />
-          <Link href="/orders/shipments" className={buttonClasses('outline')}>
-            発送履歴一覧
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <OrdersFilterBar />
+            <Link href="/orders/shipments" className={buttonClasses('outline')}>
+              発送履歴一覧
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="gap-6">

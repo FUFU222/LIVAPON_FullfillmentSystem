@@ -170,6 +170,8 @@ export type Database = {
           fulfilled_quantity: number | null
           fulfillment_order_line_item_id: number | null
           id: number
+          last_updated_by: string | null
+          last_updated_source: string
           order_id: number | null
           product_name: string
           variant_title: string | null
@@ -185,6 +187,8 @@ export type Database = {
           fulfilled_quantity?: number | null
           fulfillment_order_line_item_id?: number | null
           id?: number
+          last_updated_by?: string | null
+          last_updated_source?: string
           order_id?: number | null
           product_name: string
           variant_title?: string | null
@@ -200,6 +204,8 @@ export type Database = {
           fulfilled_quantity?: number | null
           fulfillment_order_line_item_id?: number | null
           id?: number
+          last_updated_by?: string | null
+          last_updated_source?: string
           order_id?: number | null
           product_name?: string
           variant_title?: string | null
@@ -238,6 +244,8 @@ export type Database = {
           created_at: string | null
           customer_name: string | null
           id: number
+          last_updated_by: string | null
+          last_updated_source: string
           order_number: string
           shipping_address1: string | null
           shipping_address2: string | null
@@ -257,6 +265,8 @@ export type Database = {
           created_at?: string | null
           customer_name?: string | null
           id?: number
+          last_updated_by?: string | null
+          last_updated_source?: string
           order_number: string
           shipping_address1?: string | null
           shipping_address2?: string | null
@@ -276,6 +286,8 @@ export type Database = {
           created_at?: string | null
           customer_name?: string | null
           id?: number
+          last_updated_by?: string | null
+          last_updated_source?: string
           order_number?: string
           shipping_address1?: string | null
           shipping_address2?: string | null
@@ -394,6 +406,8 @@ export type Database = {
           carrier: string | null
           created_at: string | null
           id: number
+          last_updated_by: string | null
+          last_updated_source: string
           order_id: number | null
           shipped_at: string | null
           shopify_fulfillment_id: number | null
@@ -414,6 +428,8 @@ export type Database = {
           carrier?: string | null
           created_at?: string | null
           id?: number
+          last_updated_by?: string | null
+          last_updated_source?: string
           order_id?: number | null
           shipped_at?: string | null
           shopify_fulfillment_id?: number | null
@@ -434,6 +450,8 @@ export type Database = {
           carrier?: string | null
           created_at?: string | null
           id?: number
+          last_updated_by?: string | null
+          last_updated_source?: string
           order_id?: number | null
           shipped_at?: string | null
           shopify_fulfillment_id?: number | null

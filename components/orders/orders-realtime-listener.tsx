@@ -1,38 +1,99 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { type RealtimeChannel } from "@supabase/supabase-js";
+import { RefreshCw } from "lucide-react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getBrowserClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast-provider";
 
 type OrdersRealtimeListenerProps = {
   vendorId: number;
 };
 
-export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps) {
-  const [debugEvents, setDebugEvents] = useState<
-    Array<{ source: string; eventType: string | null; orderId: number | null }>
-  >([]);
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const router = useRouter();
+type PendingEventCounts = {
+  orders: number;
+  lineItems: number;
+  shipments: number;
+};
 
-  const scheduleRefresh = useCallback(() => {
-    if (refreshTimerRef.current) {
+export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps) {
+  const router = useRouter();
+  const { showToast, dismissToast } = useToast();
+  const [isRefreshing, startTransition] = useTransition();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const pendingEventsRef = useRef<PendingEventCounts>({ orders: 0, lineItems: 0, shipments: 0 });
+  const toastIdRef = useRef<string | null>(null);
+  const refreshPendingRef = useRef(false);
+
+  const resetPendingEvents = useCallback(() => {
+    pendingEventsRef.current = { orders: 0, lineItems: 0, shipments: 0 };
+  }, []);
+
+  const handleManualRefresh = useCallback(() => {
+    if (isRefreshing) {
       return;
     }
-    refreshTimerRef.current = setTimeout(() => {
+    refreshPendingRef.current = true;
+    if (toastIdRef.current) {
+      dismissToast(toastIdRef.current);
+      toastIdRef.current = null;
+    }
+    resetPendingEvents();
+    startTransition(() => {
       router.refresh();
-      refreshTimerRef.current = null;
-    }, 750);
-  }, [router]);
-
-  const pushDebugEvent = useCallback((source: string, eventType: string | null, orderId: number | null) => {
-    setDebugEvents((prev) => {
-      const next = [{ source, eventType, orderId }, ...prev];
-      return next.slice(0, 6);
     });
-  }, []);
+  }, [dismissToast, isRefreshing, resetPendingEvents, router, startTransition]);
+
+  const notifyPendingUpdates = useCallback(() => {
+    const counts = pendingEventsRef.current;
+    const total = counts.orders + counts.lineItems + counts.shipments;
+    if (total <= 0) {
+      return;
+    }
+
+    const summaryParts: string[] = [];
+    if (counts.orders > 0) {
+      summaryParts.push(`注文 ${counts.orders}件`);
+    }
+    if (counts.lineItems > 0) {
+      summaryParts.push(`ラインアイテム ${counts.lineItems}件`);
+    }
+    if (counts.shipments > 0) {
+      summaryParts.push(`発送 ${counts.shipments}件`);
+    }
+
+    toastIdRef.current = showToast({
+      id: "orders-realtime-pending",
+      title: "新しい更新があります",
+      description: summaryParts.join(" / ") || "最新の更新があります",
+      duration: Infinity,
+      variant: "info",
+      action: {
+        label: isRefreshing ? "更新中…" : "最新に更新",
+        icon: RefreshCw,
+        onClick: handleManualRefresh,
+        disabled: isRefreshing
+      }
+    });
+  }, [handleManualRefresh, isRefreshing, showToast]);
+
+  useEffect(() => {
+    if (toastIdRef.current) {
+      notifyPendingUpdates();
+    }
+  }, [isRefreshing, notifyPendingUpdates]);
+
+  useEffect(() => {
+    if (!isRefreshing && refreshPendingRef.current) {
+      refreshPendingRef.current = false;
+      showToast({
+        title: "注文一覧を更新しました",
+        variant: "success",
+        duration: 2000
+      });
+    }
+  }, [isRefreshing, showToast]);
 
   useEffect(() => {
     console.info('RealtimeListener mount', { vendorId });
@@ -48,6 +109,14 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       }
       const orderFromOld = typeof candidateOld?.order_id === 'number' ? candidateOld.order_id : typeof candidateOld?.id === 'number' ? candidateOld.id : null;
       return typeof orderFromOld === 'number' ? orderFromOld : null;
+    };
+
+    const registerEvent = (type: keyof PendingEventCounts) => {
+      pendingEventsRef.current = {
+        ...pendingEventsRef.current,
+        [type]: pendingEventsRef.current[type] + 1
+      };
+      notifyPendingUpdates();
     };
 
     async function subscribeWithSession() {
@@ -86,8 +155,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             if (orderId === null) {
               console.debug('[realtime] shipments payload (missing order id)', payload);
             }
-            pushDebugEvent('shipments', (payload as any)?.eventType ?? null, orderId);
-            scheduleRefresh();
+            registerEvent('shipments');
           }
         )
         .on(
@@ -110,8 +178,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             if (orderId === null) {
               console.debug('[realtime] line_items payload (missing order id)', payload);
             }
-            pushDebugEvent('line_items', (payload as any)?.eventType ?? null, orderId);
-            scheduleRefresh();
+            registerEvent('lineItems');
           }
         )
         .on(
@@ -140,8 +207,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             if (!vendorMatches) {
               return;
             }
-            pushDebugEvent('orders', (payload as any)?.eventType ?? null, orderId);
-            scheduleRefresh();
+            registerEvent('orders');
           }
         )
         .on(
@@ -159,8 +225,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               event: (payload as any)?.eventType,
               orderId
             });
-            pushDebugEvent('order_vendor_segments', (payload as any)?.eventType ?? null, orderId);
-            scheduleRefresh();
+            registerEvent('orders');
           }
         );
 
@@ -179,34 +244,8 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
     };
-  }, [pushDebugEvent, scheduleRefresh, vendorId]);
+  }, [notifyPendingUpdates, vendorId]);
 
-  return (
-    <div className="pointer-events-none fixed top-16 left-1/2 z-40 w-80 -translate-x-1/2 text-xs text-slate-500">
-      <div className="rounded-lg border border-slate-300 bg-white/95 shadow">
-        <div className="border-b px-3 py-2 text-sm font-semibold text-slate-700">
-          Realtime Debug
-        </div>
-        <div className="max-h-60 space-y-1 overflow-y-auto p-3">
-          {debugEvents.length === 0 ? (
-            <p className="text-slate-400">イベントなし</p>
-          ) : (
-            debugEvents.map((event, index) => (
-              <div key={`${event.source}-${event.orderId}-${index}`} className="rounded bg-slate-100 px-2 py-1">
-                <div className="font-medium text-slate-700">{event.source}</div>
-                <div className="text-slate-600">
-                  type: {event.eventType ?? 'unknown'} / order: {event.orderId ?? 'n/a'}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }

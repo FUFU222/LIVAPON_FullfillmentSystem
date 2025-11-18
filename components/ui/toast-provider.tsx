@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentType,
   type ReactNode
 } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
@@ -14,18 +15,27 @@ import { cn } from '@/lib/utils';
 
 export type ToastVariant = 'default' | 'info' | 'success' | 'warning' | 'error';
 
+export type ToastAction = {
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+  onClick?: () => void;
+  disabled?: boolean;
+};
+
 export type ToastOptions = {
   id?: string;
   title: string;
   description?: string;
   duration?: number;
   variant?: ToastVariant;
+  action?: ToastAction;
 };
 
 type ToastInternal = Required<Pick<ToastOptions, 'id' | 'title'>> & {
   description?: string;
   variant: ToastVariant;
   duration: number;
+  action?: ToastAction;
 };
 
 type ToastContextValue = {
@@ -111,7 +121,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   const showToast = useCallback(
-    ({ id, title, description, duration = 3000, variant = 'default' }: ToastOptions) => {
+    ({ id, title, description, duration = 3000, variant = 'default', action }: ToastOptions) => {
       const toastId = id ?? createToastId();
 
       setToasts((current) => {
@@ -123,7 +133,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             title,
             description,
             variant,
-            duration
+            duration,
+            action
           }
         ];
 
@@ -222,6 +233,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <p className="mt-1 text-xs opacity-80">{toast.description}</p>
               ) : null}
             </div>
+            {toast.action ? (
+              <button
+                type="button"
+                onClick={() => toast.action?.onClick?.()}
+                disabled={toast.action.disabled}
+                className={cn(
+                  'mr-1 inline-flex items-center gap-1 rounded border border-white/30 px-2 py-1 text-xs font-medium transition hover:border-white hover:bg-white/10',
+                  toast.action.disabled && 'opacity-50'
+                )}
+              >
+                {toast.action.icon ? (
+                  <toast.action.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : null}
+                {toast.action.label}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => dismissToast(toast.id)}

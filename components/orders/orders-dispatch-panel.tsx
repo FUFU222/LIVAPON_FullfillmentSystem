@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderSummary } from "@/lib/data/orders";
@@ -49,7 +49,7 @@ export function OrdersDispatchPanel({
   onRemoveOrder
 }: Props) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [carrier, setCarrier] = useState(carrierOptions[0]?.value ?? "");
   const [isSubmitting, setSubmitting] = useState(false);
@@ -111,12 +111,21 @@ export function OrdersDispatchPanel({
     setConfirmOpen(true);
   };
 
+  const sendingToastRef = useRef<string | null>(null);
+
   const submitShipment = async () => {
     if (!pendingShipment) {
       return;
     }
 
     setSubmitting(true);
+    const infoToastId = showToast({
+      variant: "info",
+      title: "発送情報を送信しています…",
+      description: "システムと同期が完了するまでお待ちください。",
+      duration: Infinity
+    });
+    sendingToastRef.current = infoToastId;
 
     try {
       const response = await fetch("/api/shopify/orders/shipments", {
@@ -134,10 +143,15 @@ export function OrdersDispatchPanel({
         );
       }
 
+      if (sendingToastRef.current) {
+        dismissToast(sendingToastRef.current);
+        sendingToastRef.current = null;
+      }
+
       showToast({
         variant: "success",
-        title: "発送登録を受け付けました",
-        description: `${pendingShipment.items.length}件の明細を保存し、システムと同期中です。`,
+        title: "発送登録が完了しました",
+        description: `${pendingShipment.items.length}件の明細を保存し、一覧に反映しました。`,
         duration: 2500
       });
 
@@ -149,6 +163,10 @@ export function OrdersDispatchPanel({
       router.refresh();
     } catch (error) {
       console.error("Failed to submit shipment", error);
+      if (sendingToastRef.current) {
+        dismissToast(sendingToastRef.current);
+        sendingToastRef.current = null;
+      }
       showToast({
         variant: "error",
         title: "発送登録に失敗しました",

@@ -98,7 +98,7 @@ export function OrdersRefreshButton() {
         aria-hidden="true"
       />
       <span className={cn("transition-opacity", isPending && "opacity-60")}>
-        {isPending ? "再読み込み中…" : "再読み込み"}
+        {isPending ? "更新中…" : "更新"}
       </span>
     </button>
   );

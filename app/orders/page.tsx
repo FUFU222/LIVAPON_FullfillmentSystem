@@ -7,6 +7,7 @@ import { OrdersDispatchTable } from '@/components/orders/orders-dispatch-table';
 import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
 import { OrdersRealtimeResetter } from '@/components/orders/orders-realtime-resetter';
 import { OrdersFilterBar } from '@/components/orders/orders-filter-bar';
+import { OrdersRefreshButton } from '@/components/orders/orders-refresh-button';
 import { getOrders } from '@/lib/data/orders';
 import { getAuthContext } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -48,20 +49,21 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
     <Card>
       <OrdersRealtimeListener vendorId={auth.vendorId} />
       <OrdersRealtimeResetter />
-      <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
-          </div>
-          <p className="text-sm text-slate-500">
+      <CardHeader className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
+          <OrdersRefreshButton />
+        </div>
+        <div className="flex flex-wrap items-center gap-3 justify-between text-sm text-slate-500">
+          <p>
             全 {filtered.length} 件中 {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)} 件を表示
           </p>
-        </div>
-        <div className="flex flex-col items-end gap-3">
-          <OrdersFilterBar />
-          <Link href="/orders/shipments" className={buttonClasses('outline')}>
-            発送履歴一覧
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <OrdersFilterBar />
+            <Link href="/orders/shipments" className={buttonClasses('outline')}>
+              発送履歴一覧
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="gap-6">

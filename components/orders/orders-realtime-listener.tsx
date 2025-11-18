@@ -119,6 +119,36 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
           {
             event: "*",
             schema: "public",
+            table: "orders"
+          },
+          (payload) => {
+            const orderId = extractOrderId(payload as any);
+            const nextVendor = (payload as any)?.new?.vendor_id;
+            const prevVendor = (payload as any)?.old?.vendor_id;
+            const vendorMatches =
+              typeof nextVendor === 'number'
+                ? nextVendor === vendorId
+                : typeof prevVendor === 'number'
+                  ? prevVendor === vendorId
+                  : true;
+            console.info('[realtime] orders event', {
+              table: 'orders',
+              event: (payload as any)?.eventType,
+              orderId,
+              vendorMatches
+            });
+            if (!vendorMatches) {
+              return;
+            }
+            pushDebugEvent('orders', (payload as any)?.eventType ?? null, orderId);
+            scheduleRefresh();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
             table: "order_vendor_segments",
             filter: `vendor_id=eq.${vendorId}`
           },

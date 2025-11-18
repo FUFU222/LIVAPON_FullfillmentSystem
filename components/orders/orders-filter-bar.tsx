@@ -56,7 +56,7 @@ export function OrdersFilterBar() {
             placeholder="注文番号・顧客名で検索"
             onChange={(event) => updateParam('q', event.target.value)}
             disabled={isPending}
-            className="w-56"
+            className="w-56 transition-transform duration-200"
           />
           <Select
             defaultValue={params?.get('status') ?? ''}

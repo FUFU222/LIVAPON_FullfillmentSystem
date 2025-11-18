@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrdersRefreshButton } from "@/components/orders/orders-refresh-button";
+import { OrdersRealtimeListener } from "@/components/orders/orders-realtime-listener";
 import { ShipmentHistoryTable } from "@/components/orders/shipment-history-table";
 import { getShipmentHistory } from "@/lib/data/orders";
 import { getAuthContext } from "@/lib/auth";
@@ -21,6 +22,7 @@ export default async function ShipmentsPage() {
 
   return (
     <Card>
+      <OrdersRealtimeListener vendorId={auth.vendorId} />
       <CardHeader className="flex flex-col gap-4">
         <Link
           href="/orders"

@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GradientAvatar } from '@/components/ui/avatar';
 import { VendorProfileForm } from '@/components/vendor/profile-form';
+import { OrdersRealtimeProvider } from '@/components/orders/orders-realtime-context';
+import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
 import { getAuthContext, assertAuthorizedVendor } from '@/lib/auth';
 import { getServerComponentClient } from '@/lib/supabase/server';
 
@@ -38,7 +40,9 @@ export default async function VendorProfilePage() {
   const email = auth.session.user.email ?? vendor.contact_email ?? '';
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <OrdersRealtimeProvider>
+      <OrdersRealtimeListener vendorId={auth.vendorId} />
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <Card>
         <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -59,6 +63,7 @@ export default async function VendorProfilePage() {
           />
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </OrdersRealtimeProvider>
   );
 }

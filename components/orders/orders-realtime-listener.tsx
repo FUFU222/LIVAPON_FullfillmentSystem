@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { type RealtimeChannel } from "@supabase/supabase-js";
 import { getBrowserClient } from "@/lib/supabase/client";
 
@@ -12,7 +13,19 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const [debugEvents, setDebugEvents] = useState<
     Array<{ source: string; eventType: string | null; orderId: number | null }>
   >([]);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const router = useRouter();
+
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      return;
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      router.refresh();
+      refreshTimerRef.current = null;
+    }, 750);
+  }, [router]);
 
   const pushDebugEvent = useCallback((source: string, eventType: string | null, orderId: number | null) => {
     setDebugEvents((prev) => {
@@ -74,6 +87,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               console.debug('[realtime] shipments payload (missing order id)', payload);
             }
             pushDebugEvent('shipments', (payload as any)?.eventType ?? null, orderId);
+            scheduleRefresh();
           }
         )
         .on(
@@ -97,6 +111,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               console.debug('[realtime] line_items payload (missing order id)', payload);
             }
             pushDebugEvent('line_items', (payload as any)?.eventType ?? null, orderId);
+            scheduleRefresh();
           }
         )
         .on(
@@ -115,6 +130,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               orderId
             });
             pushDebugEvent('order_vendor_segments', (payload as any)?.eventType ?? null, orderId);
+            scheduleRefresh();
           }
         );
 
@@ -133,8 +149,12 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
-  }, [pushDebugEvent, vendorId]);
+  }, [pushDebugEvent, scheduleRefresh, vendorId]);
 
   return (
     <div className="pointer-events-none fixed top-16 left-1/2 z-40 w-80 -translate-x-1/2 text-xs text-slate-500">

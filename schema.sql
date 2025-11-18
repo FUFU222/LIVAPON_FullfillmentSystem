@@ -50,6 +50,8 @@ CREATE TABLE orders (
   archived_at TIMESTAMPTZ,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
+  , last_updated_source TEXT NOT NULL DEFAULT 'console'
+  , last_updated_by UUID
 );
 
 -- ベンダーごとのSKU管理
@@ -81,6 +83,8 @@ CREATE TABLE line_items (
   fulfilled_quantity INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW(),
   CONSTRAINT line_items_order_id_shopify_line_item_id_unique UNIQUE (order_id, shopify_line_item_id)
+  , last_updated_source TEXT NOT NULL DEFAULT 'console'
+  , last_updated_by UUID
 );
 
 CREATE TABLE order_vendor_segments (
@@ -109,7 +113,9 @@ CREATE TABLE shipments (
   sync_error TEXT,
   sync_retry_count INT DEFAULT 0,
   last_retry_at TIMESTAMPTZ,
-  sync_pending_until TIMESTAMPTZ
+  sync_pending_until TIMESTAMPTZ,
+  last_updated_source TEXT NOT NULL DEFAULT 'console',
+  last_updated_by UUID
 );
 
 -- Shopify OAuth 接続情報
@@ -297,6 +303,21 @@ CREATE TRIGGER trg_orders_update_vendor_segments
 AFTER UPDATE ON orders
 FOR EACH ROW EXECUTE FUNCTION public.touch_order_vendor_segments();
 
+DROP TRIGGER IF EXISTS trg_orders_last_updated ON orders;
+CREATE TRIGGER trg_orders_last_updated
+BEFORE INSERT OR UPDATE ON orders
+FOR EACH ROW EXECUTE FUNCTION public.ensure_last_updated_metadata();
+
+DROP TRIGGER IF EXISTS trg_line_items_last_updated ON line_items;
+CREATE TRIGGER trg_line_items_last_updated
+BEFORE INSERT OR UPDATE ON line_items
+FOR EACH ROW EXECUTE FUNCTION public.ensure_last_updated_metadata();
+
+DROP TRIGGER IF EXISTS trg_shipments_last_updated ON shipments;
+CREATE TRIGGER trg_shipments_last_updated
+BEFORE INSERT OR UPDATE ON shipments
+FOR EACH ROW EXECUTE FUNCTION public.ensure_last_updated_metadata();
+
 -- Shopify Fulfillment Service callback リクエストの記録
 CREATE TABLE fulfillment_requests (
   id SERIAL PRIMARY KEY,
@@ -386,7 +407,9 @@ BEGIN
     variant_title,
     quantity,
     fulfillable_quantity,
-    fulfilled_quantity
+    fulfilled_quantity,
+    last_updated_source,
+    last_updated_by
   )
   SELECT
     p_order_id,
@@ -398,7 +421,9 @@ BEGIN
     NULLIF(item->>'variant_title', ''),
     COALESCE((item->>'quantity')::int, 0),
     COALESCE((item->>'fulfillable_quantity')::int, 0),
-    COALESCE((item->>'fulfilled_quantity')::int, 0)
+    COALESCE((item->>'fulfilled_quantity')::int, 0),
+    COALESCE(NULLIF(item->>'last_updated_source', ''), 'console'),
+    NULLIF(item->>'last_updated_by', '')::uuid
   FROM jsonb_array_elements(p_items) AS item
   ON CONFLICT (order_id, shopify_line_item_id)
   DO UPDATE SET
@@ -409,7 +434,9 @@ BEGIN
     variant_title = EXCLUDED.variant_title,
     quantity = EXCLUDED.quantity,
     fulfillable_quantity = EXCLUDED.fulfillable_quantity,
-    fulfilled_quantity = EXCLUDED.fulfilled_quantity;
+    fulfilled_quantity = EXCLUDED.fulfilled_quantity,
+    last_updated_source = EXCLUDED.last_updated_source,
+    last_updated_by = EXCLUDED.last_updated_by;
 
   DELETE FROM line_items
   WHERE order_id = p_order_id
@@ -446,3 +473,29 @@ BEGIN
     RETURNING *;
 END;
 $$;
+CREATE OR REPLACE FUNCTION public.ensure_last_updated_metadata()
+RETURNS trigger AS $$
+DECLARE
+  claims jsonb;
+  jwt_sub uuid;
+BEGIN
+  BEGIN
+    claims := current_setting('request.jwt.claims', true)::jsonb;
+  EXCEPTION WHEN OTHERS THEN
+    claims := '{}'::jsonb;
+  END;
+
+  jwt_sub := NULLIF(COALESCE(claims->>'sub', ''), '')::uuid;
+
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    IF NEW.last_updated_source IS NULL THEN
+      NEW.last_updated_source := 'console';
+    END IF;
+    IF NEW.last_updated_by IS NULL THEN
+      NEW.last_updated_by := jwt_sub;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;

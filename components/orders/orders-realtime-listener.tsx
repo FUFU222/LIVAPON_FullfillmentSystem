@@ -111,7 +111,18 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       return typeof orderFromOld === 'number' ? orderFromOld : null;
     };
 
-    const registerEvent = (type: keyof PendingEventCounts) => {
+    const shouldNotify = (payload: any) => {
+      const source = (payload?.new as any)?.last_updated_source ?? null;
+      if (typeof source === 'string' && source.length > 0) {
+        return source === 'webhook';
+      }
+      return true;
+    };
+
+    const registerEvent = (type: keyof PendingEventCounts, payload: any) => {
+      if (!shouldNotify(payload)) {
+        return;
+      }
       pendingEventsRef.current = {
         ...pendingEventsRef.current,
         [type]: pendingEventsRef.current[type] + 1
@@ -155,7 +166,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             if (orderId === null) {
               console.debug('[realtime] shipments payload (missing order id)', payload);
             }
-            registerEvent('shipments');
+            registerEvent('shipments', payload);
           }
         )
         .on(
@@ -178,7 +189,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             if (orderId === null) {
               console.debug('[realtime] line_items payload (missing order id)', payload);
             }
-            registerEvent('lineItems');
+            registerEvent('lineItems', payload);
           }
         )
         .on(
@@ -207,7 +218,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             if (!vendorMatches) {
               return;
             }
-            registerEvent('orders');
+            registerEvent('orders', payload);
           }
         )
         .on(
@@ -225,7 +236,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               event: (payload as any)?.eventType,
               orderId
             });
-            registerEvent('orders');
+            registerEvent('orders', payload);
           }
         );
 

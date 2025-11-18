@@ -203,7 +203,9 @@ async function upsertOrderRecord(
     archived_at: payload.archived_at ?? null,
     shop_domain: normalizedShopDomain,
     created_at: payload.created_at,
-    updated_at: payload.updated_at
+    updated_at: payload.updated_at,
+    last_updated_source: 'webhook',
+    last_updated_by: null
   };
 
   console.log('🪶 Upserting order record:', orderInsert);
@@ -251,7 +253,9 @@ async function replaceLineItems(
           variant_title: item.variant_title ?? null,
           quantity: item.quantity,
           fulfillable_quantity: item.fulfillable_quantity ?? item.quantity,
-          fulfilled_quantity: item.fulfilled_quantity ?? 0
+          fulfilled_quantity: item.fulfilled_quantity ?? 0,
+          last_updated_source: 'webhook',
+          last_updated_by: null
         } satisfies Record<string, unknown>;
       })
     : [];

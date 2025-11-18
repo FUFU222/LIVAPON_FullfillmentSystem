@@ -32,7 +32,9 @@ BEGIN
     variant_title,
     quantity,
     fulfillable_quantity,
-    fulfilled_quantity
+    fulfilled_quantity,
+    last_updated_source,
+    last_updated_by
   )
   SELECT
     p_order_id,
@@ -44,7 +46,9 @@ BEGIN
     NULLIF(item->>'variant_title', ''),
     COALESCE((item->>'quantity')::int, 0),
     COALESCE((item->>'fulfillable_quantity')::int, 0),
-    COALESCE((item->>'fulfilled_quantity')::int, 0)
+    COALESCE((item->>'fulfilled_quantity')::int, 0),
+    COALESCE(NULLIF(item->>'last_updated_source', ''), 'console'),
+    NULLIF(item->>'last_updated_by', '')::uuid
   FROM jsonb_array_elements(p_items) AS item
   ON CONFLICT (order_id, shopify_line_item_id)
   DO UPDATE SET
@@ -55,7 +59,9 @@ BEGIN
     variant_title = EXCLUDED.variant_title,
     quantity = EXCLUDED.quantity,
     fulfillable_quantity = EXCLUDED.fulfillable_quantity,
-    fulfilled_quantity = EXCLUDED.fulfilled_quantity;
+    fulfilled_quantity = EXCLUDED.fulfilled_quantity,
+    last_updated_source = EXCLUDED.last_updated_source,
+    last_updated_by = EXCLUDED.last_updated_by;
 
   DELETE FROM line_items
   WHERE order_id = p_order_id

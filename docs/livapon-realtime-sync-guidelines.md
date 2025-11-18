@@ -244,3 +244,30 @@ supabase
 - ヘッダーバッジや通知センターとの統合
 - ベンダーごとの「未読通知」カウンタを Supabase 側で管理
 - 新規注文の楽観的挿入（WS 受信直後に一覧へ追加 → バックグラウンドで確定）
+### 更新ソースメタデータ（Self-update と外部更新の判別）
+
+1. **目的**
+   - ベンダー自身の操作による更新と、Webhook など外部起因の更新を区別し、通知トーストは後者（受動的な更新）に限定する。
+
+2. **DB 変更案**
+   - `orders` / `line_items` / `shipments` に `last_updated_source`（TEXT）と `last_updated_by`（UUID など）を追加。
+   - Supabase RPC や API でデータを更新する際、以下の値を必ず書き込む：
+     - UI 経由の操作：`source = 'console'`, `last_updated_by = <Supabase Auth user id>`
+     - Webhook/ワーカー：`source = 'webhook'` など、呼び出し元を表す固定文字列。
+   - 既存トリガー／`sync_order_line_items` 内でも同カラムを更新する。
+
+3. **Realtime payload の利用**
+   - Realtime で `new.last_updated_source` / `new.last_updated_by` を受け取り、`OrdersRealtimeListener` で以下を判定：
+     - `source === 'console'` かつ `last_updated_by === auth.user.id` ⇒ 自分の操作なのでトースト不要。
+     - それ以外 ⇒ トーストに積み上げて「最新に更新」ボタンを表示。
+
+4. **利点**
+   - マルチタブや複数ユーザーでも誤検知がなくなる。
+   - 受動的イベントのみトーストで知らせるという UX 要件を満たせる。
+
+5. **導入手順サマリ**
+   1. カラム追加＆既存 RPC/トリガー更新（マイグレーション）。
+   2. Webhook ジョブや UI の更新処理で `last_updated_source/by` を埋め込む。
+   3. `OrdersRealtimeListener` で payload からメタデータを参照し、通知出し分けを実装。
+
+このステップを経れば、通知トーストは外部更新のみを対象にでき、ユーザー自身の操作による更新ではトーストが出ない構成にできる。

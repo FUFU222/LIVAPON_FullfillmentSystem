@@ -22,6 +22,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const { showToast, dismissToast } = useToast();
   const [isRefreshing, startTransition] = useTransition();
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const userIdRef = useRef<string | null>(null);
   const pendingEventsRef = useRef<PendingEventState>({
     orders: new Set(),
     lineItems: new Set(),
@@ -122,9 +123,17 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
 
     const shouldNotify = (payload: any) => {
       const source = (payload?.new as any)?.last_updated_source ?? null;
-      if (typeof source === 'string' && source.length > 0) {
-        return source === 'webhook';
+      const updatedBy = (payload?.new as any)?.last_updated_by ?? null;
+      const currentUser = userIdRef.current;
+
+      if (currentUser && typeof updatedBy === 'string' && updatedBy === currentUser) {
+        return false;
       }
+
+      if (typeof source === 'string' && source.length > 0) {
+        return source !== 'console';
+      }
+
       return true;
     };
 
@@ -154,6 +163,10 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       if (!data.session) {
         console.warn('Realtime listener requires an authenticated session');
         return;
+      }
+
+      if (!userIdRef.current) {
+        userIdRef.current = data.session.user?.id ?? null;
       }
 
       const channel = supabase

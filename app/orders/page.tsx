@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+
+export const revalidate = 0;
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { buttonClasses } from '@/components/ui/button';

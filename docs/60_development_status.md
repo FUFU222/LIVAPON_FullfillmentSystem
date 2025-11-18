@@ -11,7 +11,7 @@
 8. **Fulfillment Callback**: `/api/shopify/fulfillment/callback` で Shopify → Console の配送依頼やメタ更新を受信し、`fulfillment_requests` テーブル経由で追跡・解析可能。
 9. **Secret & Inline 設定**: 2025-11-13 に `JOB_WORKER_SECRET` をローカル/Vercel の両方へ投入済み。Cron が 1 日 1 回である現状は `ENABLE_INLINE_WEBHOOK_PROCESSING=true`、`INLINE_WEBHOOK_BATCH=5` を標準とし、Pro へ移行した時点で改めて見直す方針。2025-11-14 には GitHub Actions へ Cron を移行し、`JOB_WORKER_SECRET` / `CRON_SECRET` を Bearer 認証で利用する体制へ切り替えた。
 10. **注文ステータス整合性と即時通知**: Shopify 側の `fulfilled_quantity` / `fulfillable_quantity` を優先する変換ロジックに変更し、注文一覧とラインアイテムの表示が Shopify 管理画面と即時一致するようにした。保留中の明細は `保留中` バッジで区別し、Supabase Realtime 経由で「新規注文 / 既存注文の更新件数」を含む通知バナーを出すよう改良（自動更新はユーザー操作で制御）。orders テーブルには `shopify_fo_status` を保存し、Webhook 受信時に FO メタを即時再同期 → 発送登録前にも FO 状態をチェックしてクローズ済みなら自動再同期 or 明示的なエラーメッセージを返すようにした。
-11. **Realtime 配信の再設計** (NEW): Publication は Supabase 既定の `supabase_realtime` を利用し、`orders/line_items/shipments` を `ALTER PUBLICATION ... ADD TABLE ...` で登録する。UPDATE/DELETE が絡むテーブルは `REPLICA IDENTITY FULL` を付与し、RLS は「RLS OFF → 無フィルタ購読 → RLS ON → vendor フィルタ」の段階で検証する方針に統一した。`docs/06` にチェックリストを追記済み。
+11. **Realtime 配信の再設計** (NEW): Publication は Supabase 既定の `supabase_realtime` を利用し、`orders/line_items/shipments` を `ALTER PUBLICATION ... ADD TABLE ...` で登録する。UPDATE/DELETE が絡むテーブルは `REPLICA IDENTITY FULL` を付与し、RLS は「RLS OFF → 無フィルタ購読 → RLS ON → vendor フィルタ」の段階で検証する方針に統一した。`docs/livapon-realtime-sync-guidelines.md` にチェックリストを追記済み。
 
 ### 1.1 Webhook 経路と通知設定
 | 経路 | トピック | 目的 |

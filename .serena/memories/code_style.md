@@ -1,0 +1,5 @@
+- すべて日本語で説明・UI 文言を書く（docs/00_language.md）。外部 API 仕様は英語併記可。
+- コードは TypeScript + React Hooks。ビジネスロジックは server action / `lib/data/*` に寄せ、コンポーネントは表示・UX に専念。Tailwind クラスは `components/ui/*` や `lib/utils.ts` の `cn` を活用して整理。
+- Supabase スキーマは `schema.sql` → migration → `lib/supabase/types.ts` → サービス層 → UI の順で整合を担保。`supabase gen types typescript --linked` で型生成。
+- 命名規則: ベンダーコードは4桁ゼロ埋め、SKUは`CCCC-NNN-VV`、API 契約値は英語、UI/コメントは日本語。Conventional Commits (`feat:`, `fix:` 等) を厳守し、ドキュメント更新も同時に行う。
+- Supabase サービスロールキーは server components / actions のみに使用。Secrets は `.env.local` に置き、コードへ直書き禁止。

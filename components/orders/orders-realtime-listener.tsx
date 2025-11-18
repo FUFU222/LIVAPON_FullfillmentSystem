@@ -24,7 +24,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   useEffect(() => {
     console.info('RealtimeListener mount', { vendorId });
     const supabase = getBrowserClient();
-
+    let isMounted = true;
 
     const extractOrderId = (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {
       const candidateNew = payload.new;
@@ -37,82 +37,98 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       return typeof orderFromOld === 'number' ? orderFromOld : null;
     };
 
-    const channel = supabase
-      .channel(`orders-live-${vendorId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "shipments"
-        },
-        (payload) => {
-          const orderId = extractOrderId(payload as any);
-          console.info('[realtime] shipments event', {
-            table: 'shipments',
-            event: (payload as any)?.eventType,
-            orderId
-          });
-          if (orderId === null) {
-            console.debug('[realtime] shipments payload (missing order id)', payload);
-          }
-          pushDebugEvent('shipments', (payload as any)?.eventType ?? null, orderId);
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "line_items"
-        },
-        (payload) => {
-          const orderId = extractOrderId(payload as any);
-          const isInsert = (payload as any)?.eventType === 'INSERT';
-          console.info('[realtime] line_items event', {
-            table: 'line_items',
-            event: (payload as any)?.eventType,
-            orderId,
-            isInsert
-          });
-          if (orderId === null) {
-            console.debug('[realtime] line_items payload (missing order id)', payload);
-          }
-          pushDebugEvent('line_items', (payload as any)?.eventType ?? null, orderId);
-        }
-      );
-
-    channel
-      .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "orders"
-      },
-      (payload) => {
-        const orderId = extractOrderId(payload as any);
-        const isInsert = (payload as any)?.eventType === 'INSERT';
-        console.info('[realtime] orders event', {
-          table: 'orders',
-          event: (payload as any)?.eventType,
-          orderId,
-          isInsert
-        });
-        if (orderId === null) {
-          console.debug('[realtime] orders payload (missing order id)', payload);
-        }
-        pushDebugEvent('orders', (payload as any)?.eventType ?? null, orderId);
+    async function subscribeWithSession() {
+      const { data, error } = await supabase.auth.getSession();
+      if (!isMounted) {
+        return;
       }
-      );
 
-    channelRef.current = channel;
+      if (error) {
+        console.error('Failed to hydrate Supabase session for realtime listener', error);
+        return;
+      }
 
-    channel.subscribe((status) => {
-      console.info('RealtimeListener status', status);
-    });
+      if (!data.session) {
+        console.warn('Realtime listener requires an authenticated session');
+        return;
+      }
+
+      const channel = supabase
+        .channel(`orders-live-${vendorId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "shipments",
+            filter: `vendor_id=eq.${vendorId}`
+          },
+          (payload) => {
+            const orderId = extractOrderId(payload as any);
+            console.info('[realtime] shipments event', {
+              table: 'shipments',
+              event: (payload as any)?.eventType,
+              orderId
+            });
+            if (orderId === null) {
+              console.debug('[realtime] shipments payload (missing order id)', payload);
+            }
+            pushDebugEvent('shipments', (payload as any)?.eventType ?? null, orderId);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "line_items",
+            filter: `vendor_id=eq.${vendorId}`
+          },
+          (payload) => {
+            const orderId = extractOrderId(payload as any);
+            const isInsert = (payload as any)?.eventType === 'INSERT';
+            console.info('[realtime] line_items event', {
+              table: 'line_items',
+              event: (payload as any)?.eventType,
+              orderId,
+              isInsert
+            });
+            if (orderId === null) {
+              console.debug('[realtime] line_items payload (missing order id)', payload);
+            }
+            pushDebugEvent('line_items', (payload as any)?.eventType ?? null, orderId);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "order_vendor_segments",
+            filter: `vendor_id=eq.${vendorId}`
+          },
+          (payload) => {
+            const orderId = extractOrderId(payload as any);
+            console.info('[realtime] order_vendor_segments event', {
+              table: 'order_vendor_segments',
+              event: (payload as any)?.eventType,
+              orderId
+            });
+            pushDebugEvent('order_vendor_segments', (payload as any)?.eventType ?? null, orderId);
+          }
+        );
+
+      channelRef.current = channel;
+
+      channel.subscribe((status) => {
+        console.info('RealtimeListener status', status);
+      });
+    }
+
+    void subscribeWithSession();
 
     return () => {
+      isMounted = false;
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;

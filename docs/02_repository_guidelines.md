@@ -18,7 +18,7 @@
 ## コーディング規約
 - TypeScript + React Hooks。Async ロジックは `lib/data/*` やサーバーアクションに寄せ、コンポーネントは表示と UX 専任にする。
 - Tailwind でスタイル統一。重複するクラスは `components/ui/*` へ切り出し、`buttonClasses` などユーティリティを再利用。
-- 命名規則は `docs/00_context.md` に従い、日本語 UI / コメント前提。API との契約値は英語で揃える。
+- 命名規則は `docs/00_language.md` に従い、日本語 UI / コメント前提。API との契約値は英語で揃える。
 - ベンダーコードは 4 桁 zero-pad (`0001`)。SKU は `CCCC-NNN-VV` パターン、`vendor_skus` で冪等採番。
 
 ## テスト & 品質

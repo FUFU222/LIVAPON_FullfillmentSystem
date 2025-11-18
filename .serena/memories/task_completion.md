@@ -1,0 +1,5 @@
+- 変更前後で `npm run lint` / `npm run test` / `npx tsc --noEmit` / `npm run build` を必ず実行し、ログを共有する。
+- Supabase スキーマ更新時は `schema.sql`, `supabase/migrations/*`, `lib/supabase/types.ts` を揃える。
+- UI 変更はスクリーンショットや操作ログを添付。Webhook/同期系は Jest テストや再現スクリプトを追加し原因を文書化。
+- PR には目的・影響範囲・確認方法・関連ドキュメント更新を明記。Deploy 前に Vercel Logs (`status>=400`) を確認。
+- Secrets/.env 差分や Shopify 設定変更は `docs/60_development_status.md` 等へ記録し、再発防止策を追記する。

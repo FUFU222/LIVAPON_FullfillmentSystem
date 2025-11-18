@@ -22,7 +22,7 @@
 - **Shopify 連携**:
   - `/api/shopify/auth/*` で OAuth、`shopify_connections` にアクセストークン保存。
   - `/api/shopify/orders/*` で注文 Webhook 取込みと FO 完了トリガー、ベンダー Bulk API。
-  - `lib/data/orders.ts` / `lib/shopify/fulfillment.ts` が Fulfillment Order を解析し、`sync_status` とリトライ情報を管理。
+  - `lib/data/orders/*` / `lib/shopify/fulfillment.ts` が Fulfillment Order を解析し、`sync_status` とリトライ情報を管理。
 
 ## セットアップ
 1. 依存関係をインストール

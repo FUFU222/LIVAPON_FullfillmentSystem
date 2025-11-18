@@ -54,7 +54,7 @@
 - **監視/ログ**: Shopify API 失敗や FO 未生成は `console.error` で記録し、`sync_error` カラムに残す。
 - **性能**: 1,000 行規模の注文表示を想定。クエリは Supabase 側でフィルタ、必要に応じてキャッシュ (`cache`)。
 - **UX**: 成功/失敗は Toast + インライン Alert。長時間処理は Toast duration Infinity + 手動 dismiss。
-- **アクセシビリティ**: Form / Table のラベル・aria 属性は `docs/31_ui_notification_patterns.md` に準拠。
+- **アクセシビリティ**: Form / Table のラベル・aria 属性は `docs/21_ui_notification_patterns.md` に準拠。
 
 ---
 

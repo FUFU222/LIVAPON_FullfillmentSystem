@@ -119,10 +119,13 @@ function AppShellContent({
 
   useEffect(() => {
     const supabase = getBrowserClient();
+    let isMounted = true;
 
     async function loadCompanyName(vendorIdToLoad: number | null) {
       if (typeof vendorIdToLoad !== 'number') {
-        setCompanyName(null);
+        if (isMounted) {
+          setCompanyName(null);
+        }
         return;
       }
 
@@ -131,6 +134,10 @@ function AppShellContent({
         .select('name')
         .eq('id', vendorIdToLoad)
         .maybeSingle();
+
+      if (!isMounted) {
+        return;
+      }
 
       if (error) {
         console.warn('Failed to load vendor name', error);
@@ -141,6 +148,10 @@ function AppShellContent({
     }
 
     function syncSession(session: Session | null) {
+      if (!isMounted) {
+        return;
+      }
+
       if (session?.user) {
         setEmail(session.user.email ?? null);
         const nextVendorId = parseVendorId({
@@ -160,11 +171,25 @@ function AppShellContent({
       }
     }
 
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        console.error('Failed to hydrate Supabase session', error);
+        return;
+      }
+
+      syncSession(data.session);
+    });
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       syncSession(session);
     });
 
     return () => {
+      isMounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);

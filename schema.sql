@@ -83,6 +83,14 @@ CREATE TABLE line_items (
   CONSTRAINT line_items_order_id_shopify_line_item_id_unique UNIQUE (order_id, shopify_line_item_id)
 );
 
+CREATE TABLE order_vendor_segments (
+  order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+  vendor_id INT REFERENCES vendors(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (order_id, vendor_id)
+);
+
 CREATE TABLE shipments (
   id SERIAL PRIMARY KEY,
   vendor_id INT REFERENCES vendors(id),
@@ -136,6 +144,7 @@ CREATE TABLE import_logs (
 CREATE INDEX idx_orders_vendor_id ON orders(vendor_id);
 CREATE INDEX idx_line_items_order_id ON line_items(order_id);
 CREATE INDEX idx_line_items_vendor_id ON line_items(vendor_id);
+CREATE INDEX idx_order_vendor_segments_vendor_id ON order_vendor_segments(vendor_id);
 CREATE INDEX idx_shipments_tracking_number ON shipments(tracking_number);
 CREATE INDEX idx_vendor_skus_vendor_id ON vendor_skus(vendor_id);
 CREATE INDEX idx_vendor_applications_status ON vendor_applications(status);
@@ -149,6 +158,144 @@ CREATE INDEX idx_shipments_order_id ON shipments(order_id);
 CREATE INDEX idx_shipments_shopify_fulfillment_id ON shipments(shopify_fulfillment_id);
 CREATE INDEX idx_shipments_sync_status ON shipments(sync_status);
 CREATE INDEX idx_shipment_line_items_fo_line_item_id ON shipment_line_items(fulfillment_order_line_item_id);
+
+-- RLS / Realtime settings
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE line_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_vendor_segments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "OrdersReadable" ON orders;
+CREATE POLICY "OrdersReadable" ON orders
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM line_items li
+      WHERE li.order_id = orders.id
+        AND li.vendor_id = COALESCE(NULLIF((auth.jwt()->>'vendor_id'),'')::INT, -1)
+    )
+  );
+
+DROP POLICY IF EXISTS "OrdersInsertUpdate" ON orders;
+CREATE POLICY "OrdersInsertUpdate" ON orders
+  FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "LineItemsReadable" ON line_items;
+CREATE POLICY "LineItemsReadable" ON line_items
+  FOR SELECT USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "ShipmentsReadable" ON shipments;
+CREATE POLICY "ShipmentsReadable" ON shipments
+  FOR SELECT USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "OrderVendorSegmentsReadable" ON order_vendor_segments;
+CREATE POLICY "OrderVendorSegmentsReadable" ON order_vendor_segments
+  FOR SELECT USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+ALTER TABLE orders REPLICA IDENTITY FULL;
+ALTER TABLE line_items REPLICA IDENTITY FULL;
+ALTER TABLE shipments REPLICA IDENTITY FULL;
+ALTER TABLE order_vendor_segments REPLICA IDENTITY FULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+  EXCEPTION
+    WHEN duplicate_object THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.line_items;
+  EXCEPTION
+    WHEN duplicate_object THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.shipments;
+  EXCEPTION
+    WHEN duplicate_object THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.order_vendor_segments;
+  EXCEPTION
+    WHEN duplicate_object THEN NULL;
+  END;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.maintain_order_vendor_segments()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    IF NEW.vendor_id IS NOT NULL THEN
+      INSERT INTO order_vendor_segments (order_id, vendor_id)
+      VALUES (NEW.order_id, NEW.vendor_id)
+      ON CONFLICT (order_id, vendor_id)
+      DO UPDATE SET updated_at = NOW();
+    END IF;
+  END IF;
+
+  IF TG_OP IN ('UPDATE', 'DELETE') THEN
+    IF (TG_OP = 'DELETE' AND OLD.vendor_id IS NOT NULL)
+       OR (TG_OP = 'UPDATE' AND OLD.vendor_id IS NOT NULL AND OLD.vendor_id <> NEW.vendor_id) THEN
+      DELETE FROM order_vendor_segments ovs
+      WHERE ovs.order_id = OLD.order_id
+        AND ovs.vendor_id = OLD.vendor_id
+        AND NOT EXISTS (
+          SELECT 1 FROM line_items li
+          WHERE li.order_id = OLD.order_id
+            AND li.vendor_id = OLD.vendor_id
+        );
+    END IF;
+  END IF;
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_line_items_insert_vendor_segments
+AFTER INSERT ON line_items
+FOR EACH ROW EXECUTE FUNCTION public.maintain_order_vendor_segments();
+
+CREATE TRIGGER trg_line_items_update_vendor_segments
+AFTER UPDATE ON line_items
+FOR EACH ROW EXECUTE FUNCTION public.maintain_order_vendor_segments();
+
+CREATE TRIGGER trg_line_items_delete_vendor_segments
+AFTER DELETE ON line_items
+FOR EACH ROW EXECUTE FUNCTION public.maintain_order_vendor_segments();
+
+CREATE OR REPLACE FUNCTION public.touch_order_vendor_segments()
+RETURNS trigger AS $$
+BEGIN
+  UPDATE order_vendor_segments
+  SET updated_at = NOW()
+  WHERE order_id = NEW.id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_orders_update_vendor_segments
+AFTER UPDATE ON orders
+FOR EACH ROW EXECUTE FUNCTION public.touch_order_vendor_segments();
 
 -- Shopify Fulfillment Service callback リクエストの記録
 CREATE TABLE fulfillment_requests (

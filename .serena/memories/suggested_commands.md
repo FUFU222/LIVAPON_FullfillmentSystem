@@ -1,0 +1,13 @@
+- npm install — 依存関係インストール。
+- npm run dev — Next.js 開発サーバー。
+- npm run lint — ESLint (Next.js 設定、`--max-warnings=0` 推奨)。
+- npm run test — Jest (`--runInBand --passWithNoTests` オプションが docs 推奨)。
+- npx tsc --noEmit — 型チェック（`npm run typecheck` エイリアスを作る想定）。
+- npm run build — 本番ビルド確認。
+- npm run start — ビルド済みアプリ起動。
+- supabase db reset --schema public --file schema.sql — ローカル DB 初期化。
+- supabase db push — 変更を Supabase プロジェクトへ反映。
+- supabase db diff --linked --file schema.sql / supabase migration new <name> — スキーマ差分作成。
+- supabase gen types typescript --linked — `lib/supabase/types.ts` 更新。
+- shopify app deploy / shopify app dev — Shopify アプリ更新テスト。
+- vercel --prod（緊急時のみ） — 手動本番デプロイ。

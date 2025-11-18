@@ -52,7 +52,7 @@ jobs:
 
 ## 4. 運用・監視
 - **Vercel Logs**: `vercel logs <prod-domain> --since 5m --query "status>=400"` をマージ前に実行し、Webhook 401 等が残っていないか確認。
-- **Shopify Webhook**: `HMAC mismatch` ログが出たら Slack 通知。Signing secret の再設定手順を docs/95 に追記。
+- **Shopify Webhook**: `HMAC mismatch` ログが出たら Slack 通知。Signing secret の再設定手順を `docs/60_development_status.md` に追記。
 - **Supabase 監視**: `line_items` や `orders` に重複が無いか、夜間バッチで差分チェック。異常検知時は Issue を自動起票。
 
 ## 5. 推奨運用フローまとめ

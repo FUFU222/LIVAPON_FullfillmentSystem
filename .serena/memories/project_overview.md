@@ -1,0 +1,4 @@
+- LIVAPON Fulfillment System は Shopify の注文・Fulfillment Order を Supabase に取り込み、ベンダー向け配送管理コンソールと管理者用コンソールを提供する Next.js 14 (App Router) + TypeScript/Tailwind プロジェクト。
+- 主要ディレクトリ: `app/` (public/auth/vendor/admin/api/shopify 等のルートとサーバーアクション)、`components/` (機能別 UI + `ui/` 共通部品)、`lib/` (認証・Supabase サービス層・Shopify 連携・ジョブキュー)、`supabase/` (config/migrations/schema)、`docs/` (番号順のポリシー/要件/仕様/運用資料)。
+- Shopify Webhook を `webhook_jobs` キューに積み、`lib/jobs/webhook-runner.ts` や `/api/internal/webhook-jobs/process` で FOR UPDATE SKIP LOCKED 取得→処理。Realtime で `orders/line_items/shipments` を購読し、UI は vendor / admin ごとに orders/import/profile/admin dashboard を持つ。
+- docs/01, 02, 50, 51, 60 などが最新方針。Secrets は `.env.local` 管理で Supabase/Shopify 鍵を設定、`schema.sql` が DB 単一ソース。

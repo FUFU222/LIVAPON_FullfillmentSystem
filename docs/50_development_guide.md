@@ -14,11 +14,11 @@
 ## 2. ドキュメント階層
 | 層 | ファイル |
 | -- | -------- |
-| コンテキスト | `docs/00_context.md` |
-| 要件 | `docs/10_requirements_app.md`, `docs/11_requirements_bridge_app.md` |
-| 仕様 | `docs/21_spec_ui_wireframes.md`, `docs/40_sku_vendor_spec.md` |
+| コンテキスト | `docs/00_language.md` |
+| 要件 | `docs/11_requirements_console.md`, `docs/12_requirements_bridge_app.md` |
+| 仕様 | `docs/20_ui_wireframes.md`, `docs/13_sku_vendor_spec.md` |
 | 実装 | `schema.sql`, `supabase/migrations/*`, `lib/**/*.ts`, `app/**/*` |
-| 運用 | `docs/50_roadmap_vendor_profile.md`, `docs/60-70*.md`, `docs/90_development_guide.md` |
+| 運用 | `docs/14_vendor_console_roadmap.md`, `docs/30-35*.md`, `docs/50_development_guide.md` |
 
 ---
 
@@ -67,8 +67,8 @@
 | 項目 | 確認 |
 | ---- | ---- |
 | スキーマ整合 | `schema.sql` ↔ マイグレーション ↔ `types.ts` が一致しているか |
-| UI 仕様 | `docs/21_spec_ui_wireframes.md` と乖離していないか |
-| Shopify 連携 | `docs/60-63`, `docs/70` の設計と矛盾がないか |
+| UI 仕様 | `docs/20_ui_wireframes.md` と乖離していないか |
+| Shopify 連携 | `docs/30-35` の設計と矛盾がないか |
 | テスト | `npm run lint` / `npm run test` / `npx tsc --noEmit` / `npm run build` OK |
 | 文書整合 | 関連ドキュメントの更新（要件/仕様/運用）を行ったか |
 
@@ -116,7 +116,7 @@ Secrets は `.env.local` で管理し、Git にコミットしない。
 - Conventional Commits（`feat:`, `fix:`, `docs:`, `db:`, `chore:`）。
 - PR テンプレ: 目的 / 変更点 / テスト / 関連ドキュメント。
 - docs に差分がある場合、PR に必ず含める。
-- 新規メンバーは `docs/01_overview.md` → `docs/10/11/21/40` → `docs/60-70` → 本ガイドの順で読む。
+- 新規メンバーは `docs/01_system_overview.md` → `docs/10_om_model_transition.md` / `docs/11_requirements_console.md` / `docs/livapon-realtime-sync-guidelines.md` → `docs/30-35` → 本ガイドの順で読む。
 
 ---
 
@@ -144,7 +144,7 @@ Secrets は `.env.local` で管理し、Git にコミットしない。
    - [ ] Webhook / Shopify 側で影響が出る場合は手順と検証日時を記録
 4. **監視とログ**
    - Vercel ログで `status>=400` をgrepし、直近 10 分間に異常がないかを確認してからマージする。
-   - 401/500 等が検知された場合は原因と対処を docs/95 や該当タスクメモに追記し、再発防止をドキュメント化する。
+- 401/500 等が検知された場合は原因と対処を `docs/60_development_status.md` や該当タスクメモに追記し、再発防止をドキュメント化する。
 
 上記を満たさない変更はマージしない方針とし、開発状況に応じてチェック項目は随時ブラッシュアップする。
 
@@ -156,4 +156,4 @@ Secrets は `.env.local` で管理し、Git にコミットしない。
 - 画像を差し替えたら `vercel --prod` で再デプロイするだけで OK（コード変更不要）。ファイルが存在しない場合は自動的に “L” のプレースホルダが描画される。
 
 ## 14. 参考リンク
-- `docs/91_ci_quality.md` — Lint/Test/Type/Build、Git Hooks、CI など開発体験を落とさないための具体策。
+- `docs/51_ci_quality.md` — Lint/Test/Type/Build、Git Hooks、CI など開発体験を落とさないための具体策。

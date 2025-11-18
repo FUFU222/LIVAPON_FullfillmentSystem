@@ -11,10 +11,10 @@ type OrdersRealtimeListenerProps = {
   vendorId: number;
 };
 
-type PendingEventCounts = {
-  orders: number;
-  lineItems: number;
-  shipments: number;
+type PendingEventState = {
+  orders: Set<number>;
+  lineItems: Set<number>;
+  shipments: Set<number>;
 };
 
 export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps) {
@@ -22,12 +22,20 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const { showToast, dismissToast } = useToast();
   const [isRefreshing, startTransition] = useTransition();
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const pendingEventsRef = useRef<PendingEventCounts>({ orders: 0, lineItems: 0, shipments: 0 });
+  const pendingEventsRef = useRef<PendingEventState>({
+    orders: new Set(),
+    lineItems: new Set(),
+    shipments: new Set()
+  });
   const toastIdRef = useRef<string | null>(null);
   const refreshPendingRef = useRef(false);
 
   const resetPendingEvents = useCallback(() => {
-    pendingEventsRef.current = { orders: 0, lineItems: 0, shipments: 0 };
+    pendingEventsRef.current = {
+      orders: new Set(),
+      lineItems: new Set(),
+      shipments: new Set()
+    };
   }, []);
 
   const handleManualRefresh = useCallback(() => {
@@ -47,20 +55,21 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
 
   const notifyPendingUpdates = useCallback(() => {
     const counts = pendingEventsRef.current;
-    const total = counts.orders + counts.lineItems + counts.shipments;
+    const total =
+      counts.orders.size + counts.lineItems.size + counts.shipments.size;
     if (total <= 0) {
       return;
     }
 
     const summaryParts: string[] = [];
-    if (counts.orders > 0) {
-      summaryParts.push(`注文 ${counts.orders}件`);
+    if (counts.orders.size > 0) {
+      summaryParts.push(`注文 ${counts.orders.size}件`);
     }
-    if (counts.lineItems > 0) {
-      summaryParts.push(`ラインアイテム ${counts.lineItems}件`);
+    if (counts.lineItems.size > 0) {
+      summaryParts.push(`ラインアイテム ${counts.lineItems.size}件`);
     }
-    if (counts.shipments > 0) {
-      summaryParts.push(`発送 ${counts.shipments}件`);
+    if (counts.shipments.size > 0) {
+      summaryParts.push(`発送 ${counts.shipments.size}件`);
     }
 
     toastIdRef.current = showToast({
@@ -119,14 +128,15 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       return true;
     };
 
-    const registerEvent = (type: keyof PendingEventCounts, payload: any) => {
+    const registerEvent = (type: keyof PendingEventState, payload: any) => {
       if (!shouldNotify(payload)) {
         return;
       }
-      pendingEventsRef.current = {
-        ...pendingEventsRef.current,
-        [type]: pendingEventsRef.current[type] + 1
-      };
+      const orderId = extractOrderId(payload as any);
+      if (typeof orderId !== 'number') {
+        return;
+      }
+      pendingEventsRef.current[type].add(orderId);
       notifyPendingUpdates();
     };
 

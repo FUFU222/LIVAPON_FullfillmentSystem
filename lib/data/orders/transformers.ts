@@ -108,7 +108,8 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
         id: shipment.id,
         quantity: shipment.quantity,
         carrier: shipment.carrier
-      }))
+      })),
+      rawShipments: JSON.stringify(item.shipments)
     }))
   });
   const trackingNumbers = new Set<string>();

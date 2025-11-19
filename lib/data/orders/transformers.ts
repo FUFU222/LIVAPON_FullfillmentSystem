@@ -119,46 +119,7 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     }
   });
 
-  const enrichedLineItems = Array.from(uniqueLineItems.values()).map((item) => {
-    const shipmentRefs = lineItemShipmentIds.get(item.id) ?? [];
-    const shipmentsForLineItem: LineItemShipment[] = shipmentRefs
-      .map(({ shipmentId, quantity }) => {
-        const shipment = shipmentLookup.get(shipmentId);
-        if (!shipment) {
-          return null;
-        }
-        return {
-          ...shipment,
-          quantity
-        } satisfies LineItemShipment;
-      })
-      .filter((value): value is LineItemShipment => value !== null);
-
-    const { shippedQuantity, remainingQuantity } = calculateShipmentProgress({
-      quantity: item.quantity,
-      fulfilledQuantity: item.fulfilled_quantity ?? null,
-      fulfillableQuantity: item.fulfillable_quantity ?? null,
-      shipments: shipmentsForLineItem
-    });
-
-    return {
-      id: item.id,
-      sku: item.sku ?? null,
-      variantTitle: item.variant_title ?? null,
-      vendorId: item.vendor_id ?? null,
-      vendorCode: item.vendor?.code ?? deriveVendorCode(item.sku ?? null),
-      vendorName: item.vendor?.name ?? null,
-      productName: item.product_name,
-      quantity: item.quantity,
-      fulfilledQuantity: item.fulfilled_quantity ?? null,
-      fulfillableQuantity: item.fulfillable_quantity ?? null,
-      shippedQuantity,
-      remainingQuantity,
-      shipments: shipmentsForLineItem
-    };
-  });
-
-  const lineItemProgress = enrichedLineItems.map((lineItem) => ({
+  const lineItemProgress = lineItems.map((lineItem) => ({
     shippedQuantity: lineItem.shippedQuantity,
     remainingQuantity: lineItem.remainingQuantity
   }));
@@ -225,7 +186,7 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     id: order.id,
     orderNumber: order.orderNumber,
     customerName: order.customerName,
-    lineItemCount: enrichedLineItems.length,
+    lineItemCount: order.lineItems.length,
     status: resolvedStatus,
     shopifyStatus,
     localStatus,
@@ -235,7 +196,7 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     trackingNumbers: Array.from(trackingNumbers),
     updatedAt: order.updatedAt,
     createdAt: order.createdAt,
-    lineItems: enrichedLineItems.map((lineItem) => ({
+    lineItems: lineItems.map((lineItem) => ({
       id: lineItem.id,
       orderId: order.id,
       productName: lineItem.productName,
@@ -310,7 +271,44 @@ export function toOrderDetailFromRecord(
   const shipments = Array.from(shipmentMap.values());
   const shipmentLookup = new Map(shipments.map((shipment) => [shipment.id, shipment] as const));
 
-  const detailLineItems = enrichedLineItems;
+  const detailLineItems = Array.from(uniqueLineItems.values()).map((item) => {
+    const shipmentRefs = lineItemShipmentIds.get(item.id) ?? [];
+    const shipmentsForLineItem: LineItemShipment[] = shipmentRefs
+      .map(({ shipmentId, quantity }) => {
+        const shipment = shipmentLookup.get(shipmentId);
+        if (!shipment) {
+          return null;
+        }
+        return {
+          ...shipment,
+          quantity
+        } satisfies LineItemShipment;
+      })
+      .filter((value): value is LineItemShipment => value !== null);
+
+    const { shippedQuantity, remainingQuantity } = calculateShipmentProgress({
+      quantity: item.quantity,
+      fulfilledQuantity: item.fulfilled_quantity ?? null,
+      fulfillableQuantity: item.fulfillable_quantity ?? null,
+      shipments: shipmentsForLineItem
+    });
+
+    return {
+      id: item.id,
+      sku: item.sku ?? null,
+      variantTitle: item.variant_title ?? null,
+      vendorId: item.vendor_id ?? null,
+      vendorCode: item.vendor?.code ?? deriveVendorCode(item.sku ?? null),
+      vendorName: item.vendor?.name ?? null,
+      productName: item.product_name,
+      quantity: item.quantity,
+      fulfilledQuantity: item.fulfilled_quantity ?? null,
+      fulfillableQuantity: item.fulfillable_quantity ?? null,
+      shippedQuantity,
+      remainingQuantity,
+      shipments: shipmentsForLineItem
+    };
+  });
 
   const detailProgress = detailLineItems.map((item) => ({
     shippedQuantity: item.shippedQuantity,

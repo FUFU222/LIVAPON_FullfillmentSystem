@@ -264,13 +264,15 @@ async function persistFulfillmentRequest(options: PersistOptions): Promise<numbe
   return requestId;
 }
 
+type LoadedOrderRecord = { id: number; shop_domain: string | null; status: string | null };
+
 async function loadOrderRecord(
   client: Supabase,
   shopifyOrderId: number
-): Promise<{ id: number; shop_domain: string | null } | null> {
+): Promise<LoadedOrderRecord | null> {
   const { data, error } = await client
     .from('orders')
-    .select('id, shop_domain')
+    .select('id, shop_domain, status')
     .eq('shopify_order_id', shopifyOrderId)
     .maybeSingle();
 
@@ -416,7 +418,8 @@ export async function handleFulfillmentServiceRequest(
         shopifyOrderId,
         fulfillmentOrderId,
         lineItems: snapshotItems,
-        foStatus
+        foStatus,
+        currentOrderStatus: orderRecord.status ?? null
       });
     } catch (error) {
       console.warn('Failed to apply fulfillment order snapshot during callback', {

@@ -82,7 +82,7 @@ export async function syncFulfillmentOrderMetadata(
 
   let orderQuery = client
     .from('orders')
-    .select('id, shop_domain')
+    .select('id, shop_domain, status')
     .eq('shopify_order_id', shopifyOrderId)
     .limit(1);
 
@@ -128,7 +128,8 @@ export async function syncFulfillmentOrderMetadata(
       shopifyOrderId,
       fulfillmentOrderId: primarySnapshot.id,
       lineItems: primarySnapshot.line_items,
-      foStatus: primarySnapshot.status ?? null
+      foStatus: primarySnapshot.status ?? null,
+      currentOrderStatus: orderRecord.status ?? null
     });
 
     return {

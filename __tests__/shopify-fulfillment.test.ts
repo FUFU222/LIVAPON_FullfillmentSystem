@@ -322,7 +322,7 @@ describe('syncFulfillmentOrderMetadata', () => {
       order: jest.fn(() => builder),
       gt: jest.fn(() => builder),
       maybeSingle: jest.fn(async () => ({
-        data: { id: orderId, shop_domain: shopDomain },
+        data: { id: orderId, shop_domain: shopDomain, status: 'unfulfilled' },
         error: null
       }))
     };

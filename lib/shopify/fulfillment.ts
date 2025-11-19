@@ -588,6 +588,9 @@ async function fetchOrderNoteAttributes(shop: string, accessToken: string, order
   }
 }
 
+const FO_CANCEL_STATES = new Set(['cancelled', 'closed']);
+const ORDER_STATUS_PROTECTED = new Set(['fulfilled', 'partially_fulfilled']);
+
 type ApplySnapshotOptions = {
   client: SupabaseClient<Database>;
   orderRecordId: number;
@@ -598,7 +601,33 @@ type ApplySnapshotOptions = {
   shipmentId?: number | null;
   lineItemQuantities?: Map<number, number | null>;
   lineItemInternalIds?: Map<number, number>;
+  currentOrderStatus?: string | null;
 };
+
+function shouldForceCancelOrder(
+  currentStatus: string | null | undefined,
+  foStatus: string | null | undefined
+) {
+  if (!foStatus) {
+    return false;
+  }
+  const foNormalized = foStatus.toLowerCase();
+  if (!FO_CANCEL_STATES.has(foNormalized)) {
+    return false;
+  }
+
+  const statusNormalized = (currentStatus ?? '').toLowerCase();
+  if (!statusNormalized) {
+    return true;
+  }
+  if (statusNormalized === 'cancelled') {
+    return false;
+  }
+  if (ORDER_STATUS_PROTECTED.has(statusNormalized)) {
+    return false;
+  }
+  return true;
+}
 
 export async function applyFulfillmentOrderSnapshot(options: ApplySnapshotOptions) {
   const {
@@ -609,19 +638,37 @@ export async function applyFulfillmentOrderSnapshot(options: ApplySnapshotOption
     lineItems,
     shipmentId,
     lineItemQuantities,
-    lineItemInternalIds
+    lineItemInternalIds,
+    currentOrderStatus
   } = options;
+
+  const nowIso = new Date().toISOString();
+  const normalizedFoStatus = options.foStatus ? options.foStatus.toLowerCase() : null;
+  const forceCancel = shouldForceCancelOrder(currentOrderStatus, normalizedFoStatus);
+
+  const orderUpdate: Database['public']['Tables']['orders']['Update'] = {
+    shopify_fulfillment_order_id: fulfillmentOrderId,
+    shopify_fo_status: normalizedFoStatus,
+    updated_at: nowIso,
+    last_updated_source: 'worker:fo-sync',
+    last_updated_by: null
+  };
+
+  if (forceCancel) {
+    orderUpdate.status = 'cancelled';
+  }
 
   await client
     .from('orders')
-    .update({
-      shopify_fulfillment_order_id: fulfillmentOrderId,
-      shopify_fo_status: (options.foStatus ?? null)?.toLowerCase() ?? null,
-      updated_at: new Date().toISOString(),
-      last_updated_source: 'worker:fo-sync',
-      last_updated_by: null
-    })
+    .update(orderUpdate)
     .eq('id', orderRecordId);
+
+  if (forceCancel) {
+    console.info('orders.status forced to cancelled after FO sync', {
+      shopifyOrderId,
+      fulfillmentOrderId
+    });
+  }
 
   if (lineItems.length > 0) {
     await Promise.all(

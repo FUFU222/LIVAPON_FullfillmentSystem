@@ -104,7 +104,11 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
       quantity: item.quantity,
       shippedQuantity: item.shippedQuantity,
       remainingQuantity: item.remainingQuantity,
-      shipments: item.shipments.length
+      shipments: item.shipments.map((shipment) => ({
+        id: shipment.id,
+        quantity: shipment.quantity,
+        carrier: shipment.carrier
+      }))
     }))
   });
   const trackingNumbers = new Set<string>();

@@ -239,7 +239,7 @@ export function toOrderDetailFromRecord(
       uniqueLineItems.set(item.id, item);
     }
     pivots.forEach((pivot) => {
-      const shipmentRecord = pivot.shipment;
+      const shipmentRecord = (pivot as any)?.shipment ?? pivot;
       if (!shipmentRecord) {
         return;
       }
@@ -258,7 +258,12 @@ export function toOrderDetailFromRecord(
       }
 
       const list = lineItemShipmentIds.get(item.id) ?? [];
-      list.push({ shipmentId: shipmentRecord.id, quantity: pivot.quantity ?? null });
+      const pivotQuantity = typeof pivot.quantity === 'number'
+        ? pivot.quantity
+        : typeof (pivot as any)?.quantity === 'number'
+          ? (pivot as any)?.quantity
+          : null;
+      list.push({ shipmentId: shipmentRecord.id, quantity: pivotQuantity });
       lineItemShipmentIds.set(item.id, list);
     });
   });

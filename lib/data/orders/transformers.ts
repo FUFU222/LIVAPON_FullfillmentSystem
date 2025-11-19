@@ -243,7 +243,7 @@ export function toOrderDetailFromRecord(
   const shipments = Array.from(shipmentMap.values());
   const shipmentLookup = new Map(shipments.map((shipment) => [shipment.id, shipment] as const));
 
-  const lineItems = Array.from(uniqueLineItems.values()).map((item) => {
+  const detailLineItems = Array.from(uniqueLineItems.values()).map((item) => {
     const shipmentRefs = lineItemShipmentIds.get(item.id) ?? [];
     const shipmentsForLineItem: LineItemShipment[] = shipmentRefs
       .map(({ shipmentId, quantity }) => {
@@ -282,13 +282,49 @@ export function toOrderDetailFromRecord(
     };
   });
 
+  const detailProgress = detailLineItems.map((item) => ({
+    shippedQuantity: item.shippedQuantity,
+    remainingQuantity: item.remainingQuantity
+  }));
+  const detailHasItems = detailProgress.length > 0;
+  const detailFullyShipped = detailHasItems && detailProgress.every((p) => p.remainingQuantity <= 0);
+  const detailPartiallyShipped =
+    detailHasItems && !detailFullyShipped && detailProgress.some((p) => p.shippedQuantity > 0);
+
+  const detailLocalStatus: string | null = (() => {
+    if ((record.status ?? '').toLowerCase() === 'cancelled') {
+      return 'cancelled';
+    }
+    if (detailFullyShipped) {
+      return 'fulfilled';
+    }
+    if (detailPartiallyShipped) {
+      return 'partially_fulfilled';
+    }
+    return 'unfulfilled';
+  })();
+
+  const detailShopifyStatus = normalizeOrderStatus(record.status);
+  const detailResolvedStatus: string = (() => {
+    if (detailShopifyStatus === 'cancelled') {
+      return 'cancelled';
+    }
+    if (detailLocalStatus === 'fulfilled' || detailLocalStatus === 'partially_fulfilled') {
+      return detailLocalStatus;
+    }
+    if (detailShopifyStatus) {
+      return detailShopifyStatus;
+    }
+    return detailLocalStatus ?? 'unfulfilled';
+  })();
+
   return {
     id: record.id,
     orderNumber: record.order_number,
     customerName: record.customer_name ?? null,
-    status: resolvedStatus,
-    shopifyStatus,
-    localStatus,
+    status: detailResolvedStatus,
+    shopifyStatus: detailShopifyStatus ?? null,
+    localStatus: detailLocalStatus,
     updatedAt: record.updated_at ?? null,
     createdAt: (record as { created_at?: string | null }).created_at ?? null,
     archivedAt: record.archived_at ?? null,
@@ -298,6 +334,6 @@ export function toOrderDetailFromRecord(
     shippingAddress1: record.shipping_address1 ?? null,
     shippingAddress2: record.shipping_address2 ?? null,
     shipments,
-    lineItems
+    lineItems: detailLineItems
   };
 }

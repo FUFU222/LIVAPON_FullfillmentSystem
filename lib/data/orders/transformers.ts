@@ -140,6 +140,15 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     return localStatus ?? 'unfulfilled';
   })();
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[orders-status]', {
+      orderNumber: order.orderNumber,
+      resolvedStatus,
+      shopifyStatus,
+      localStatus
+    });
+  }
+
   const isArchived = Boolean(order.archivedAt);
 
   const shippingLines: string[] = [];

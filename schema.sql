@@ -58,7 +58,7 @@ CREATE TABLE orders (
 CREATE TABLE vendor_skus (
   id SERIAL PRIMARY KEY,
   vendor_id INT REFERENCES vendors(id) ON DELETE CASCADE,
-  sku VARCHAR(16) NOT NULL UNIQUE,
+  sku VARCHAR(64) NOT NULL UNIQUE,
   product_number INT NOT NULL,
   variation_number INT NOT NULL,
   shopify_product_id BIGINT,
@@ -75,7 +75,7 @@ CREATE TABLE line_items (
   vendor_sku_id INT REFERENCES vendor_skus(id),
   shopify_line_item_id BIGINT NOT NULL, -- Shopify側のLine Item ID
   fulfillment_order_line_item_id BIGINT,
-  sku VARCHAR(16),
+  sku VARCHAR(64),
   product_name VARCHAR(255) NOT NULL,
   variant_title VARCHAR(255),
   quantity INT NOT NULL,

@@ -96,6 +96,17 @@ function calculateShipmentProgress(
 
 export function mapDetailToSummary(order: OrderDetail): OrderSummary {
   const lineItems = dedupeOrderLineItems(order.lineItems);
+  console.info('[orders-line-items]', {
+    orderNumber: order.orderNumber,
+    items: lineItems.map((item) => ({
+      id: item.id,
+      vendorId: item.vendorId,
+      quantity: item.quantity,
+      shippedQuantity: item.shippedQuantity,
+      remainingQuantity: item.remainingQuantity,
+      shipments: item.shipments.length
+    }))
+  });
   const trackingNumbers = new Set<string>();
   order.shipments.forEach((shipment) => {
     if (shipment.trackingNumber) {

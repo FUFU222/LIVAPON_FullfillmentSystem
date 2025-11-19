@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { saveShipment } from "@/app/orders/actions";
 import type { ShipmentActionState } from "@/app/orders/actions";
@@ -12,6 +12,8 @@ import { Select } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { useOrdersRealtimeContext } from "@/components/orders/orders-realtime-context";
 
 const carrierOptions = [
   { value: "yamato", label: "ヤマト運輸" },
@@ -67,6 +69,9 @@ type Props = {
 };
 
 export function ShipmentManager({ orderId, lineItems, isArchived }: Props) {
+  const router = useRouter();
+  const { markOrdersAsRefreshed } = useOrdersRealtimeContext();
+  const [, startRefresh] = useTransition();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [state, formAction] = useFormState(saveShipment, INITIAL_SHIPMENT_ACTION_STATE);
 
@@ -87,8 +92,12 @@ export function ShipmentManager({ orderId, lineItems, isArchived }: Props) {
   useEffect(() => {
     if (state.status === "success") {
       setSelectedIds([]);
+      markOrdersAsRefreshed();
+      startRefresh(() => {
+        router.refresh();
+      });
     }
-  }, [state.status]);
+  }, [state.status, router, startRefresh, markOrdersAsRefreshed]);
 
   useEffect(() => {
     if (isArchived) {

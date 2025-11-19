@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderSummary } from "@/lib/data/orders";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast-provider";
+import { useOrdersRealtimeContext } from "@/components/orders/orders-realtime-context";
 
 const carrierOptions = [
   { value: "yamato", label: "ヤマト運輸" },
@@ -50,6 +51,8 @@ export function OrdersDispatchPanel({
 }: Props) {
   const router = useRouter();
   const { showToast, dismissToast } = useToast();
+  const { markOrdersAsRefreshed } = useOrdersRealtimeContext();
+  const [, startRefresh] = useTransition();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [carrier, setCarrier] = useState(carrierOptions[0]?.value ?? "");
   const [isSubmitting, setSubmitting] = useState(false);
@@ -160,7 +163,10 @@ export function OrdersDispatchPanel({
       setCarrier(carrierOptions[0]?.value ?? "");
       setPendingShipment(null);
       setConfirmOpen(false);
-      router.refresh();
+      markOrdersAsRefreshed();
+      startRefresh(() => {
+        router.refresh();
+      });
     } catch (error) {
       console.error("Failed to submit shipment", error);
       if (sendingToastRef.current) {

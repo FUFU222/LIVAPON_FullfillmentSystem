@@ -73,10 +73,16 @@ function calculateShipmentProgress(
       : null;
 
   const shippedQuantity = (() => {
+    if (shopifyFulfilled !== null && shopifyFulfilled > 0) {
+      return Math.min(lineItem.quantity, shopifyFulfilled);
+    }
+    if (shippedFromShipments > 0) {
+      return Math.min(lineItem.quantity, shippedFromShipments);
+    }
     if (shopifyFulfilled !== null) {
       return Math.min(lineItem.quantity, shopifyFulfilled);
     }
-    return Math.min(lineItem.quantity, shippedFromShipments);
+    return 0;
   })();
 
   const fallbackRemaining = Math.max(lineItem.quantity - shippedQuantity, 0);

@@ -127,7 +127,18 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
   })();
 
   const shopifyStatus = normalizeOrderStatus(order.status);
-  const resolvedStatus = shopifyStatus ?? localStatus ?? 'unfulfilled';
+  const resolvedStatus: string = (() => {
+    if (shopifyStatus === 'cancelled') {
+      return 'cancelled';
+    }
+    if (localStatus === 'fulfilled' || localStatus === 'partially_fulfilled') {
+      return localStatus;
+    }
+    if (shopifyStatus) {
+      return shopifyStatus;
+    }
+    return localStatus ?? 'unfulfilled';
+  })();
 
   const isArchived = Boolean(order.archivedAt);
 

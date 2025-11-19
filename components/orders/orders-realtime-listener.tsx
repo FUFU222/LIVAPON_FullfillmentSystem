@@ -19,6 +19,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const [isRefreshing, startTransition] = useTransition();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const userIdRef = useRef<string | null>(null);
+  const registerPendingOrderRef = useRef(registerPendingOrder);
   const toastIdRef = useRef<string | null>(null);
   const refreshPendingRef = useRef(false);
   const vendorOrderMapRef = useRef<Set<number>>(new Set());
@@ -79,6 +80,10 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   }, [isRefreshing, showToast]);
 
   useEffect(() => {
+    registerPendingOrderRef.current = registerPendingOrder;
+  }, [registerPendingOrder]);
+
+  useEffect(() => {
     console.info('RealtimeListener mount', { vendorId });
     const supabase = getBrowserClient();
     let isMounted = true;
@@ -104,7 +109,12 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       }
 
       if (typeof source === 'string' && source.length > 0) {
-        return source.startsWith('webhook');
+        if (source.startsWith('webhook') || source.startsWith('worker:')) {
+          return true;
+        }
+        if (source.startsWith('console')) {
+          return true;
+        }
       }
 
       return false;
@@ -118,7 +128,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       if (typeof orderId !== 'number') {
         return;
       }
-      registerPendingOrder(orderId);
+      registerPendingOrderRef.current(orderId);
   };
 
     async function subscribeWithSession() {
@@ -204,7 +214,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         channelRef.current = null;
       }
     };
-  }, [showPendingToast, registerPendingOrder, vendorId]);
+  }, [vendorId]);
 
   return null;
 }

@@ -16,6 +16,8 @@ export type OrderDetail = {
   orderNumber: string;
   customerName: string | null;
   status: string | null;
+  shopifyStatus?: string | null;
+  localStatus?: string | null;
   updatedAt: string | null;
   createdAt: string | null;
   archivedAt: string | null;

@@ -37,6 +37,8 @@ type ToastInternal = Required<Pick<ToastOptions, 'id' | 'title'>> & {
   variant: ToastVariant;
   duration: number;
   action?: ToastAction;
+  dismissed?: boolean;
+  offset?: number;
 };
 
 type ToastContextValue = {

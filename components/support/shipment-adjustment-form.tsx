@@ -47,11 +47,11 @@ export function ShipmentAdjustmentForm({
   }, [state.status]);
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 text-base text-slate-700">
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-6 space-y-2">
-          <p className="text-sm font-medium text-foreground">発送修正申請フォーム</p>
-          <p className="text-sm text-slate-500">
+          <p className="text-lg font-semibold text-foreground">発送修正申請フォーム</p>
+          <p className="text-base text-slate-600">
             {vendorName ? `${vendorName} (${vendorCode ?? 'ベンダーコード未設定'})` : 'ベンダー情報取得中'}
             <br />
             Shopify 側では管理者が FO を再オープンします。Console から直接未発送へ戻すことはできません。
@@ -62,9 +62,9 @@ export function ShipmentAdjustmentForm({
           <Alert variant="success" className="mb-4">
             <div className="font-medium">{state.message}</div>
             {state.requestId ? (
-              <div className="text-xs text-green-700">申請ID: #{state.requestId}</div>
+              <div className="text-sm text-green-700">申請ID: #{state.requestId}</div>
             ) : null}
-            <div className="mt-2 text-xs text-slate-600">
+            <div className="mt-2 text-sm text-slate-600">
               進捗は管理者からの返信または別途共有されるステータスにてご確認ください。
             </div>
           </Alert>
@@ -76,9 +76,9 @@ export function ShipmentAdjustmentForm({
           </Alert>
         ) : null}
 
-        <form ref={formRef} action={formAction} className="grid gap-5">
+        <form ref={formRef} action={formAction} className="grid gap-5 text-base">
           <section className="grid gap-4">
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="orderNumber" className="font-medium text-foreground">
                 Shopify注文番号 <span className="text-red-500">*</span>
               </label>
@@ -88,15 +88,15 @@ export function ShipmentAdjustmentForm({
                 placeholder="例: #1234 (メモに載っている注文番号をそのまま入力)"
                 required
               />
-              <p className="text-xs text-slate-500">
+              <p className="text-sm text-slate-500">
                 例: <span className="font-mono">#1050</span> / <span className="font-mono">1050</span>. ハッシュタグなしでも可。
               </p>
               {state.fieldErrors?.orderNumber ? (
-                <span className="text-xs text-red-500">{state.fieldErrors.orderNumber}</span>
+                <span className="text-sm text-red-500">{state.fieldErrors.orderNumber}</span>
               ) : null}
             </div>
 
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="trackingNumber" className="font-medium text-foreground">
                 追跡番号 / 配送会社 (任意)
               </label>
@@ -107,7 +107,7 @@ export function ShipmentAdjustmentForm({
               />
             </div>
 
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="issueType" className="font-medium text-foreground">
                 申請区分 <span className="text-red-500">*</span>
               </label>
@@ -118,7 +118,7 @@ export function ShipmentAdjustmentForm({
                   </option>
                 ))}
               </Select>
-              <div className="space-y-1 text-xs text-slate-500">
+              <div className="space-y-1 text-sm text-slate-500">
                 {shipmentIssueTypeOptions.map((option) => (
                   <p key={option.value}>
                     <span className="font-medium">{option.label}:</span> {option.helper}
@@ -126,13 +126,13 @@ export function ShipmentAdjustmentForm({
                 ))}
               </div>
               {state.fieldErrors?.issueType ? (
-                <span className="text-xs text-red-500">{state.fieldErrors.issueType}</span>
+                <span className="text-sm text-red-500">{state.fieldErrors.issueType}</span>
               ) : null}
             </div>
           </section>
 
           <section className="grid gap-4">
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="issueSummary" className="font-medium text-foreground">
                 発生している状況 <span className="text-red-500">*</span>
               </label>
@@ -143,13 +143,13 @@ export function ShipmentAdjustmentForm({
                 required
                 placeholder="例: 5/10にSKU 0001-101-Aを3点発送しましたが、Shopify上では4点発送済みとなっており、在庫がマイナスになっています。"
               />
-              <p className="text-xs text-slate-500">箇条書きでも構いません。時系列や発覚したきっかけを書いていただくと助かります。</p>
+              <p className="text-sm text-slate-500">箇条書きでも構いません。時系列や発覚したきっかけを書いていただくと助かります。</p>
               {state.fieldErrors?.issueSummary ? (
-                <span className="text-xs text-red-500">{state.fieldErrors.issueSummary}</span>
+                <span className="text-sm text-red-500">{state.fieldErrors.issueSummary}</span>
               ) : null}
             </div>
 
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="desiredChange" className="font-medium text-foreground">
                 希望する対応 <span className="text-red-500">*</span>
               </label>
@@ -161,11 +161,11 @@ export function ShipmentAdjustmentForm({
                 placeholder="例: Shopifyで該当FOを未発送に戻し、追跡番号をXXXXへ差し替えたいです。管理者側で必要な操作をお願いします。"
               />
               {state.fieldErrors?.desiredChange ? (
-                <span className="text-xs text-red-500">{state.fieldErrors.desiredChange}</span>
+                <span className="text-sm text-red-500">{state.fieldErrors.desiredChange}</span>
               ) : null}
             </div>
 
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="lineItemContext" className="font-medium text-foreground">
                 対象ラインアイテム / 数量 (任意)
               </label>
@@ -179,7 +179,7 @@ export function ShipmentAdjustmentForm({
           </section>
 
           <section className="grid gap-4">
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="contactName" className="font-medium text-foreground">
                 ご担当者名 <span className="text-red-500">*</span>
               </label>
@@ -191,11 +191,11 @@ export function ShipmentAdjustmentForm({
                 required
               />
               {state.fieldErrors?.contactName ? (
-                <span className="text-xs text-red-500">{state.fieldErrors.contactName}</span>
+                <span className="text-sm text-red-500">{state.fieldErrors.contactName}</span>
               ) : null}
             </div>
 
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
               <label htmlFor="contactEmail" className="font-medium text-foreground">
                 連絡先メールアドレス <span className="text-red-500">*</span>
               </label>
@@ -208,11 +208,11 @@ export function ShipmentAdjustmentForm({
                 required
               />
               {state.fieldErrors?.contactEmail ? (
-                <span className="text-xs text-red-500">{state.fieldErrors.contactEmail}</span>
+                <span className="text-sm text-red-500">{state.fieldErrors.contactEmail}</span>
               ) : null}
             </div>
 
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2">
             <label htmlFor="contactPhone" className="font-medium text-foreground">
               連絡先電話番号 (任意)
             </label>

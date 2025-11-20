@@ -181,6 +181,13 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         userIdRef.current = data.session.user?.id ?? null;
       }
 
+      const accessToken = data.session.access_token;
+      try {
+        await supabase.realtime.setAuth(accessToken);
+      } catch (setAuthError) {
+        console.error('Failed to hydrate Supabase realtime auth', setAuthError);
+      }
+
       const channel = supabase
         .channel(`orders-live-${vendorId}`)
         .on(

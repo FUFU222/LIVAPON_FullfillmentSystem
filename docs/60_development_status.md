@@ -3,9 +3,11 @@
 ## 1. 整備済みの主なポイント
 1. **OMモデル & データフロー**: `DEVELOPMENT_PLAN_OM_MODEL.md` で役割分担・API 要件・PULL 前提を確定。Bridge App を介して Shopify GraphQL (`order.fulfillmentOrders` など) を取得し、Console 側で FO を正規化する方針で合意済み。
 2. **Bridge App / Shopify 設定**: `shopify.app.toml` に必要スコープと `/api/shopify/orders/ingest` Webhook を明示し、再認可も完了。最新トークンは `shopify_connections` テーブルで運用し、再発行時はここを更新すれば良い運用形となっている。
-3. **Webhook キュー & ランナー**: `/api/shopify/orders/ingest` は即時に `webhook_jobs` テーブルへ enqueue。`status/attempts/last_error` を持つ行を `claim_pending_webhook_jobs()` (FOR UPDATE SKIP LOCKED) で安全に取り出し、`lib/jobs/webhook-runner.ts` → `processShopifyWebhook` で注文/FO を処理。内部 API `/api/internal/webhook-jobs/process` は `JOB_WORKER_SECRET` を必須にし、Vercel Cron（1 日 1 回 / 03:30 UTC）で起動。`ENABLE_INLINE_WEBHOOK_PROCESSING` と `INLINE_WEBHOOK_BATCH` で即時処理のオンデマンド切り替えも可能。
+3. **Webhook キュー & ランナー**: `/api/shopify/orders/ingest` は即時に `webhook_jobs` テーブルへ enqueue。`status/attempts/last_error` を持つ行を `claim_pending_webhook_jobs()` (FOR UPDATE SKIP LOCKED) で安全に取り出し、`lib/jobs/webhook-runner.ts` → `processShopifyWebhook` で注文/FO を処理。内部 API `/api/internal/webhook-jobs/process` は `JOB_WORKER_SECRET` を必須にし、GitHub Actions（5 分間隔）から叩く構成へ切り替え済み。`WEBHOOK_JOB_LIMIT` repo variable や workflow_dispatch input でバッチサイズを可変にし、実行サマリを GHA の Step summary に記録するようにした。`ENABLE_INLINE_WEBHOOK_PROCESSING` と `INLINE_WEBHOOK_BATCH` で即時処理のオンデマンド切り替えも可能。
 4. **Supabase マイグレーション反映**: 2025-11-13 に `webhook_jobs` テーブルと `claim_pending_webhook_jobs()` RPC を本番へ `supabase db push` 済み。`vendors.contact_name` など既存差分も含め、Stage/Prod が揃った状態。
-5. **データベース & トークン管理**: Token/Scope は `shopify_connections` に保存し、Supabase Dashboard で直接確認できる。今後は同テーブルを UI で閲覧できれば十分。
+5. **データベース & トークン管理**: Token/Scope は `shopify_connections` に保存し、Supabase Dashboard で直接確認できる。今後は同テーブルを UI で閲覧できれば十分。`/api/internal/shipments/resync` も GitHub Actions から 30 分間隔で呼び出し、`SHIPMENT_RESYNC_LIMIT` 可変 + Step summary に結果を記録する構成とした。
+
+> 2025-11-20 追記: 2 つの GitHub Actions（`Process Webhook Jobs`, `Resync Pending Shipments`）に `workflow_dispatch` 入力と repo variable fallback (`WEBHOOK_JOB_LIMIT`, `SHIPMENT_RESYNC_LIMIT`) を追加し、Step summary へ処理件数ログを出すよう統一した。`timeout-minutes: 3`, `curl --max-time 20`, `jq` での `ok` 検証も導入し、失敗時は即エラーとして検知できる。Shipment 側は 30 分間隔、Webhook 側は 5 分間隔で運用中。
 6. **UI/UX & リアルタイム同期**: 発送一覧の行高を調整し、リアルタイム購読で `shipments`/`line_items`/`orders` を即時更新。発送登録は「入力 → 確認」二段階、未発送へ戻す際は注意パネルと理由入力を必須化。ブランド表記を「配送管理コンソール」に統一し、ボタン/ナビの hover/active や操作中オーバーレイで体感スピードを底上げ。
 7. **在庫ポリシー**: 在庫編集は Shopify GUI（マーチャント管理ロケーション）のみが真実の源。Console は閲覧＋同期に限定し、FS モデル由来の在庫操作フローは廃止済み。
 8. **Fulfillment Callback**: `/api/shopify/fulfillment/callback` で Shopify → Console の配送依頼やメタ更新を受信し、`fulfillment_requests` テーブル経由で追跡・解析可能。

@@ -2,17 +2,24 @@ name: Process Webhook Jobs
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
-  workflow_dispatch: {}
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Override batch size (1-50)'
+        required: false
+        default: '25'
 
 jobs:
   process:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+      JOB_WORKER_SECRET: ${{ secrets.JOB_WORKER_SECRET || vars.JOB_WORKER_SECRET }}
+      JOB_LIMIT: ${{ github.event.inputs.limit || vars.WEBHOOK_JOB_LIMIT || '25' }}
     steps:
       - name: Trigger webhook job runner
-        env:
-          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
-          JOB_WORKER_SECRET: ${{ secrets.JOB_WORKER_SECRET || vars.JOB_WORKER_SECRET }}
         run: |
           set -euo pipefail
 
@@ -26,9 +33,41 @@ jobs:
             exit 1
           fi
 
-          RESPONSE=$(curl -fsS --retry 5 --retry-all-errors --retry-delay 5 \
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update >/dev/null
+            sudo apt-get install -y jq >/dev/null
+          fi
+
+          RESPONSE_FILE=$(mktemp)
+          HTTP_STATUS=$(curl -sS --show-error --retry 5 --retry-all-errors --retry-delay 5 \
+            --max-time 20 --connect-timeout 5 \
+            -w "%{http_code}" -o "${RESPONSE_FILE}" \
             -X POST \
             -H "Authorization: Bearer ${JOB_WORKER_SECRET}" \
-            "${APP_BASE_URL}/api/internal/webhook-jobs/process?limit=25")
+            "${APP_BASE_URL}/api/internal/webhook-jobs/process?limit=${JOB_LIMIT}")
 
-          echo "Queue runner response: ${RESPONSE}"
+          BODY=$(cat "${RESPONSE_FILE}")
+          echo "Queue runner response (${HTTP_STATUS}): ${BODY}"
+
+          if [ "${HTTP_STATUS}" -ge 400 ]; then
+            exit 1
+          fi
+
+          OK=$(jq -r '.ok // empty' "${RESPONSE_FILE}" 2>/dev/null || true)
+          if [ "${OK}" != "true" ]; then
+            echo "::error::Runner response did not return ok=true"
+            exit 1
+          fi
+
+          CLAIMED=$(jq -r '.summary.claimed // ""' "${RESPONSE_FILE}" 2>/dev/null || echo "")
+          SUCCEEDED=$(jq -r '.summary.succeeded // ""' "${RESPONSE_FILE}" 2>/dev/null || echo "")
+          FAILED=$(jq -r '.summary.failed // ""' "${RESPONSE_FILE}" 2>/dev/null || echo "")
+
+          {
+            echo "### Webhook Job Runner"
+            echo "- HTTP status: ${HTTP_STATUS}"
+            echo "- Batch limit: ${JOB_LIMIT}"
+            if [ -n "${CLAIMED}" ]; then
+              echo "- Claimed: ${CLAIMED}, Succeeded: ${SUCCEEDED}, Failed: ${FAILED}"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"

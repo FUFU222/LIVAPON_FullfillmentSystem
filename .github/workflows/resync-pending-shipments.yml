@@ -2,17 +2,24 @@ name: Resync Pending Shipments
 
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch: {}
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Override resync batch size'
+        required: false
+        default: '20'
 
 jobs:
   resync:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET || vars.CRON_SECRET }}
+      RESYNC_LIMIT: ${{ github.event.inputs.limit || vars.SHIPMENT_RESYNC_LIMIT || '20' }}
     steps:
       - name: Trigger shipment resync
-        env:
-          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET || vars.CRON_SECRET }}
         run: |
           set -euo pipefail
 
@@ -26,9 +33,41 @@ jobs:
             exit 1
           fi
 
-          RESPONSE=$(curl -fsS --retry 5 --retry-all-errors --retry-delay 5 \
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update >/dev/null
+            sudo apt-get install -y jq >/dev/null
+          fi
+
+          RESPONSE_FILE=$(mktemp)
+          HTTP_STATUS=$(curl -sS --show-error --retry 5 --retry-all-errors --retry-delay 5 \
+            --max-time 20 --connect-timeout 5 \
+            -w "%{http_code}" -o "${RESPONSE_FILE}" \
             -X POST \
             -H "Authorization: Bearer ${CRON_SECRET}" \
-            "${APP_BASE_URL}/api/internal/shipments/resync?limit=20")
+            "${APP_BASE_URL}/api/internal/shipments/resync?limit=${RESYNC_LIMIT}")
 
-          echo "Shipment resync response: ${RESPONSE}"
+          BODY=$(cat "${RESPONSE_FILE}")
+          echo "Shipment resync response (${HTTP_STATUS}): ${BODY}"
+
+          if [ "${HTTP_STATUS}" -ge 400 ]; then
+            exit 1
+          fi
+
+          OK=$(jq -r '.ok // empty' "${RESPONSE_FILE}" 2>/dev/null || true)
+          if [ "${OK}" != "true" ]; then
+            echo "::error::Shipment resync returned ok!=true"
+            exit 1
+          fi
+
+          TOTAL=$(jq -r '.summary.total // ""' "${RESPONSE_FILE}" 2>/dev/null || echo "")
+          SUCCEEDED=$(jq -r '.summary.succeeded // ""' "${RESPONSE_FILE}" 2>/dev/null || echo "")
+          FAILED=$(jq -r '.summary.failed // ""' "${RESPONSE_FILE}" 2>/dev/null || echo "")
+
+          {
+            echo "### Shipment Resync"
+            echo "- HTTP status: ${HTTP_STATUS}"
+            echo "- Batch limit: ${RESYNC_LIMIT}"
+            if [ -n "${TOTAL}" ]; then
+              echo "- Picked: ${TOTAL}, Succeeded: ${SUCCEEDED}, Failed: ${FAILED}"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"

@@ -120,8 +120,21 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       return false;
     };
 
+    const hasMeaningfulChange = (payload: any) => {
+      const eventType = (payload?.eventType ?? payload?.type ?? '').toUpperCase();
+      if (eventType === 'INSERT' || eventType === 'DELETE') {
+        return true;
+      }
+      const nextStatus = payload?.new?.status ?? payload?.new?.shopify_status ?? null;
+      const prevStatus = payload?.old?.status ?? payload?.old?.shopify_status ?? null;
+      if (nextStatus !== prevStatus) {
+        return true;
+      }
+      return false;
+    };
+
     const handleOrdersEvent = (payload: any) => {
-      if (!shouldNotify(payload)) {
+      if (!shouldNotify(payload) || !hasMeaningfulChange(payload)) {
         return;
       }
       const orderId = extractOrderId(payload as any);
@@ -129,7 +142,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         return;
       }
       registerPendingOrderRef.current(orderId);
-  };
+    };
 
     async function subscribeWithSession() {
       const { data, error } = await supabase.auth.getSession();

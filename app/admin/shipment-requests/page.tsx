@@ -4,12 +4,12 @@ import { Alert } from '@/components/ui/alert';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import {
   listShipmentAdjustmentRequestsForAdmin,
-  SHIPMENT_ADJUSTMENT_STATUSES
+  type ShipmentAdjustmentStatus
 } from '@/lib/data/shipment-adjustments';
 import { ShipmentAdjustmentRequestCard } from '@/components/admin/shipment-adjustment-request-card';
 
-const ACTIVE_STATUSES = ['pending', 'in_review', 'needs_info'] as const;
-const RESOLVED_STATUS = ['resolved'] as const;
+const ACTIVE_STATUSES: ShipmentAdjustmentStatus[] = ['pending', 'in_review', 'needs_info'];
+const RESOLVED_STATUS: ShipmentAdjustmentStatus[] = ['resolved'];
 
 export default async function AdminShipmentRequestsPage() {
   const auth = await getAuthContext();

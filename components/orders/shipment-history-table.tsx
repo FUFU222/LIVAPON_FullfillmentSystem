@@ -10,7 +10,6 @@ import type { ShipmentActionState } from "@/app/orders/actions";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import type { ShipmentHistoryEntry } from "@/lib/data/orders";
 import { Modal } from "@/components/ui/modal";
@@ -203,14 +202,6 @@ export function ShipmentHistoryTable({
                       {shipment.orderNumber}
                     </span>
                   )}
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    {shipment.orderStatus ? (
-                      <StatusBadge status={shipment.orderStatus} />
-                    ) : null}
-                    {shouldShowVendorStatusBadge(shipment) ? (
-                      <StatusBadge status={deriveVendorShipmentStatus(shipment)} />
-                    ) : null}
-                  </div>
                 </div>
               </td>
               <td className="px-3 py-3 text-sm leading-relaxed">
@@ -259,12 +250,4 @@ function deriveVendorShipmentStatus(shipment: ShipmentHistoryEntry) {
     return 'cancelled';
   }
   return 'fulfilled';
-}
-
-function shouldShowVendorStatusBadge(shipment: ShipmentHistoryEntry) {
-  const vendorStatus = deriveVendorShipmentStatus(shipment);
-  if (!shipment.orderStatus) {
-    return true;
-  }
-  return shipment.orderStatus !== vendorStatus;
 }

@@ -72,10 +72,16 @@ function calculateShipmentProgress(
     return total + Math.max(0, shipment.quantity ?? 0);
   }, 0);
 
-  const shopifyFulfilled =
-    typeof lineItem.fulfilledQuantity === 'number'
-      ? Math.max(0, lineItem.fulfilledQuantity)
-      : null;
+  const shopifyFulfilled = (() => {
+    if (typeof lineItem.fulfillableQuantity === 'number') {
+      const remaining = Math.max(0, lineItem.fulfillableQuantity);
+      return Math.max(0, lineItem.quantity - remaining);
+    }
+    if (typeof lineItem.fulfilledQuantity === 'number') {
+      return Math.max(0, lineItem.fulfilledQuantity);
+    }
+    return null;
+  })();
 
   const shippedQuantity = (() => {
     if (activeShipments.length > 0) {

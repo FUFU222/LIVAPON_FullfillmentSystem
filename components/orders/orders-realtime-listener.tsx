@@ -109,32 +109,21 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       }
 
       if (typeof source === 'string' && source.length > 0) {
-        if (source.startsWith('webhook') || source.startsWith('worker:')) {
-          return true;
+        if (source.startsWith('worker:')) {
+          const nextStatus = payload?.new?.status ?? payload?.new?.shopify_status ?? null;
+          const prevStatus = payload?.old?.status ?? payload?.old?.shopify_status ?? null;
+          if (nextStatus === prevStatus) {
+            return false;
+          }
         }
-        if (source.startsWith('console')) {
-          return true;
-        }
-      }
-
-      return false;
-    };
-
-    const hasMeaningfulChange = (payload: any) => {
-      const eventType = (payload?.eventType ?? payload?.type ?? '').toUpperCase();
-      if (eventType === 'INSERT' || eventType === 'DELETE') {
         return true;
       }
-      const nextStatus = payload?.new?.status ?? payload?.new?.shopify_status ?? null;
-      const prevStatus = payload?.old?.status ?? payload?.old?.shopify_status ?? null;
-      if (nextStatus !== prevStatus) {
-        return true;
-      }
+
       return false;
     };
 
     const handleOrdersEvent = (payload: any) => {
-      if (!shouldNotify(payload) || !hasMeaningfulChange(payload)) {
+      if (!shouldNotify(payload)) {
         return;
       }
       const orderId = extractOrderId(payload as any);

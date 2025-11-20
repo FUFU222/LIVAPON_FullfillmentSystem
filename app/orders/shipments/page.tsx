@@ -24,12 +24,14 @@ export default async function ShipmentsPage() {
     <Card>
       <OrdersRealtimeListener vendorId={auth.vendorId} />
       <CardHeader className="flex flex-col gap-4">
-        <Link
-          href="/orders"
-          className="text-sm text-slate-500 transition hover:text-foreground"
-        >
-          ← 注文一覧に戻る
-        </Link>
+        <div>
+          <Link
+            href="/orders"
+            className="inline-flex text-sm text-slate-500 transition hover:text-foreground"
+          >
+            ← 注文一覧に戻る
+          </Link>
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
             <CardTitle className="text-2xl font-semibold">

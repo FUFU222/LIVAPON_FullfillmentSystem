@@ -372,15 +372,15 @@ export function OrdersDispatchPanel({
         title="発送対象の明細を確認"
         showCloseButton
       >
-        <div className="space-y-4">
+        <div className="space-y-4 text-base text-slate-700">
           {selectedByOrder.map(({ order, items }) => (
-            <div key={order.id} className="rounded-lg border border-slate-200 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-base font-semibold text-slate-900">{order.orderNumber}</span>
-                  <span className="text-sm text-slate-600">{order.customerName ?? '-'}</span>
+            <div key={order.id} className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-lg font-semibold text-slate-900">{order.orderNumber}</span>
+                  <span className="text-lg text-slate-800">{order.customerName ?? '-'}</span>
                   {order.shippingAddressLines.length > 0 ? (
-                    <span className="text-xs text-slate-500">
+                    <span className="text-sm text-slate-600">
                       {order.shippingAddressLines.join(' / ')}
                     </span>
                   ) : null}
@@ -393,23 +393,23 @@ export function OrdersDispatchPanel({
                   <X className="h-3 w-3" aria-hidden="true" /> 注文を除外
                 </button>
               </div>
-              <div className="mt-3 space-y-3">
+              <div className="space-y-3">
                 {items.map((item) => (
-                  <div key={item.lineItemId} className="flex flex-col gap-2 rounded border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-col gap-1 text-sm text-slate-700">
-                      <span className="text-base font-semibold text-slate-900">{item.productName}</span>
+                  <div
+                    key={item.lineItemId}
+                    className="flex flex-col gap-3 rounded border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex flex-col gap-1 text-base text-slate-800">
+                      <span className="text-lg font-semibold text-slate-900">{item.productName}</span>
                       {item.variantTitle ? (
-                        <span className="text-slate-600">バリエーション: {item.variantTitle}</span>
+                        <span className="text-sm text-slate-600">{item.variantTitle}</span>
                       ) : null}
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <span className="font-medium">数量: {item.totalOrdered}</span>
-                        <span className="font-medium">
-                          {Math.max(item.availableQuantity, 0) <= 0 ? '発送済み' : `未発送: ${Math.max(item.availableQuantity, 0)}`}
-                        </span>
-                      </div>
+                      {item.sku ? (
+                        <span className="text-xs text-slate-500">SKU: {item.sku}</span>
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-2">
-                      <label className="text-xs text-slate-500" htmlFor={`modal-qty-${item.lineItemId}`}>
+                      <label className="text-sm text-slate-500" htmlFor={`modal-qty-${item.lineItemId}`}>
                         出荷数
                       </label>
                       <Input

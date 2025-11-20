@@ -39,11 +39,11 @@ export default async function ShipmentsPage() {
             </CardTitle>
             <OrdersRefreshButton />
           </div>
-          <div className="text-sm text-slate-500 max-w-lg sm:flex sm:flex-col sm:items-end sm:text-right">
-            <span>発送済みの内容を修正する場合は管理者への申請が必要です。</span>
+          <div className="text-sm text-slate-500 max-w-lg sm:ml-auto sm:max-w-sm">
+            <span className="block">発送済みの内容を修正する場合は管理者への申請が必要です。</span>
             <Link
               href="/support/shipment-adjustment"
-              className="inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
+              className="mt-1 inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
             >
               申請フォームを開く
             </Link>

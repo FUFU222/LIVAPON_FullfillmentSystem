@@ -19,7 +19,7 @@
 ### C. キャンセル／アーカイブ／再入荷
 1. **Shopifyで注文キャンセル**: Webhook→Supabase更新→Consoleに手動リロード通知。
 2. **Shopifyで注文アーカイブ**: `archived_at` 同期、Consoleで操作不可＆バッジ表示。
-3. **発送後の修正申請**: ユーザーが申請フォームを通じて管理者に依頼→管理者が Shopify で未発送に戻し、Console で再同期するとステータスが変わることを確認。
+3. **発送後の修正申請**: `/support/shipment-adjustment` フォームから依頼→管理者が Shopify で未発送に戻し、Console で再同期するとステータスが変わることを確認（`shipment_adjustment_requests` にレコードが作成されていることも合わせて確認）。
 4. **再入荷**: Shopifyで在庫戻しした時に Console の表示（「在庫戻し済み」）が正しいか。
 
 ### D. SKU不整合／422エラー

@@ -331,10 +331,10 @@ export type Database = {
           line_item_id?: number
           quantity?: number | null
           shipment_id?: number
-      }
-      Relationships: [
-        {
-          foreignKeyName: "shipment_line_items_line_item_id_fkey"
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_line_items_line_item_id_fkey"
             columns: ["line_item_id"]
             isOneToOne: false
             referencedRelation: "line_items"
@@ -344,10 +344,85 @@ export type Database = {
             foreignKeyName: "shipment_line_items_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
-          referencedRelation: "shipments"
-          referencedColumns: ["id"]
-        },
-       ]
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_adjustment_requests: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string | null
+          desired_change: string
+          id: number
+          issue_summary: string
+          issue_type: string
+          line_item_context: string | null
+          order_id: number | null
+          order_number: string
+          shopify_order_id: number | null
+          status: string | null
+          submitted_by: string | null
+          tracking_number: string | null
+          updated_at: string | null
+          vendor_id: number
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          desired_change: string
+          id?: number
+          issue_summary: string
+          issue_type: string
+          line_item_context?: string | null
+          order_id?: number | null
+          order_number: string
+          shopify_order_id?: number | null
+          status?: string | null
+          submitted_by?: string | null
+          tracking_number?: string | null
+          updated_at?: string | null
+          vendor_id: number
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          desired_change?: string
+          id?: number
+          issue_summary?: string
+          issue_type?: string
+          line_item_context?: string | null
+          order_id?: number | null
+          order_number?: string
+          shopify_order_id?: number | null
+          status?: string | null
+          submitted_by?: string | null
+          tracking_number?: string | null
+          updated_at?: string | null
+          vendor_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_adjustment_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_adjustment_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shipment_cancellation_logs: {
         Row: {

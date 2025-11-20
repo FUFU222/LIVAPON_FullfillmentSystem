@@ -136,6 +136,26 @@ CREATE TABLE shipment_line_items (
   PRIMARY KEY (shipment_id, line_item_id)
 );
 
+CREATE TABLE shipment_adjustment_requests (
+  id SERIAL PRIMARY KEY,
+  vendor_id INT REFERENCES vendors(id) ON DELETE CASCADE,
+  order_id INT REFERENCES orders(id) ON DELETE SET NULL,
+  order_number VARCHAR(64) NOT NULL,
+  shopify_order_id BIGINT,
+  tracking_number VARCHAR(120),
+  issue_type VARCHAR(50) NOT NULL,
+  issue_summary TEXT NOT NULL,
+  desired_change TEXT NOT NULL,
+  line_item_context TEXT,
+  contact_name VARCHAR(255),
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(100),
+  submitted_by UUID,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- CSVインポートログ（アップロード履歴管理用）
 CREATE TABLE import_logs (
   id SERIAL PRIMARY KEY,
@@ -164,12 +184,15 @@ CREATE INDEX idx_shipments_order_id ON shipments(order_id);
 CREATE INDEX idx_shipments_shopify_fulfillment_id ON shipments(shopify_fulfillment_id);
 CREATE INDEX idx_shipments_sync_status ON shipments(sync_status);
 CREATE INDEX idx_shipment_line_items_fo_line_item_id ON shipment_line_items(fulfillment_order_line_item_id);
+CREATE INDEX idx_shipment_adjustment_requests_vendor_id ON shipment_adjustment_requests(vendor_id);
+CREATE INDEX idx_shipment_adjustment_requests_status ON shipment_adjustment_requests(status);
 
 -- RLS / Realtime settings
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_vendor_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipment_adjustment_requests ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "OrdersReadable" ON orders;
 CREATE POLICY "OrdersReadable" ON orders
@@ -206,10 +229,33 @@ CREATE POLICY "OrderVendorSegmentsReadable" ON order_vendor_segments
     OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
   );
 
+DROP POLICY IF EXISTS "ShipmentAdjustmentRequestsVendorReadable" ON shipment_adjustment_requests;
+CREATE POLICY "ShipmentAdjustmentRequestsVendorReadable" ON shipment_adjustment_requests
+  FOR SELECT USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "ShipmentAdjustmentRequestsVendorInsert" ON shipment_adjustment_requests;
+CREATE POLICY "ShipmentAdjustmentRequestsVendorInsert" ON shipment_adjustment_requests
+  FOR INSERT WITH CHECK (
+    vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "ShipmentAdjustmentRequestsAdminAll" ON shipment_adjustment_requests;
+CREATE POLICY "ShipmentAdjustmentRequestsAdminAll" ON shipment_adjustment_requests
+  FOR ALL USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  )
+  WITH CHECK (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  );
+
 ALTER TABLE orders REPLICA IDENTITY FULL;
 ALTER TABLE line_items REPLICA IDENTITY FULL;
 ALTER TABLE shipments REPLICA IDENTITY FULL;
 ALTER TABLE order_vendor_segments REPLICA IDENTITY FULL;
+ALTER TABLE shipment_adjustment_requests REPLICA IDENTITY FULL;
 
 DO $$
 BEGIN

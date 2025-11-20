@@ -131,7 +131,6 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
               <th className="px-3 py-2">ベンダー名</th>
               <th className="px-3 py-2">コード</th>
               <th className="px-3 py-2">ステータス</th>
-              <th className="px-3 py-2">Auth</th>
               <th className="px-3 py-2">メール</th>
               <th className="px-3 py-2">登録日</th>
               <th className="px-3 py-2 text-right">操作</th>
@@ -192,13 +191,6 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
                     </Badge>
                   ) : (
                     <Badge className="border-slate-200 bg-slate-50 text-slate-600">審査情報なし</Badge>
-                  )}
-                </td>
-                <td className="px-3 py-2">
-                  {vendor.lastApplication?.authUserId ? (
-                    <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700">連携済み</Badge>
-                  ) : (
-                    <Badge className="border-slate-200 bg-slate-50 text-slate-600">未連携</Badge>
                   )}
                 </td>
                 <td className="px-3 py-2">{vendor.contactEmail ?? '-'}</td>

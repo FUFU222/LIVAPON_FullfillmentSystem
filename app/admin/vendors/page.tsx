@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { Alert } from '@/components/ui/alert';
-import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getVendors, type VendorListEntry } from '@/lib/data/vendors';
@@ -37,16 +35,9 @@ export default async function AdminVendorsPage({
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <CardTitle className="text-2xl font-semibold">ベンダー一覧</CardTitle>
-          <p className="text-sm text-slate-500">最新 100 件のベンダーを表示しています。</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/admin/vendors/export" className={buttonClasses('outline')}>
-            CSVダウンロード
-          </Link>
-        </div>
+      <CardHeader className="flex flex-col gap-1">
+        <CardTitle className="text-2xl font-semibold">ベンダー一覧</CardTitle>
+        <p className="text-sm text-slate-500">最新 100 件のベンダーを表示しています。</p>
       </CardHeader>
       <CardContent className="grid gap-4">
         {statusMessage ? <Alert variant="success">{statusMessage}</Alert> : null}

@@ -207,7 +207,9 @@ export function ShipmentHistoryTable({
                     {shipment.orderStatus ? (
                       <StatusBadge status={shipment.orderStatus} />
                     ) : null}
-                    <StatusBadge status={deriveVendorShipmentStatus(shipment)} />
+                    {shouldShowVendorStatusBadge(shipment) ? (
+                      <StatusBadge status={deriveVendorShipmentStatus(shipment)} />
+                    ) : null}
                   </div>
                 </div>
               </td>
@@ -257,4 +259,12 @@ function deriveVendorShipmentStatus(shipment: ShipmentHistoryEntry) {
     return 'cancelled';
   }
   return 'fulfilled';
+}
+
+function shouldShowVendorStatusBadge(shipment: ShipmentHistoryEntry) {
+  const vendorStatus = deriveVendorShipmentStatus(shipment);
+  if (!shipment.orderStatus) {
+    return true;
+  }
+  return shipment.orderStatus !== vendorStatus;
 }

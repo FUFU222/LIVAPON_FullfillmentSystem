@@ -64,6 +64,10 @@ function calculateShipmentProgress(
   }
 ) {
   const shippedFromShipments = lineItem.shipments.reduce((total, shipment) => {
+    const status = shipment.status?.toLowerCase();
+    if (status === 'cancelled' || status === 'canceled') {
+      return total;
+    }
     return total + Math.max(0, shipment.quantity ?? 0);
   }, 0);
 

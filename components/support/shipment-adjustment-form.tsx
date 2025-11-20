@@ -49,14 +49,11 @@ export function ShipmentAdjustmentForm({
   return (
     <div className="grid gap-4 text-base text-slate-700">
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-6 space-y-2">
-          <p className="text-lg font-semibold text-foreground">発送修正申請フォーム</p>
-          <p className="text-base text-slate-600">
-            {vendorName ? `${vendorName} (${vendorCode ?? 'ベンダーコード未設定'})` : 'ベンダー情報取得中'}
-            <br />
-            Shopify 側では管理者が FO を再オープンします。Console から直接未発送へ戻すことはできません。
-          </p>
-        </div>
+        {vendorName ? (
+          <div className="mb-4 text-base text-slate-600">
+            {vendorName} {vendorCode ? `(${vendorCode})` : null}
+          </div>
+        ) : null}
 
         {state.status === 'success' && state.message ? (
           <Alert variant="success" className="mb-4">
@@ -82,15 +79,7 @@ export function ShipmentAdjustmentForm({
               <label htmlFor="orderNumber" className="font-medium text-foreground">
                 Shopify注文番号 <span className="text-red-500">*</span>
               </label>
-              <Input
-                id="orderNumber"
-                name="orderNumber"
-                placeholder="例: #1234 (メモに載っている注文番号をそのまま入力)"
-                required
-              />
-              <p className="text-sm text-slate-500">
-                例: <span className="font-mono">#1050</span> / <span className="font-mono">1050</span>. ハッシュタグなしでも可。
-              </p>
+              <Input id="orderNumber" name="orderNumber" placeholder="例: #1234" required />
               {state.fieldErrors?.orderNumber ? (
                 <span className="text-sm text-red-500">{state.fieldErrors.orderNumber}</span>
               ) : null}
@@ -98,13 +87,9 @@ export function ShipmentAdjustmentForm({
 
             <div className="grid gap-2">
               <label htmlFor="trackingNumber" className="font-medium text-foreground">
-                追跡番号 / 配送会社 (任意)
+                追跡番号 / 配送会社
               </label>
-              <Input
-                id="trackingNumber"
-                name="trackingNumber"
-                placeholder="例: SG123456789JP / ヤマト運輸"
-              />
+              <Input id="trackingNumber" name="trackingNumber" />
             </div>
 
             <div className="grid gap-2">
@@ -118,13 +103,6 @@ export function ShipmentAdjustmentForm({
                   </option>
                 ))}
               </Select>
-              <div className="space-y-1 text-sm text-slate-500">
-                {shipmentIssueTypeOptions.map((option) => (
-                  <p key={option.value}>
-                    <span className="font-medium">{option.label}:</span> {option.helper}
-                  </p>
-                ))}
-              </div>
               {state.fieldErrors?.issueType ? (
                 <span className="text-sm text-red-500">{state.fieldErrors.issueType}</span>
               ) : null}
@@ -136,14 +114,7 @@ export function ShipmentAdjustmentForm({
               <label htmlFor="issueSummary" className="font-medium text-foreground">
                 発生している状況 <span className="text-red-500">*</span>
               </label>
-              <Textarea
-                id="issueSummary"
-                name="issueSummary"
-                rows={4}
-                required
-                placeholder="例: 5/10にSKU 0001-101-Aを3点発送しましたが、Shopify上では4点発送済みとなっており、在庫がマイナスになっています。"
-              />
-              <p className="text-sm text-slate-500">箇条書きでも構いません。時系列や発覚したきっかけを書いていただくと助かります。</p>
+              <Textarea id="issueSummary" name="issueSummary" rows={4} required />
               {state.fieldErrors?.issueSummary ? (
                 <span className="text-sm text-red-500">{state.fieldErrors.issueSummary}</span>
               ) : null}
@@ -153,13 +124,7 @@ export function ShipmentAdjustmentForm({
               <label htmlFor="desiredChange" className="font-medium text-foreground">
                 希望する対応 <span className="text-red-500">*</span>
               </label>
-              <Textarea
-                id="desiredChange"
-                name="desiredChange"
-                rows={3}
-                required
-                placeholder="例: Shopifyで該当FOを未発送に戻し、追跡番号をXXXXへ差し替えたいです。管理者側で必要な操作をお願いします。"
-              />
+              <Textarea id="desiredChange" name="desiredChange" rows={3} required />
               {state.fieldErrors?.desiredChange ? (
                 <span className="text-sm text-red-500">{state.fieldErrors.desiredChange}</span>
               ) : null}
@@ -169,12 +134,7 @@ export function ShipmentAdjustmentForm({
               <label htmlFor="lineItemContext" className="font-medium text-foreground">
                 対象ラインアイテム / 数量 (任意)
               </label>
-              <Textarea
-                id="lineItemContext"
-                name="lineItemContext"
-                rows={3}
-                placeholder="例: SKU 0005-210-B (ブルー) 2点 / SKU 0005-210-C (グレー) 1点"
-              />
+              <Textarea id="lineItemContext" name="lineItemContext" rows={3} />
             </div>
           </section>
 
@@ -213,29 +173,26 @@ export function ShipmentAdjustmentForm({
             </div>
 
             <div className="grid gap-2">
-            <label htmlFor="contactPhone" className="font-medium text-foreground">
-              連絡先電話番号 (任意)
-            </label>
-            <Input
-              id="contactPhone"
-              name="contactPhone"
-              placeholder="例: 03-1234-5678 / 080-1234-5678"
-              defaultValue={defaultContactPhone ?? ''}
-            />
-          </div>
+              <label htmlFor="contactPhone" className="font-medium text-foreground">
+                連絡先電話番号
+              </label>
+              <Input
+                id="contactPhone"
+                name="contactPhone"
+                placeholder="例: 03-1234-5678"
+                defaultValue={defaultContactPhone ?? ''}
+              />
+            </div>
           </section>
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500">
-            <p>送信後は管理者が Shopify 側でFOの再オープン／再同期を行います。進捗はメールにてご連絡します。</p>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Link
-                href="/orders/shipments"
-                className="text-sm text-slate-600 underline-offset-4 hover:text-foreground hover:underline"
-              >
-                ← 発送履歴に戻る
-              </Link>
-              <SubmitButton />
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500">
+            <Link
+              href="/orders/shipments"
+              className="text-sm text-slate-600 underline-offset-4 hover:text-foreground hover:underline"
+            >
+              ← 発送履歴に戻る
+            </Link>
+            <SubmitButton />
           </div>
         </form>
       </div>

@@ -41,15 +41,6 @@ export function ShipmentHistoryTable({
 
   return (
     <div className="grid gap-4">
-      <Alert variant="default" className="flex flex-col gap-2 text-sm text-slate-600">
-        <span>発送済みの内容を修正する場合は、管理者への申請が必要です。Console からの直接取消は行えません。</span>
-        <Link
-          href="/support/shipment-adjustment"
-          className="inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
-        >
-          申請フォームを開く
-        </Link>
-      </Alert>
       <table className="w-full table-auto text-left text-sm">
         <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>

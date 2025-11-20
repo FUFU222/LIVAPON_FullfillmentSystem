@@ -73,6 +73,7 @@ describe('fetchFulfillmentOrderSnapshots', () => {
     expect(snapshots).toEqual([
       {
         id: 44,
+        status: null,
         line_items: [
           { id: 701, line_item_id: 9001, remaining_quantity: 2 },
           { id: 702, line_item_id: 9002, remaining_quantity: 1 }

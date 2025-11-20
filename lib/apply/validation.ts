@@ -1,8 +1,11 @@
 const emailPattern = /.+@.+\..+/;
 
+const phonePattern = /^[0-9()+\-\s]{8,}$/;
+
 export type VendorApplicationInput = {
   companyName: string;
   contactEmail: string;
+  contactPhone: string;
   password: string;
   passwordConfirm: string;
   acceptTerms: boolean;
@@ -19,6 +22,12 @@ export function validateVendorApplicationInput(input: VendorApplicationInput): V
 
   if (!input.contactEmail.trim() || !emailPattern.test(input.contactEmail)) {
     errors.contactEmail = '有効なメールアドレスを入力してください';
+  }
+
+  if (!input.contactPhone.trim()) {
+    errors.contactPhone = '電話番号を入力してください';
+  } else if (!phonePattern.test(input.contactPhone.trim())) {
+    errors.contactPhone = '電話番号の形式が正しくありません';
   }
 
   if (input.password.length < 8) {

@@ -9,6 +9,7 @@ CREATE TABLE vendors (
   name VARCHAR(255) NOT NULL,
   contact_name VARCHAR(255),
   contact_email VARCHAR(255),
+  contact_phone VARCHAR(100),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -20,6 +21,7 @@ CREATE TABLE vendor_applications (
   company_name VARCHAR(255) NOT NULL,
   contact_name VARCHAR(255),
   contact_email VARCHAR(255) NOT NULL,
+  contact_phone VARCHAR(100),
   message TEXT,
   status VARCHAR(32) DEFAULT 'pending', -- pending / approved / rejected
   notes TEXT,

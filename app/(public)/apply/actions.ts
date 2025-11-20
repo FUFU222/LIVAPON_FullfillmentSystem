@@ -13,6 +13,7 @@ export async function submitVendorApplication(
   const companyName = (formData.get('companyName') as string | null)?.trim() ?? '';
   const contactName = (formData.get('contactName') as string | null)?.trim() ?? '';
   const contactEmail = (formData.get('contactEmail') as string | null)?.trim() ?? '';
+  const contactPhone = (formData.get('contactPhone') as string | null)?.trim() ?? '';
   const message = (formData.get('message') as string | null)?.trim() ?? '';
   const password = (formData.get('password') as string | null) ?? '';
   const passwordConfirm = (formData.get('passwordConfirm') as string | null) ?? '';
@@ -21,6 +22,7 @@ export async function submitVendorApplication(
   const errors = validateVendorApplicationInput({
     companyName,
     contactEmail,
+    contactPhone,
     password,
     passwordConfirm,
     acceptTerms
@@ -44,7 +46,8 @@ export async function submitVendorApplication(
         data: {
           role: 'pending_vendor',
           company_name: companyName,
-          contact_name: contactName || null
+          contact_name: contactName || null,
+          contact_phone: contactPhone || null
         }
       }
     });
@@ -65,6 +68,7 @@ export async function submitVendorApplication(
         companyName,
         contactName,
         contactEmail,
+        contactPhone,
         message,
         authUserId
       },

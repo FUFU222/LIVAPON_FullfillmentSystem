@@ -47,14 +47,15 @@ export function AdminVendorDetail({ vendor }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <section className="grid gap-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-1">
             <span className="text-lg font-semibold text-foreground">{vendor.name}</span>
             <span className="text-sm text-slate-500">コード: {vendor.code ?? '----'}</span>
           </div>
-          {vendor.contactEmail ? (
-            <span className="text-sm text-slate-600">{vendor.contactEmail}</span>
-          ) : null}
+          <div className="flex flex-col gap-1 text-sm text-slate-600 sm:items-end">
+            {vendor.contactEmail ? <span>{vendor.contactEmail}</span> : null}
+            {vendor.contactPhone ? <span>{vendor.contactPhone}</span> : null}
+          </div>
         </div>
         <dl className="grid grid-cols-1 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3">
           <div className="flex flex-col gap-1">
@@ -106,14 +107,18 @@ export function AdminVendorDetail({ vendor }: Props) {
                     <dt className="text-xs uppercase tracking-wide text-slate-500">担当者</dt>
                     <dd className="text-slate-700">{application.contactName ?? '-'}</dd>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <dt className="text-xs uppercase tracking-wide text-slate-500">メール</dt>
-                    <dd className="text-slate-700">{application.contactEmail}</dd>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <dt className="text-xs uppercase tracking-wide text-slate-500">審査担当</dt>
-                    <dd className="text-slate-700">{application.reviewerEmail ?? '-'}</dd>
-                  </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-xs uppercase tracking-wide text-slate-500">メール</dt>
+            <dd className="text-slate-700">{application.contactEmail}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-xs uppercase tracking-wide text-slate-500">電話</dt>
+            <dd className="text-slate-700">{application.contactPhone ?? '-'}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-xs uppercase tracking-wide text-slate-500">審査担当</dt>
+            <dd className="text-slate-700">{application.reviewerEmail ?? '-'}</dd>
+          </div>
                   <div className="flex flex-col gap-1">
                     <dt className="text-xs uppercase tracking-wide text-slate-500">審査日時</dt>
                     <dd className="text-slate-700">{formatDateTime(application.reviewedAt)}</dd>

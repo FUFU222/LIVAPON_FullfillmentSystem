@@ -165,6 +165,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <span>ベンダーコード: {application.vendorCode ?? '承認時に自動割り当て'}</span>
           <span>担当者: {application.contactName ?? '-'}</span>
           <span>メール: {application.contactEmail}</span>
+          <span>電話: {application.contactPhone ?? '-'}</span>
         </div>
       </div>
 

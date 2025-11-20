@@ -55,6 +55,7 @@ export default async function AdminApplicationsPage() {
                     <th className="px-3 py-2">ベンダーコード</th>
                     <th className="px-3 py-2">担当者</th>
                     <th className="px-3 py-2">メール</th>
+                    <th className="px-3 py-2">電話</th>
                     <th className="px-3 py-2">ステータス</th>
                     <th className="px-3 py-2">審査日時</th>
                   </tr>
@@ -67,6 +68,7 @@ export default async function AdminApplicationsPage() {
                       <td className="px-3 py-2">{application.vendorCode ?? '-'}</td>
                       <td className="px-3 py-2">{application.contactName ?? '-'}</td>
                       <td className="px-3 py-2">{application.contactEmail}</td>
+                      <td className="px-3 py-2">{application.contactPhone ?? '-'}</td>
                       <td className="px-3 py-2">{application.status}</td>
                       <td className="px-3 py-2 text-xs">{application.reviewedAt ?? '-'}</td>
                     </tr>

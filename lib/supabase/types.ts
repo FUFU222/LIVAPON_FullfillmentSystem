@@ -592,6 +592,7 @@ export type Database = {
           auth_user_id: string | null
           company_name: string
           contact_email: string
+          contact_phone: string | null
           contact_name: string | null
           created_at: string | null
           id: number
@@ -609,6 +610,7 @@ export type Database = {
           auth_user_id?: string | null
           company_name: string
           contact_email: string
+          contact_phone?: string | null
           contact_name?: string | null
           created_at?: string | null
           id?: number
@@ -626,6 +628,7 @@ export type Database = {
           auth_user_id?: string | null
           company_name?: string
           contact_email?: string
+          contact_phone?: string | null
           contact_name?: string | null
           created_at?: string | null
           id?: number
@@ -743,6 +746,7 @@ export type Database = {
           code: string | null
           contact_name: string | null
           contact_email: string | null
+          contact_phone: string | null
           created_at: string | null
           id: number
           name: string
@@ -751,6 +755,7 @@ export type Database = {
           code?: string | null
           contact_name?: string | null
           contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id?: number
           name: string
@@ -759,6 +764,7 @@ export type Database = {
           code?: string | null
           contact_name?: string | null
           contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id?: number
           name?: string

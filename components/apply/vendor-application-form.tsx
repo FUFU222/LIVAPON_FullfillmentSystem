@@ -83,6 +83,24 @@ export function VendorApplicationForm() {
         </div>
 
         <div className="grid gap-2 text-sm text-slate-600">
+          <label htmlFor="contactPhone" className="font-medium text-foreground">
+            発送担当者の電話番号
+          </label>
+          <Input
+            id="contactPhone"
+            name="contactPhone"
+            type="tel"
+            required
+            placeholder="例: 03-1234-5678 / 080-1234-5678"
+            autoComplete="tel"
+          />
+          <p className="text-xs text-slate-500">発送に関する緊急連絡で使用します。</p>
+          {state.errors?.contactPhone ? (
+            <span className="text-xs text-red-500">{state.errors?.contactPhone}</span>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2 text-sm text-slate-600">
           <label htmlFor="password" className="font-medium text-foreground">
             パスワード
           </label>

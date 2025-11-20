@@ -23,7 +23,7 @@ export default async function VendorProfilePage() {
   const supabase = getServerComponentClient();
   const { data: vendor, error } = await supabase
     .from('vendors')
-    .select('name, code, contact_email, contact_name')
+    .select('name, code, contact_email, contact_name, contact_phone')
     .eq('id', auth.vendorId)
     .maybeSingle();
 
@@ -58,7 +58,8 @@ export default async function VendorProfilePage() {
               companyName: vendor.name,
               contactName,
               email,
-              vendorCode: vendor.code
+              vendorCode: vendor.code,
+              contactPhone: vendor.contact_phone ?? null
             }}
           />
         </CardContent>

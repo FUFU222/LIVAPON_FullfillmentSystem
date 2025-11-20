@@ -7,7 +7,9 @@ import { assertAuthorizedVendor, requireAuthContext } from '@/lib/auth';
 export type VendorProfileActionState = {
   status: 'idle' | 'success' | 'error';
   message: string | null;
-  fieldErrors?: Partial<Record<'companyName' | 'email' | 'password' | 'currentPassword', string>>;
+  fieldErrors?: Partial<
+    Record<'companyName' | 'email' | 'password' | 'currentPassword' | 'contactPhone', string>
+  >;
 };
 
 const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
@@ -20,6 +22,11 @@ function validateEmail(email: string) {
   return pattern.test(email);
 }
 
+function validatePhone(phone: string) {
+  const pattern = /^[0-9()+\-\s]{8,}$/;
+  return pattern.test(phone);
+}
+
 export async function updateVendorProfileAction(
   _prevState: VendorProfileActionState,
   formData: FormData
@@ -27,12 +34,14 @@ export async function updateVendorProfileAction(
   const rawCompanyName = formData.get('companyName');
   const rawContactName = formData.get('contactName');
   const rawEmail = formData.get('email');
+  const rawContactPhone = formData.get('contactPhone');
   const rawPassword = formData.get('password');
   const rawCurrentPassword = formData.get('currentPassword');
 
   const companyName = typeof rawCompanyName === 'string' ? rawCompanyName.trim() : '';
   const contactName = typeof rawContactName === 'string' ? rawContactName.trim() : '';
   const email = typeof rawEmail === 'string' ? rawEmail.trim() : '';
+  const contactPhone = typeof rawContactPhone === 'string' ? rawContactPhone.trim() : '';
   const password = typeof rawPassword === 'string' ? rawPassword : '';
   const currentPassword = typeof rawCurrentPassword === 'string' ? rawCurrentPassword : '';
 
@@ -46,6 +55,12 @@ export async function updateVendorProfileAction(
     fieldErrors.email = 'メールアドレスを入力してください。';
   } else if (!validateEmail(email)) {
     fieldErrors.email = 'メールアドレスの形式が正しくありません。';
+  }
+
+  if (!contactPhone) {
+    fieldErrors.contactPhone = '電話番号を入力してください。';
+  } else if (!validatePhone(contactPhone)) {
+    fieldErrors.contactPhone = '電話番号の形式が正しくありません。';
   }
 
   if (password) {
@@ -75,7 +90,8 @@ export async function updateVendorProfileAction(
     .update({
       name: companyName,
       contact_email: email,
-      contact_name: contactName || null
+      contact_name: contactName || null,
+      contact_phone: contactPhone || null
     })
     .eq('id', auth.vendorId)
     .select('id')
@@ -96,6 +112,7 @@ export async function updateVendorProfileAction(
   const mergedMetadata = {
     ...currentMetadata,
     contact_name: contactName ? contactName : null,
+    contact_phone: contactPhone ? contactPhone : null,
     vendor_id: auth.vendorId,
     vendorId: auth.vendorId
   };

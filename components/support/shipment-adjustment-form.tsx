@@ -24,11 +24,13 @@ function SubmitButton() {
 export function ShipmentAdjustmentForm({
   defaultContactName,
   defaultContactEmail,
+  defaultContactPhone,
   vendorName,
   vendorCode
 }: {
   defaultContactName?: string | null;
   defaultContactEmail?: string | null;
+  defaultContactPhone?: string | null;
   vendorName?: string | null;
   vendorCode?: string | null;
 }) {
@@ -211,11 +213,16 @@ export function ShipmentAdjustmentForm({
             </div>
 
             <div className="grid gap-2 text-sm">
-              <label htmlFor="contactPhone" className="font-medium text-foreground">
-                連絡先電話番号 (任意)
-              </label>
-              <Input id="contactPhone" name="contactPhone" placeholder="例: 03-1234-5678 / 080-1234-5678" />
-            </div>
+            <label htmlFor="contactPhone" className="font-medium text-foreground">
+              連絡先電話番号 (任意)
+            </label>
+            <Input
+              id="contactPhone"
+              name="contactPhone"
+              placeholder="例: 03-1234-5678 / 080-1234-5678"
+              defaultValue={defaultContactPhone ?? ''}
+            />
+          </div>
           </section>
 
           <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500">

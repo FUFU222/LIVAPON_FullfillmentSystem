@@ -24,14 +24,32 @@ export function ShipmentHistoryTable({
 }) {
   if (shipments.length === 0) {
     return (
-      <Alert variant="default" className="text-sm">
-        登録済みの発送はまだありません。
+      <Alert variant="default" className="grid gap-2 text-sm">
+        <span>登録済みの発送はまだありません。</span>
+        <span>
+          発送内容の修正や取り消しが必要な場合は管理者への申請が必要です。
+          <Link
+            href="/support/shipment-adjustment"
+            className="ml-2 inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
+          >
+            申請フォームを開く
+          </Link>
+        </span>
       </Alert>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="grid gap-4">
+      <Alert variant="default" className="flex flex-col gap-2 text-sm text-slate-600">
+        <span>発送済みの内容を修正する場合は、管理者への申請が必要です。Console からの直接取消は行えません。</span>
+        <Link
+          href="/support/shipment-adjustment"
+          className="inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
+        >
+          申請フォームを開く
+        </Link>
+      </Alert>
       <table className="w-full table-auto text-left text-sm">
         <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>
@@ -41,7 +59,6 @@ export function ShipmentHistoryTable({
             <th className="px-3 py-2">配送先</th>
             <th className="px-3 py-2">追跡番号</th>
             <th className="px-3 py-2">配送業者</th>
-            <th className="px-3 py-2">アクション</th>
           </tr>
         </thead>
         <tbody>
@@ -83,17 +100,6 @@ export function ShipmentHistoryTable({
               </td>
               <td className="px-3 py-3 text-sm capitalize">
                 {shipment.carrier ?? "-"}
-              </td>
-              <td className="px-3 py-3 text-xs text-slate-500">
-                <p className="leading-relaxed">
-                  発送内容の修正や取り消しは管理者による確認が必要です。申請フォームから依頼してください。
-                </p>
-                <Link
-                  href="/support/shipment-adjustment"
-                  className="mt-1 inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
-                >
-                  申請フォームを開く
-                </Link>
               </td>
             </tr>
           ))}

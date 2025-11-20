@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -22,11 +22,26 @@ export function NavigationOverlayProvider({ children }: { children: ReactNode })
   const pathname = usePathname();
   const [active, setActive] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const showTimerRef = useRef<number | null>(null);
+
+  const clearShowTimer = useCallback(() => {
+    if (showTimerRef.current !== null) {
+      window.clearTimeout(showTimerRef.current);
+      showTimerRef.current = null;
+    }
+  }, []);
 
   const beginNavigation = useCallback(() => {
-    setStartedAt(Date.now());
-    setActive(true);
-  }, []);
+    if (active || showTimerRef.current !== null) {
+      return;
+    }
+    const DELAY_MS = 200;
+    showTimerRef.current = window.setTimeout(() => {
+      setStartedAt(Date.now());
+      setActive(true);
+      showTimerRef.current = null;
+    }, DELAY_MS);
+  }, [active]);
 
   // Hide overlay only after the new pathname has rendered and
   // we have shown it long enough to avoid flicker.
@@ -51,6 +66,13 @@ export function NavigationOverlayProvider({ children }: { children: ReactNode })
     return () => clearTimeout(timer);
   }, [pathname, active, startedAt]);
 
+  // Cancel pending show timers when navigation completes before delay.
+  useEffect(() => {
+    if (!active) {
+      clearShowTimer();
+    }
+  }, [pathname, active, clearShowTimer]);
+
   // Safety guard: ensure overlay never stays indefinitely (e.g. navigation error).
   useEffect(() => {
     if (!active || startedAt === null) {
@@ -67,6 +89,12 @@ export function NavigationOverlayProvider({ children }: { children: ReactNode })
   }, [active, startedAt]);
 
   const contextValue = useMemo<OverlayContextValue>(() => ({ beginNavigation }), [beginNavigation]);
+
+  useEffect(() => {
+    return () => {
+      clearShowTimer();
+    };
+  }, [clearShowTimer]);
 
   return (
     <NavigationOverlayContext.Provider value={contextValue}>

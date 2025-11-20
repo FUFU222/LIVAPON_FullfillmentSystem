@@ -154,8 +154,24 @@ CREATE TABLE shipment_adjustment_requests (
   contact_phone VARCHAR(100),
   submitted_by UUID,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  assigned_admin_id UUID,
+  assigned_admin_email VARCHAR(255),
+  resolution_summary TEXT,
+  resolved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE shipment_adjustment_comments (
+  id SERIAL PRIMARY KEY,
+  request_id INT REFERENCES shipment_adjustment_requests(id) ON DELETE CASCADE,
+  vendor_id INT REFERENCES vendors(id) ON DELETE CASCADE,
+  author_id UUID,
+  author_name VARCHAR(255),
+  author_role VARCHAR(32) NOT NULL DEFAULT 'admin',
+  visibility VARCHAR(32) NOT NULL DEFAULT 'vendor',
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- CSVインポートログ（アップロード履歴管理用）
@@ -188,6 +204,9 @@ CREATE INDEX idx_shipments_sync_status ON shipments(sync_status);
 CREATE INDEX idx_shipment_line_items_fo_line_item_id ON shipment_line_items(fulfillment_order_line_item_id);
 CREATE INDEX idx_shipment_adjustment_requests_vendor_id ON shipment_adjustment_requests(vendor_id);
 CREATE INDEX idx_shipment_adjustment_requests_status ON shipment_adjustment_requests(status);
+CREATE INDEX idx_shipment_adjustment_requests_assigned_admin_id ON shipment_adjustment_requests(assigned_admin_id);
+CREATE INDEX idx_shipment_adjustment_comments_request_id ON shipment_adjustment_comments(request_id);
+CREATE INDEX idx_shipment_adjustment_comments_vendor_id ON shipment_adjustment_comments(vendor_id);
 
 -- RLS / Realtime settings
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
@@ -195,6 +214,7 @@ ALTER TABLE line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_vendor_segments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipment_adjustment_comments ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "OrdersReadable" ON orders;
 CREATE POLICY "OrdersReadable" ON orders
@@ -251,6 +271,22 @@ CREATE POLICY "ShipmentAdjustmentRequestsAdminAll" ON shipment_adjustment_reques
   )
   WITH CHECK (
     LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  );
+
+DROP POLICY IF EXISTS "ShipmentAdjustmentCommentsAdminAll" ON shipment_adjustment_comments;
+CREATE POLICY "ShipmentAdjustmentCommentsAdminAll" ON shipment_adjustment_comments
+  FOR ALL USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  )
+  WITH CHECK (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  );
+
+DROP POLICY IF EXISTS "ShipmentAdjustmentCommentsVendorReadable" ON shipment_adjustment_comments;
+CREATE POLICY "ShipmentAdjustmentCommentsVendorReadable" ON shipment_adjustment_comments
+  FOR SELECT USING (
+    vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    AND LOWER(COALESCE(NULLIF(visibility, ''), 'vendor')) <> 'internal'
   );
 
 ALTER TABLE orders REPLICA IDENTITY FULL;

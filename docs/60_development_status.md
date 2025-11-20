@@ -15,6 +15,7 @@
 10. **注文ステータス整合性と即時通知**: Shopify 側の `fulfilled_quantity` / `fulfillable_quantity` を優先する変換ロジックに変更し、注文一覧とラインアイテムの表示が Shopify 管理画面と即時一致するようにした。保留中の明細は `保留中` バッジで区別し、Supabase Realtime 経由で「新規注文 / 既存注文の更新件数」を含む通知バナーを出すよう改良（自動更新はユーザー操作で制御）。orders テーブルには `shopify_fo_status` を保存し、Webhook 受信時に FO メタを即時再同期 → 発送登録前にも FO 状態をチェックしてクローズ済みなら自動再同期 or 明示的なエラーメッセージを返すようにした。
 11. **Realtime 配信の再設計** (NEW): Publication は Supabase 既定の `supabase_realtime` を利用し、`orders/line_items/shipments` を `ALTER PUBLICATION ... ADD TABLE ...` で登録する。UPDATE/DELETE が絡むテーブルは `REPLICA IDENTITY FULL` を付与し、RLS は「RLS OFF → 無フィルタ購読 → RLS ON → vendor フィルタ」の段階で検証する方針に統一した。`docs/livapon-realtime-sync-guidelines.md` にチェックリストを追記済み。
 12. **発送修正申請フロー** (NEW): `/support/shipment-adjustment` にベンダー向けフォームを公開し、`shipment_adjustment_requests` テーブルへ保存→管理者審査する運用へ移行。注文番号・発生状況・希望対応を自然文で記入できるよう placeholder / helper を整備し、Console からの直接未発送戻しを完全廃止した。
+13. **申請トリアージ画面** (NEW): `/admin/shipment-requests` に管理者向けボードを追加。申請一覧／コメント／ステータス更新／担当アサインを Console 内で完結させ、`shipment_adjustment_comments` に処置内容を記録してベンダーへ返信できるようにした。ベンダー側のフォームにも申請履歴を表示し、進捗をセルフサービスで確認できる。
 
 ### 1.1 Webhook 経路と通知設定
 | 経路 | トピック | 目的 |

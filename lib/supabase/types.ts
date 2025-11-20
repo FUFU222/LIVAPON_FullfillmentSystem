@@ -360,8 +360,12 @@ export type Database = {
           issue_summary: string
           issue_type: string
           line_item_context: string | null
+          assigned_admin_email: string | null
+          assigned_admin_id: string | null
           order_id: number | null
           order_number: string
+          resolution_summary: string | null
+          resolved_at: string | null
           shopify_order_id: number | null
           status: string | null
           submitted_by: string | null
@@ -379,8 +383,12 @@ export type Database = {
           issue_summary: string
           issue_type: string
           line_item_context?: string | null
+          assigned_admin_email?: string | null
+          assigned_admin_id?: string | null
           order_id?: number | null
           order_number: string
+          resolution_summary?: string | null
+          resolved_at?: string | null
           shopify_order_id?: number | null
           status?: string | null
           submitted_by?: string | null
@@ -398,8 +406,12 @@ export type Database = {
           issue_summary?: string
           issue_type?: string
           line_item_context?: string | null
+          assigned_admin_email?: string | null
+          assigned_admin_id?: string | null
           order_id?: number | null
           order_number?: string
+          resolution_summary?: string | null
+          resolved_at?: string | null
           shopify_order_id?: number | null
           status?: string | null
           submitted_by?: string | null
@@ -417,6 +429,57 @@ export type Database = {
           },
           {
             foreignKeyName: "shipment_adjustment_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_adjustment_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          author_role: string | null
+          body: string
+          created_at: string | null
+          id: number
+          request_id: number
+          vendor_id: number
+          visibility: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          author_role?: string | null
+          body: string
+          created_at?: string | null
+          id?: number
+          request_id: number
+          vendor_id: number
+          visibility?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          author_role?: string | null
+          body?: string
+          created_at?: string | null
+          id?: number
+          request_id?: number
+          vendor_id?: number
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_adjustment_comments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_adjustment_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_adjustment_comments_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"

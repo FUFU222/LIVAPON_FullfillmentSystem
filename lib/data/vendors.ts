@@ -279,6 +279,7 @@ async function ensureVendor(
     companyName: string;
     contactEmail: string;
     contactName?: string | null;
+    contactPhone?: string | null;
   }
 ): Promise<MinimalVendor> {
   if (params.vendorId) {

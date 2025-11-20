@@ -63,11 +63,12 @@ function calculateShipmentProgress(
     shipments: LineItemShipment[];
   }
 ) {
-  const shippedFromShipments = lineItem.shipments.reduce((total, shipment) => {
+  const activeShipments = lineItem.shipments.filter((shipment) => {
     const status = shipment.status?.toLowerCase();
-    if (status === 'cancelled' || status === 'canceled') {
-      return total;
-    }
+    return status !== 'cancelled' && status !== 'canceled';
+  });
+
+  const shippedFromShipments = activeShipments.reduce((total, shipment) => {
     return total + Math.max(0, shipment.quantity ?? 0);
   }, 0);
 
@@ -77,10 +78,7 @@ function calculateShipmentProgress(
       : null;
 
   const shippedQuantity = (() => {
-    if (shopifyFulfilled !== null && shopifyFulfilled > 0) {
-      return Math.min(lineItem.quantity, shopifyFulfilled);
-    }
-    if (shippedFromShipments > 0) {
+    if (activeShipments.length > 0) {
       return Math.min(lineItem.quantity, shippedFromShipments);
     }
     if (shopifyFulfilled !== null) {

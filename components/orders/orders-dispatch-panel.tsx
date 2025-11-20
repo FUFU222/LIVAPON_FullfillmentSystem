@@ -397,32 +397,18 @@ export function OrdersDispatchPanel({
                 {items.map((item) => (
                   <div
                     key={item.lineItemId}
-                    className="flex flex-col gap-3 rounded border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-3 rounded border border-slate-200 bg-slate-50 p-3"
                   >
-                    <div className="flex flex-col gap-1 text-base text-slate-800">
+                    <div className="flex flex-col gap-1 text-slate-800">
                       <span className="text-lg font-semibold text-slate-900">{item.productName}</span>
                       {item.variantTitle ? (
-                        <span className="text-sm text-slate-600">{item.variantTitle}</span>
-                      ) : null}
-                      {item.sku ? (
-                        <span className="text-xs text-slate-500">SKU: {item.sku}</span>
+                        <span className="text-base font-semibold text-slate-700">{item.variantTitle}</span>
                       ) : null}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-slate-500" htmlFor={`modal-qty-${item.lineItemId}`}>
-                        出荷数
-                      </label>
-                      <Input
-                        id={`modal-qty-${item.lineItemId}`}
-                        type="number"
-                        min={1}
-                        max={item.availableQuantity}
-                        value={item.quantity}
-                        onChange={(event) =>
-                          onUpdateQuantity(item.lineItemId, Number(event.target.value) || 1)
-                        }
-                        className="w-24"
-                      />
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-semibold text-slate-700">
+                        出荷数: {item.quantity}
+                      </span>
                       <button
                         type="button"
                         className="text-xs text-slate-400 transition hover:text-slate-600"

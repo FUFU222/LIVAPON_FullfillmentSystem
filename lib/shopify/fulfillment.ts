@@ -617,16 +617,14 @@ function shouldForceCancelOrder(
   }
 
   const statusNormalized = (currentStatus ?? '').toLowerCase();
+  // Shopify Order webhookで status が既に同期済みの場合はその値を優先し、FO 側の
+  // "closed/cancelled" だけで orders.status を強制上書きしない。Webhook 取りこぼし等で
+  // status が空のまま残っている場合のみフォールバックとしてキャンセル扱いにする。
   if (!statusNormalized) {
     return true;
   }
-  if (statusNormalized === 'cancelled') {
-    return false;
-  }
-  if (ORDER_STATUS_PROTECTED.has(statusNormalized)) {
-    return false;
-  }
-  return true;
+
+  return false;
 }
 
 export async function applyFulfillmentOrderSnapshot(options: ApplySnapshotOptions) {

@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +14,9 @@ import {
 } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const MAX_VISIBLE_TOASTS = 1;
+const EXIT_ANIMATION_MS = 220;
 
 export type ToastVariant = 'default' | 'info' | 'success' | 'warning' | 'error';
 
@@ -92,6 +96,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       }
     >
   >(new Map());
+  const removalTimersRef = useRef<Map<string, number>>(new Map());
 
   const clearTimer = useCallback((id: string) => {
     const entry = timersRef.current.get(id);
@@ -101,16 +106,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     timersRef.current.delete(id);
   }, []);
 
-  const dismissToast = useCallback((id: string) => {
-    setToasts((current) =>
-      current.map((toast) => (toast.id === id ? { ...toast, dismissed: true } : toast))
-    );
-    const entry = timersRef.current.get(id);
-    if (entry?.timeoutId != null) {
-      window.clearTimeout(entry.timeoutId);
+  const scheduleRemoval = useCallback((id: string) => {
+    if (typeof window === 'undefined') {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+      return;
     }
-    timersRef.current.delete(id);
+
+    if (removalTimersRef.current.has(id)) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+      removalTimersRef.current.delete(id);
+    }, EXIT_ANIMATION_MS);
+
+    removalTimersRef.current.set(id, timerId);
   }, []);
+
+  const dismissToast = useCallback(
+    (id: string) => {
+      setToasts((current) =>
+        current.map((toast) => (toast.id === id ? { ...toast, dismissed: true } : toast))
+      );
+      const entry = timersRef.current.get(id);
+      if (entry?.timeoutId != null) {
+        window.clearTimeout(entry.timeoutId);
+      }
+      timersRef.current.delete(id);
+      scheduleRemoval(id);
+    },
+    [scheduleRemoval]
+  );
 
   const scheduleTimer = useCallback(
     (toastId: string, duration: number) => {
@@ -153,7 +180,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           }
         ];
 
-        const limited = next.slice(-3);
+        const limited = next.slice(-MAX_VISIBLE_TOASTS);
         const limitedIds = new Set(limited.map((toast) => toast.id));
 
         next.forEach((toast) => {
@@ -222,6 +249,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ showToast, dismissToast }), [showToast, dismissToast]);
 
+  useEffect(() => {
+    const timers = timersRef.current;
+    const removalTimers = removalTimersRef.current;
+    return () => {
+      timers.forEach((entry) => {
+        if (entry.timeoutId != null) {
+          window.clearTimeout(entry.timeoutId);
+        }
+      });
+      removalTimers.forEach((timerId) => window.clearTimeout(timerId));
+      removalTimers.clear();
+      timers.clear();
+    };
+  }, []);
+
   return (
     <ToastContext.Provider value={value}>
       {children}
@@ -243,7 +285,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             onMouseEnter={() => handleMouseEnter(toast.id)}
             onMouseLeave={() => handleMouseLeave(toast.id)}
             style={{
-              transitionDelay: `${index * 40}ms`
+              transitionDelay: `${(toast.offset ?? index) * 40}ms`
             }}
           >
             {toast.duration !== Infinity ? (

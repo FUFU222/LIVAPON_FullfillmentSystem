@@ -62,7 +62,7 @@ export function ShipmentAdjustmentForm({
               <div className="text-sm text-green-700">申請ID: #{state.requestId}</div>
             ) : null}
             <div className="mt-2 text-sm text-slate-600">
-              進捗は管理者からの返信または別途共有されるステータスにてご確認ください。
+              管理者が確認し次第、なるべく早く対応いたします。内容によっては登録済みの電話番号へご連絡する場合があります。
             </div>
           </Alert>
         ) : null}

@@ -99,13 +99,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     timersRef.current.delete(id);
   }, []);
 
-  const dismissToast = useCallback(
-    (id: string) => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-      clearTimer(id);
-    },
-    [clearTimer]
-  );
+  const dismissToast = useCallback((id: string) => {
+    setToasts((current) =>
+      current.map((toast) => (toast.id === id ? { ...toast, dismissed: true } : toast))
+    );
+    const entry = timersRef.current.get(id);
+    if (entry?.timeoutId != null) {
+      window.clearTimeout(entry.timeoutId);
+    }
+    timersRef.current.delete(id);
+  }, []);
 
   const scheduleTimer = useCallback(
     (toastId: string, duration: number) => {
@@ -143,11 +146,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             description,
             variant,
             duration,
-            action
+            action,
+            dismissed: false
           }
         ];
 
-        const limited = next.slice(-2);
+        const limited = next.slice(-3);
         const limitedIds = new Set(limited.map((toast) => toast.id));
 
         next.forEach((toast) => {
@@ -156,7 +160,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           }
         });
 
-        return limited;
+        return limited.map((toast, index) => ({
+          ...toast,
+          offset: index
+        }));
       });
 
       scheduleTimer(toastId, duration);
@@ -221,17 +228,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-live="polite"
         aria-atomic="true"
       >
-        {toasts.map((toast) => (
+        {toasts.map((toast, index) => (
           <div
             key={toast.id}
             className={cn(
               'pointer-events-auto group relative isolate flex w-full max-w-sm items-start gap-3 overflow-hidden rounded-2xl px-5 py-4 text-sm font-medium shadow-[0_20px_50px_rgba(15,23,42,0.35)] ring-1 backdrop-blur-lg transition-[transform,opacity] motion-safe:animate-toast-in',
+              toast.dismissed && 'motion-safe:animate-toast-out opacity-0',
               'motion-safe:hover:translate-y-[-1px] sm:max-w-md',
               variantClasses[toast.variant]
             )}
             role={toast.variant === 'error' ? 'alert' : 'status'}
             onMouseEnter={() => handleMouseEnter(toast.id)}
             onMouseLeave={() => handleMouseLeave(toast.id)}
+            style={{
+              transitionDelay: `${index * 40}ms`
+            }}
           >
             {toast.duration !== Infinity ? (
               <span

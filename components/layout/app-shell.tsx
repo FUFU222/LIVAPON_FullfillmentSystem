@@ -266,7 +266,22 @@ function AppShellContent({
   })();
 
   const { beginNavigation } = useNavigationOverlay();
-  const brandHref = '/';
+
+  const brandHref = (() => {
+    if (status !== 'signed-in') {
+      return '/';
+    }
+    if (role === 'admin') {
+      return '/admin';
+    }
+    if (role === 'pending_vendor') {
+      return '/pending';
+    }
+    if (role === 'vendor' && vendorId) {
+      return '/orders';
+    }
+    return '/';
+  })();
 
   const handleNavigation = useCallback(
     (href: string) => {

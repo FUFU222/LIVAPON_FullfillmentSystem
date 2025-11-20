@@ -22,6 +22,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const registerPendingOrderRef = useRef(registerPendingOrder);
   const toastIdRef = useRef<string | null>(null);
   const refreshPendingRef = useRef(false);
+  const pendingToastTimerRef = useRef<number | null>(null);
   const vendorOrderMapRef = useRef<Set<number>>(new Set());
 
   const handleManualRefresh = useCallback(() => {
@@ -60,12 +61,31 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   }, [dismissToast, handleManualRefresh, isRefreshing, pendingCount, showToast]);
 
   useEffect(() => {
+    const MIN_PENDING_DELAY_MS = 400;
     if (pendingCount > 0) {
-      showPendingToast();
-    } else if (toastIdRef.current) {
-      dismissToast(toastIdRef.current);
-      toastIdRef.current = null;
+      if (pendingToastTimerRef.current === null) {
+        pendingToastTimerRef.current = window.setTimeout(() => {
+          pendingToastTimerRef.current = null;
+          showPendingToast();
+        }, MIN_PENDING_DELAY_MS);
+      }
+    } else {
+      if (pendingToastTimerRef.current !== null) {
+        window.clearTimeout(pendingToastTimerRef.current);
+        pendingToastTimerRef.current = null;
+      }
+      if (toastIdRef.current) {
+        dismissToast(toastIdRef.current);
+        toastIdRef.current = null;
+      }
     }
+
+    return () => {
+      if (pendingToastTimerRef.current !== null) {
+        window.clearTimeout(pendingToastTimerRef.current);
+        pendingToastTimerRef.current = null;
+      }
+    };
   }, [pendingCount, showPendingToast, dismissToast]);
 
   useEffect(() => {

@@ -39,7 +39,7 @@ export default async function ShipmentsPage() {
             </CardTitle>
             <OrdersRefreshButton />
           </div>
-          <div className="text-sm text-slate-500 max-w-lg sm:ml-auto sm:max-w-sm">
+          <div className="text-sm text-slate-500 max-w-md sm:ml-auto sm:text-right">
             <span className="block">発送済みの内容を修正する場合は管理者への申請が必要です。</span>
             <Link
               href="/support/shipment-adjustment"

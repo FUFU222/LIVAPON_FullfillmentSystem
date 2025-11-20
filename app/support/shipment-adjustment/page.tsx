@@ -79,7 +79,6 @@ export default async function ShipmentAdjustmentPage() {
         defaultContactEmail={vendorProfile?.contactEmail ?? auth.user.email}
         defaultContactPhone={vendorProfile?.contactPhone ?? null}
         vendorName={vendorProfile?.name ?? undefined}
-        vendorCode={vendorProfile?.code ?? undefined}
       />
       <Card>
         <CardHeader>

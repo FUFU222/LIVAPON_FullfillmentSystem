@@ -16,7 +16,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="min-w-[140px]" disabled={pending}>
-      {pending ? '送信中…' : '申請を送信'}
+      {pending ? '送信中…' : '送信'}
     </Button>
   );
 }
@@ -25,14 +25,12 @@ export function ShipmentAdjustmentForm({
   defaultContactName,
   defaultContactEmail,
   defaultContactPhone,
-  vendorName,
-  vendorCode
+  vendorName
 }: {
   defaultContactName?: string | null;
   defaultContactEmail?: string | null;
   defaultContactPhone?: string | null;
   vendorName?: string | null;
-  vendorCode?: string | null;
 }) {
   const [state, formAction] = useFormState(
     submitShipmentAdjustmentRequest,
@@ -50,9 +48,7 @@ export function ShipmentAdjustmentForm({
     <div className="grid gap-4 text-base text-slate-700">
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         {vendorName ? (
-          <div className="mb-4 text-base text-slate-600">
-            {vendorName} {vendorCode ? `(${vendorCode})` : null}
-          </div>
+          <div className="mb-4 text-base text-slate-600">{vendorName}</div>
         ) : null}
 
         {state.status === 'success' && state.message ? (

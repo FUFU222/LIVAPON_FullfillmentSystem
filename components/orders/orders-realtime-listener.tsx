@@ -153,6 +153,14 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       registerPendingOrderRef.current(orderId);
     };
 
+    const handleLineItemEvent = (payload: any) => {
+      const orderId = extractOrderId(payload as any);
+      if (typeof orderId !== 'number') {
+        return;
+      }
+      registerPendingOrderRef.current(orderId);
+    };
+
     async function subscribeWithSession() {
       const { data, error } = await supabase.auth.getSession();
       if (!isMounted) {
@@ -196,6 +204,18 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
               return;
             }
             handleOrdersEvent(payload);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "line_items",
+            filter: `vendor_id=eq.${vendorId}`
+          },
+          (payload) => {
+            handleLineItemEvent(payload);
           }
         )
         .on(

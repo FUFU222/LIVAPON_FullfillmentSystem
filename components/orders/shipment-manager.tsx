@@ -23,6 +23,8 @@ const carrierOptions = [
   { value: "fedex", label: "FedEx" }
 ];
 
+const MAX_SELECTION = 10;
+
 type ButtonProps = React.ComponentProps<typeof Button>;
 
 const INITIAL_SHIPMENT_ACTION_STATE: ShipmentActionState = {
@@ -73,6 +75,7 @@ export function ShipmentManager({ orderId, lineItems, isArchived }: Props) {
   const { markOrdersAsRefreshed } = useOrdersRealtimeContext();
   const [, startRefresh] = useTransition();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const [state, formAction] = useFormState(saveShipment, INITIAL_SHIPMENT_ACTION_STATE);
 
   const selectableItems = useMemo(
@@ -107,19 +110,36 @@ export function ShipmentManager({ orderId, lineItems, isArchived }: Props) {
 
   const toggleSelection = (lineItemId: number) => {
     if (isArchived) return;
-    setSelectedIds((prev) =>
-      prev.includes(lineItemId)
-        ? prev.filter((id) => id !== lineItemId)
-        : [...prev, lineItemId]
-    );
+    setSelectedIds((prev) => {
+      if (prev.includes(lineItemId)) {
+        const next = prev.filter((id) => id !== lineItemId);
+        if (next.length < MAX_SELECTION) {
+          setSelectionError(null);
+        }
+        return next;
+      }
+      if (prev.length >= MAX_SELECTION) {
+        setSelectionError(`一度に選択できる明細は最大${MAX_SELECTION}件です。`);
+        return prev;
+      }
+      const next = [...prev, lineItemId];
+      setSelectionError(null);
+      return next;
+    });
   };
 
   const toggleAll = () => {
     if (isArchived) return;
     if (allSelected) {
       setSelectedIds([]);
+      setSelectionError(null);
     } else {
-      setSelectedIds(selectableItems.map((item) => item.id));
+      setSelectedIds(selectableItems.slice(0, MAX_SELECTION).map((item) => item.id));
+      if (selectableItems.length > MAX_SELECTION) {
+        setSelectionError(`一度に選択できる明細は最大${MAX_SELECTION}件です。`);
+      } else {
+        setSelectionError(null);
+      }
     }
   };
 
@@ -167,6 +187,9 @@ export function ShipmentManager({ orderId, lineItems, isArchived }: Props) {
             </tbody>
           </table>
         </div>
+        {selectionError ? (
+          <Alert variant="destructive">{selectionError}</Alert>
+        ) : null}
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">

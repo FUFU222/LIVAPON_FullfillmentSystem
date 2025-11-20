@@ -161,6 +161,23 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       registerPendingOrderRef.current(orderId);
     };
 
+    const handleOrderSegmentEvent = (payload: any) => {
+      const orderId = extractOrderId(payload as any);
+      if (typeof orderId !== 'number') {
+        return;
+      }
+      const eventType = (payload as any)?.eventType;
+      if (eventType === 'DELETE') {
+        vendorOrderMapRef.current.delete(orderId);
+        return;
+      }
+      vendorOrderMapRef.current.add(orderId);
+      const vendorMatches = (payload as any)?.new?.vendor_id === vendorId;
+      if (vendorMatches) {
+        registerPendingOrderRef.current(orderId);
+      }
+    };
+
     async function subscribeWithSession() {
       const { data, error } = await supabase.auth.getSession();
       if (!isMounted) {
@@ -234,16 +251,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
             filter: `vendor_id=eq.${vendorId}`
           },
           (payload) => {
-            const orderId = extractOrderId(payload as any);
-            if (typeof orderId !== 'number') {
-              return;
-            }
-            const eventType = (payload as any)?.eventType;
-            if (eventType === 'DELETE') {
-              vendorOrderMapRef.current.delete(orderId);
-            } else {
-              vendorOrderMapRef.current.add(orderId);
-            }
+            handleOrderSegmentEvent(payload);
           }
         );
 

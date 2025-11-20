@@ -5,7 +5,11 @@ import { getServerActionClient } from '@/lib/supabase/server';
 import { assertAuthorizedVendor, requireAuthContext } from '@/lib/auth';
 import type { ShipmentAdjustmentFormState } from './state';
 import { initialShipmentAdjustmentFormState } from './state';
-import { shipmentIssueTypeValues } from './options';
+import { shipmentIssueTypeValues, type ShipmentIssueType } from './options';
+
+function isShipmentIssueType(value: string): value is ShipmentIssueType {
+  return shipmentIssueTypeValues.includes(value as ShipmentIssueType);
+}
 
 function normalizeOrderNumber(raw: string): string {
   const trimmed = raw.replace(/\s+/g, '').replace(/^#+/, '');
@@ -36,7 +40,8 @@ export async function submitShipmentAdjustmentRequest(
   const orderNumberInput = typeof rawOrderNumber === 'string' ? rawOrderNumber.trim() : '';
   const normalizedOrderNumber = normalizeOrderNumber(orderNumberInput);
   const trackingNumber = typeof rawTrackingNumber === 'string' ? rawTrackingNumber.trim() : '';
-  const issueType = typeof rawIssueType === 'string' ? rawIssueType : 'other';
+  const issueTypeInput = typeof rawIssueType === 'string' ? rawIssueType : 'other';
+  let issueType: ShipmentIssueType = 'other';
   const issueSummary = typeof rawIssueSummary === 'string' ? rawIssueSummary.trim() : '';
   const desiredChange = typeof rawDesiredChange === 'string' ? rawDesiredChange.trim() : '';
   const lineItemContext = typeof rawLineItemContext === 'string' ? rawLineItemContext.trim() : '';
@@ -54,8 +59,10 @@ export async function submitShipmentAdjustmentRequest(
     fieldErrors.orderNumber = '注文番号の形式が正しくありません。';
   }
 
-  if (!shipmentIssueTypeValues.includes(issueType)) {
+  if (!isShipmentIssueType(issueTypeInput)) {
     fieldErrors.issueType = '申請区分を選択してください。';
+  } else {
+    issueType = issueTypeInput;
   }
 
   if (!issueSummary || issueSummary.length < 10) {

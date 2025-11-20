@@ -625,7 +625,10 @@ async function ensureFulfillmentOrderIsActive(options: {
   orderMeta = await fetchOrderMetaRecord(client, orderId);
 
   if (isFulfillmentOrderClosed(orderMeta?.shopify_fo_status ?? null)) {
-    throw new Error('Shopify 側の Fulfillment Order がクローズされています。未発送に戻した直後の場合は Shopify で新しい FO を確認し、再同期してから再度お試しください。');
+    console.warn('Fulfillment order is closed/cancelled but proceeding due to re-open allowance', {
+      orderId,
+      fulfillmentStatus: orderMeta?.shopify_fo_status
+    });
   }
 
   return lineItems;

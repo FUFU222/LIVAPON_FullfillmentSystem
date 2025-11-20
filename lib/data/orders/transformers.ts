@@ -72,10 +72,14 @@ function calculateShipmentProgress(
     return total + Math.max(0, shipment.quantity ?? 0);
   }, 0);
 
+  const shopifyRemaining =
+    typeof lineItem.fulfillableQuantity === 'number'
+      ? Math.max(0, lineItem.fulfillableQuantity)
+      : null;
+
   const shopifyFulfilled = (() => {
-    if (typeof lineItem.fulfillableQuantity === 'number') {
-      const remaining = Math.max(0, lineItem.fulfillableQuantity);
-      return Math.max(0, lineItem.quantity - remaining);
+    if (shopifyRemaining !== null) {
+      return Math.max(0, lineItem.quantity - shopifyRemaining);
     }
     if (typeof lineItem.fulfilledQuantity === 'number') {
       return Math.max(0, lineItem.fulfilledQuantity);
@@ -84,23 +88,17 @@ function calculateShipmentProgress(
   })();
 
   const shippedQuantity = (() => {
-    if (activeShipments.length > 0) {
-      return Math.min(lineItem.quantity, shippedFromShipments);
-    }
     if (shopifyFulfilled !== null) {
       return Math.min(lineItem.quantity, shopifyFulfilled);
+    }
+    if (activeShipments.length > 0) {
+      return Math.min(lineItem.quantity, shippedFromShipments);
     }
     return 0;
   })();
 
   const fallbackRemaining = Math.max(lineItem.quantity - shippedQuantity, 0);
-  const remainingQuantity = (() => {
-    if (typeof lineItem.fulfillableQuantity === 'number') {
-      const shopifyRemaining = Math.max(0, lineItem.fulfillableQuantity);
-      return Math.min(fallbackRemaining, shopifyRemaining);
-    }
-    return fallbackRemaining;
-  })();
+  const remainingQuantity = shopifyRemaining !== null ? shopifyRemaining : fallbackRemaining;
 
   return {
     shippedQuantity,

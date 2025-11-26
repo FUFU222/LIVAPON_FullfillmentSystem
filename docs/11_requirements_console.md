@@ -13,8 +13,7 @@
 1. **注文同期**: Shopify Webhook (`orders/create`, `orders/updated`, FO 関連トピック) が Supabase の `orders` / `line_items` を更新。
 2. **ベンダーオンボーディング**: 申請フォーム→メール認証→管理者承認→ロール自動割当→`vendor` ログイン。
 3. **ベンダー出荷管理**:
-   - `/orders` で検索・フィルタ、ラインアイテム単位で数量と SKU を確認。
-   - `/orders/[id]` で複数ラインアイテムを選択し、追跡番号＋配送会社を登録。登録後、Shopify へ Fulfillment 作成 / 更新。
+   - `/orders` で検索・フィルタ、ラインアイテム単位で数量と SKU を確認し、同ページ内の発送登録パネルから複数ラインアイテムを選択して追跡番号＋配送会社を登録（Shopify へ Fulfillment 作成 / 更新）。
    - `/orders/shipments` で過去発送と `sync_status` を一覧、必要に応じて再送。
    - `/import` で CSV から一括登録（検証/プレビュー/結果通知）。
    - `/vendor/profile` で会社名・担当者・連絡先・任意のパスワード変更。

@@ -4,7 +4,7 @@
 
 ## 1. 現在の提供機能
 - `/orders` リスト + 即時更新ボタン。
-- `/orders/[id]` で部分発送対応のラインアイテム選択と追跡番号登録。
+- `/orders` 画面内の発送登録パネルで部分発送対応のラインアイテム選択と追跡番号登録。
 - `/orders/shipments` 履歴テーブル（`sync_status` 表示）。
 - `/import` CSV プレビュー & 行単位バリデーション。
 - `/vendor/profile` で会社名・担当者名・メール・任意パスワード変更（成功時 Toast、Router refresh）。

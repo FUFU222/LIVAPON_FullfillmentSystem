@@ -4,7 +4,6 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import type { ShipmentHistoryEntry } from "@/lib/data/orders";
 
 function formatDate(value: string | null) {
@@ -59,20 +58,7 @@ export function ShipmentHistoryTable({
                 {formatDate(shipment.shippedAt)}
               </td>
               <td className="px-3 py-3">
-                <div className="flex flex-col gap-1">
-                  {shipment.orderId ? (
-                    <Link
-                      href={`/orders/${shipment.orderId}`}
-                      className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
-                    >
-                      {shipment.orderNumber}
-                    </Link>
-                  ) : (
-                    <span className="text-sm text-slate-500">
-                      {shipment.orderNumber}
-                    </span>
-                  )}
-                </div>
+                <span className="text-sm text-slate-600">{shipment.orderNumber}</span>
               </td>
               <td className="px-3 py-3 text-sm leading-relaxed">
                 {shipment.customerName ?? <span className="text-slate-400">-</span>}

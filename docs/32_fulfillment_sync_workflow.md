@@ -35,7 +35,7 @@
 | 429 レート | 呼び出し過多 | `sync_pending_until` をレート制限解除後に設定。|
 
 ## UI との連携
-- `ShipmentManager` はサーバーアクションの戻り値で成功/失敗を判定し Toast を表示。
+- `OrdersDispatchTable` / `OrdersDispatchPanel` がラインアイテム選択と発送登録（追跡番号・配送会社入力、確認モーダル、Toast）を担う。
 - `ShipmentHistoryTable` は `sync_status`, `sync_error`, `shipped_at` を表示（エラー時は Tooltip で詳細予定）。
 - 手動再同期・取消ボタンは今後追加予定（バックログ参照）。
 

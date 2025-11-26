@@ -1,7 +1,5 @@
-import Link from 'next/link';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { buttonClasses } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/orders/status-badge';
 import type { OrderSummary } from '@/lib/data/orders';
@@ -36,7 +34,6 @@ export function OrderTable({ orders }: { orders: OrderSummary[] }) {
           <TableHead>ステータス</TableHead>
           <TableHead>追跡番号</TableHead>
           <TableHead>注文日時</TableHead>
-          <TableHead>アクション</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -53,11 +50,6 @@ export function OrderTable({ orders }: { orders: OrderSummary[] }) {
                 : '-'}
             </TableCell>
             <TableCell>{formatDate(order.createdAt)}</TableCell>
-            <TableCell>
-              <Link href={`/orders/${order.id}`} className={buttonClasses('outline')}>
-                詳細
-              </Link>
-            </TableCell>
           </TableRow>
         ))}
       </TableBody>

@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
 import { Badge } from "@/components/ui/badge";
+import { SelectedLineItem } from "@/components/orders/types";
 
 const ORDER_ROW_HEAD = "px-3 py-2 text-[11px] tracking-normal";
 const ORDER_ROW_CELL = "px-3 py-2 align-middle";
@@ -80,19 +81,6 @@ function getLineItemStatus(
 
   return 'unfulfilled';
 }
-
-type SelectedLineItem = {
-  lineItemId: number;
-  orderId: number;
-  orderNumber: string;
-  productName: string;
-  sku: string | null;
-  variantTitle: string | null;
-  totalOrdered: number;
-  shippedQuantity: number;
-  availableQuantity: number;
-  quantity: number;
-};
 
 export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary[]; vendorId: number }) {
   const filteredOrders = useMemo(() =>

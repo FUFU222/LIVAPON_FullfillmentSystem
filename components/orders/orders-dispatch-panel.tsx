@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast-provider";
 import { useOrdersRealtimeContext } from "@/components/orders/orders-realtime-context";
+import { SelectedLineItem } from "@/components/orders/types";
 
 const carrierOptions = [
   { value: "yamato", label: "ヤマト運輸" },
@@ -18,19 +19,6 @@ const carrierOptions = [
   { value: "dhl", label: "DHL" },
   { value: "fedex", label: "FedEx" }
 ];
-
-type SelectedLineItem = {
-  lineItemId: number;
-  orderId: number;
-  orderNumber: string;
-  productName: string;
-  sku: string | null;
-  variantTitle: string | null;
-  totalOrdered: number;
-  shippedQuantity: number;
-  availableQuantity: number;
-  quantity: number;
-};
 
 type Props = {
   orders: OrderSummary[];

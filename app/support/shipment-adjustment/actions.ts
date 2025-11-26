@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { getServerActionClient } from '@/lib/supabase/server';
 import { assertAuthorizedVendor, requireAuthContext } from '@/lib/auth';
 import type { ShipmentAdjustmentFormState } from './state';
-import { initialShipmentAdjustmentFormState } from './state';
 import { shipmentIssueTypeValues, type ShipmentIssueType } from './options';
 
 function isShipmentIssueType(value: string): value is ShipmentIssueType {
@@ -170,5 +169,3 @@ export async function submitShipmentAdjustmentRequest(
     requestId: data?.id ?? null
   } satisfies ShipmentAdjustmentFormState;
 }
-
-export { initialShipmentAdjustmentFormState };

@@ -6,9 +6,12 @@ export function NavigationLoadingOverlay() {
   return (
     <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-sm">
       <div className="flex h-full items-center justify-center">
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-6 py-4 text-sm font-medium text-slate-600 shadow-lg">
-          <Loader2 className="h-4 w-4 animate-spin text-slate-500" aria-hidden="true" />
-          画面を読み込み中です…
+        <div
+          className="flex items-center rounded-xl border border-slate-200 bg-white/90 px-6 py-4 shadow-lg"
+          role="status"
+          aria-label="読み込み中"
+        >
+          <Loader2 className="h-5 w-5 animate-spin text-slate-500" aria-hidden="true" />
         </div>
       </div>
     </div>

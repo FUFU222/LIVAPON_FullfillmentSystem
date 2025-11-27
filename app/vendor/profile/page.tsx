@@ -42,28 +42,31 @@ export default async function VendorProfilePage() {
   return (
     <OrdersRealtimeProvider>
       <OrdersRealtimeListener vendorId={auth.vendorId} />
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <Card>
-        <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <GradientAvatar seed={vendor.name ?? email} label={vendor.name ?? email} size="lg" />
-            <div className="flex flex-col gap-1">
-              <CardTitle className="text-2xl font-semibold">{vendor.name}</CardTitle>
+      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:px-10">
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <GradientAvatar seed={vendor.name ?? email} label={vendor.name ?? email} size="lg" />
+              <div className="space-y-1 text-sm text-slate-500">
+                <CardTitle className="text-2xl font-semibold text-foreground">
+                  {vendor.name}
+                </CardTitle>
+                <p>ベンダーコード: {vendor.code ?? '未割当'}</p>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <VendorProfileForm
-            initial={{
-              companyName: vendor.name,
-              contactName,
-              email,
-              vendorCode: vendor.code,
-              contactPhone: vendor.contact_phone ?? null
-            }}
-          />
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <VendorProfileForm
+              initial={{
+                companyName: vendor.name,
+                contactName,
+                email,
+                vendorCode: vendor.code,
+                contactPhone: vendor.contact_phone ?? null
+              }}
+            />
+          </CardContent>
+        </Card>
       </div>
     </OrdersRealtimeProvider>
   );

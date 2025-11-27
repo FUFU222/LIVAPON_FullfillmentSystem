@@ -67,11 +67,11 @@ export default async function ShipmentAdjustmentPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-slate-900">発送修正申請</p>
+        <p className="text-base font-semibold text-foreground sm:text-lg">発送修正申請</p>
         <p className="text-sm text-slate-500">
-          発送済みの注文内容を変更する際は、下記フォームから管理者に依頼してください。Console 上での直接取消はできません。
+          発送済みの注文内容を変更する際は下記フォームから管理者に依頼してください。Console 上での直接取消はできません。
         </p>
       </div>
       <ShipmentAdjustmentForm
@@ -80,7 +80,7 @@ export default async function ShipmentAdjustmentPage() {
         defaultContactPhone={vendorProfile?.contactPhone ?? null}
         vendorName={vendorProfile?.name ?? undefined}
       />
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">申請履歴</CardTitle>
         </CardHeader>
@@ -88,45 +88,53 @@ export default async function ShipmentAdjustmentPage() {
           {history.length === 0 ? (
             <Alert variant="default">まだ申請履歴はありません。</Alert>
           ) : (
-            history.map((request) => (
-              <div key={request.id} className="rounded-lg border border-slate-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-                  <span>
-                    注文 {request.orderNumber} / ステータス: {request.status}
-                  </span>
-                  <span>最終更新: {formatDate(request.updatedAt)}</span>
-                </div>
-                <div className="mt-2 text-sm text-slate-700">
-                  <p className="font-medium">申請内容</p>
-                  <p className="whitespace-pre-wrap text-slate-600">{request.issueSummary}</p>
-                  <p className="mt-1 text-slate-600">希望: {request.desiredChange}</p>
-                </div>
-                {request.resolutionSummary ? (
-                  <div className="mt-2 text-sm text-emerald-700">
-                    <p className="font-medium">処置内容</p>
-                    <p className="whitespace-pre-wrap">{request.resolutionSummary}</p>
+            <div className="grid gap-4">
+              {history.map((request) => (
+                <div key={request.id} className="rounded-lg border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+                    <span className="font-medium text-foreground">
+                      注文 {request.orderNumber}
+                    </span>
+                    <span>最終更新: {formatDate(request.updatedAt)}</span>
                   </div>
-                ) : null}
-                <div className="mt-3 border-t border-slate-100 pt-3">
-                  <p className="text-sm font-semibold text-foreground">管理者からのコメント</p>
-                  {request.comments.length === 0 ? (
-                    <p className="text-sm text-slate-500">コメントはまだありません。</p>
-                  ) : (
-                    <div className="mt-2 flex flex-col gap-2">
-                      {request.comments.map((comment) => (
-                        <div key={comment.id} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                          <div className="flex justify-between text-xs text-slate-500">
-                            <span>{comment.author_role ?? 'admin'}</span>
-                            <span>{formatDate(comment.created_at)}</span>
-                          </div>
-                          <p className="mt-1 whitespace-pre-wrap text-slate-700">{comment.body}</p>
-                        </div>
-                      ))}
+                  <p className="text-xs text-slate-500">ステータス: {request.status}</p>
+                  <div className="mt-3 space-y-2 text-sm text-slate-700">
+                    <div>
+                      <p className="font-medium">申請内容</p>
+                      <p className="whitespace-pre-wrap text-slate-600">{request.issueSummary}</p>
                     </div>
-                  )}
+                    <div>
+                      <p className="font-medium">希望する対応</p>
+                      <p className="whitespace-pre-wrap text-slate-600">{request.desiredChange}</p>
+                    </div>
+                    {request.resolutionSummary ? (
+                      <div className="text-emerald-700">
+                        <p className="font-medium">処置内容</p>
+                        <p className="whitespace-pre-wrap">{request.resolutionSummary}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <p className="text-sm font-semibold text-foreground">管理者からのコメント</p>
+                    {request.comments.length === 0 ? (
+                      <p className="text-sm text-slate-500">コメントはまだありません。</p>
+                    ) : (
+                      <div className="mt-2 flex flex-col gap-2">
+                        {request.comments.map((comment) => (
+                          <div key={comment.id} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                            <div className="flex justify-between text-xs text-slate-500">
+                              <span>{comment.author_role ?? 'admin'}</span>
+                              <span>{formatDate(comment.created_at)}</span>
+                            </div>
+                            <p className="mt-1 whitespace-pre-wrap text-slate-700">{comment.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

@@ -272,8 +272,9 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
   }, []);
 
   return (
-    <>
-      <Table>
+    <div className="space-y-4">
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <Table className="min-w-[980px]">
         <TableHeader>
           <TableRow>
             <TableHead className={cn("w-16", ORDER_ROW_HEAD)}>選択</TableHead>
@@ -424,7 +425,8 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
             );
           })}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
 
       <OrdersDispatchPanel
         orders={filteredOrders}
@@ -434,6 +436,6 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
         onUpdateQuantity={handleQuantityUpdate}
         onRemoveOrder={removeOrderSelection}
       />
-    </>
+    </div>
   );
 }

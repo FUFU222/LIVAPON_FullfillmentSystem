@@ -46,15 +46,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const paginated = filtered.slice(startIndex, startIndex + PAGE_SIZE);
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <OrdersRealtimeListener vendorId={auth.vendorId} />
       <OrdersRealtimeResetter />
-      <CardHeader className="flex flex-col gap-3">
+      <CardHeader className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
           <OrdersRefreshButton />
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-500">
+        <div className="flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>
             全 {filtered.length} 件中 {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)} 件を表示
           </p>
@@ -66,7 +66,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           </div>
         </div>
       </CardHeader>
-      <CardContent className="gap-6">
+      <CardContent className="gap-6 px-2 pb-6 sm:px-6">
         <OrdersDispatchTable orders={paginated} vendorId={auth.vendorId} />
         <PaginationControls currentPage={currentPage} totalPages={totalPages} params={params} />
       </CardContent>

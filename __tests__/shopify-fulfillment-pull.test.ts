@@ -36,7 +36,7 @@ describe('fetchFulfillmentOrderSnapshots', () => {
     if (originalFetch) {
       global.fetch = originalFetch;
     } else {
-      delete (global as typeof global & { fetch?: typeof fetch }).fetch;
+      Reflect.deleteProperty(globalThis as typeof globalThis & { fetch?: typeof fetch }, 'fetch');
     }
   });
 

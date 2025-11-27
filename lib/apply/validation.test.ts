@@ -3,6 +3,7 @@ import { validateVendorApplicationInput } from './validation';
 const baseInput = {
   companyName: 'テスト株式会社',
   contactEmail: 'test@example.com',
+  contactPhone: '080-1234-5678',
   password: 'password123',
   passwordConfirm: 'password123',
   acceptTerms: true

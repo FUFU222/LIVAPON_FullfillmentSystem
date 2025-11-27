@@ -101,16 +101,18 @@ function createSupabaseMock() {
 
   const ordersSelectState: Array<[string, unknown]> = [];
 
-  const ordersSelectBuilder = {
-    eq: jest.fn((column: string, value: unknown) => {
-      ordersSelectState.push([column, value]);
-      return ordersSelectBuilder;
-    }),
-    limit: jest.fn(() => ordersSelectBuilder),
-    order: jest.fn(() => ordersSelectBuilder),
-    gt: jest.fn(() => ordersSelectBuilder),
-    maybeSingle: jest.fn(async () => ({ data: ordersSelectResult, error: null }))
-  };
+  const ordersSelectBuilder: any = {};
+  ordersSelectBuilder.eq = jest.fn((column: string, value: unknown) => {
+    ordersSelectState.push([column, value]);
+    return ordersSelectBuilder;
+  });
+  ordersSelectBuilder.limit = jest.fn(() => ordersSelectBuilder);
+  ordersSelectBuilder.order = jest.fn(() => ordersSelectBuilder);
+  ordersSelectBuilder.gt = jest.fn(() => ordersSelectBuilder);
+  ordersSelectBuilder.maybeSingle = jest.fn(async () => ({
+    data: ordersSelectResult,
+    error: null
+  }));
 
   const ordersSelect = jest.fn(() => ordersSelectBuilder);
 
@@ -124,14 +126,13 @@ function createSupabaseMock() {
     const eqCalls: [string, number][] = [];
     lineItemUpdates.push({ payload, eqArgs: eqCalls });
 
-    const builder = {
-      eq: jest.fn((column: string, value: number) => {
-        eqCalls.push([column, value]);
-        return builder;
-      })
-    };
+    const builder: any = {};
+    builder.eq = jest.fn((column: string, value: number) => {
+      eqCalls.push([column, value]);
+      return builder;
+    });
 
-    return builder as any;
+    return builder;
   });
 
   const shipmentLineItemsUpserts: any[] = [];
@@ -316,16 +317,15 @@ describe('syncFulfillmentOrderMetadata', () => {
   });
 
   function createOrdersSelectMock(orderId: number, shopDomain: string) {
-    const builder = {
-      eq: jest.fn(() => builder),
-      limit: jest.fn(() => builder),
-      order: jest.fn(() => builder),
-      gt: jest.fn(() => builder),
-      maybeSingle: jest.fn(async () => ({
-        data: { id: orderId, shop_domain: shopDomain, status: 'unfulfilled' },
-        error: null
-      }))
-    };
+    const builder: any = {};
+    builder.eq = jest.fn(() => builder);
+    builder.limit = jest.fn(() => builder);
+    builder.order = jest.fn(() => builder);
+    builder.gt = jest.fn(() => builder);
+    builder.maybeSingle = jest.fn(async () => ({
+      data: { id: orderId, shop_domain: shopDomain, status: 'unfulfilled' },
+      error: null
+    }));
 
     const select = jest.fn(() => builder);
 

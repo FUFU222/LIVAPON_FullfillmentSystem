@@ -73,7 +73,7 @@ export function ShipmentAdjustmentForm({
           <section className="grid gap-4">
             <div className="grid gap-2">
               <label htmlFor="orderNumber" className="font-medium text-foreground">
-                Shopify注文番号 <span className="text-red-500">*</span>
+                注文番号 <span className="text-red-500">*</span>
               </label>
               <Input id="orderNumber" name="orderNumber" placeholder="例: #1234" required />
               {state.fieldErrors?.orderNumber ? (

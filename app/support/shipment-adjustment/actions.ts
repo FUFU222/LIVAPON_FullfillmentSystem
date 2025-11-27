@@ -27,7 +27,6 @@ export async function submitShipmentAdjustmentRequest(
   formData: FormData
 ): Promise<ShipmentAdjustmentFormState> {
   const rawOrderNumber = formData.get('orderNumber');
-  const rawTrackingNumber = formData.get('trackingNumber');
   const rawIssueType = formData.get('issueType');
   const rawIssueSummary = formData.get('issueSummary');
   const rawDesiredChange = formData.get('desiredChange');
@@ -37,7 +36,6 @@ export async function submitShipmentAdjustmentRequest(
 
   const orderNumberInput = typeof rawOrderNumber === 'string' ? rawOrderNumber.trim() : '';
   const normalizedOrderNumber = normalizeOrderNumber(orderNumberInput);
-  const trackingNumber = typeof rawTrackingNumber === 'string' ? rawTrackingNumber.trim() : '';
   const issueTypeInput = typeof rawIssueType === 'string' ? rawIssueType : 'other';
   let issueType: ShipmentIssueType = 'other';
   const issueSummary = typeof rawIssueSummary === 'string' ? rawIssueSummary.trim() : '';
@@ -135,7 +133,7 @@ export async function submitShipmentAdjustmentRequest(
       order_id: orderId,
       order_number: normalizedOrderNumber,
       shopify_order_id: shopifyOrderId,
-      tracking_number: trackingNumber || null,
+      tracking_number: null,
       issue_type: issueType,
       issue_summary: issueSummary,
       desired_change: desiredChange,

@@ -82,13 +82,6 @@ export function ShipmentAdjustmentForm({
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="trackingNumber" className="font-medium text-foreground">
-                追跡番号 / 配送会社
-              </label>
-              <Input id="trackingNumber" name="trackingNumber" />
-            </div>
-
-            <div className="grid gap-2">
               <label htmlFor="issueType" className="font-medium text-foreground">
                 申請区分 <span className="text-red-500">*</span>
               </label>

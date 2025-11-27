@@ -48,7 +48,7 @@ export function ShipmentAdjustmentForm({
     <div className="grid gap-4 text-base text-slate-700">
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         {vendorName ? (
-          <div className="mb-4 text-base text-slate-600">{vendorName}</div>
+          <div className="mb-4 text-lg font-semibold text-foreground">{vendorName}</div>
         ) : null}
 
         {state.status === 'success' && state.message ? (
@@ -182,7 +182,9 @@ export function ShipmentAdjustmentForm({
             >
               ← 発送履歴に戻る
             </Link>
-            <SubmitButton />
+            <div className="flex flex-1 justify-center">
+              <SubmitButton />
+            </div>
           </div>
         </form>
       </div>

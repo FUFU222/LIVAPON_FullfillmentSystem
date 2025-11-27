@@ -31,7 +31,6 @@ export async function submitShipmentAdjustmentRequest(
   const rawIssueType = formData.get('issueType');
   const rawIssueSummary = formData.get('issueSummary');
   const rawDesiredChange = formData.get('desiredChange');
-  const rawLineItemContext = formData.get('lineItemContext');
   const rawContactName = formData.get('contactName');
   const rawContactEmail = formData.get('contactEmail');
   const rawContactPhone = formData.get('contactPhone');
@@ -43,7 +42,6 @@ export async function submitShipmentAdjustmentRequest(
   let issueType: ShipmentIssueType = 'other';
   const issueSummary = typeof rawIssueSummary === 'string' ? rawIssueSummary.trim() : '';
   const desiredChange = typeof rawDesiredChange === 'string' ? rawDesiredChange.trim() : '';
-  const lineItemContext = typeof rawLineItemContext === 'string' ? rawLineItemContext.trim() : '';
   const contactName = typeof rawContactName === 'string' ? rawContactName.trim() : '';
   const contactEmail = typeof rawContactEmail === 'string' ? rawContactEmail.trim() : '';
   const contactPhone = typeof rawContactPhone === 'string' ? rawContactPhone.trim() : '';
@@ -141,7 +139,7 @@ export async function submitShipmentAdjustmentRequest(
       issue_type: issueType,
       issue_summary: issueSummary,
       desired_change: desiredChange,
-      line_item_context: lineItemContext || null,
+      line_item_context: null,
       contact_name: contactName,
       contact_email: contactEmail,
       contact_phone: contactPhone || null,

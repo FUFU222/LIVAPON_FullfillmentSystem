@@ -126,12 +126,6 @@ export function ShipmentAdjustmentForm({
               ) : null}
             </div>
 
-            <div className="grid gap-2">
-              <label htmlFor="lineItemContext" className="font-medium text-foreground">
-                対象ラインアイテム / 数量 (任意)
-              </label>
-              <Textarea id="lineItemContext" name="lineItemContext" rows={3} />
-            </div>
           </section>
 
           <section className="grid gap-4">

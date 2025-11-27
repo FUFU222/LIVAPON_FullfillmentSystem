@@ -39,49 +39,86 @@ export function ShipmentHistoryTable({
   }
 
   return (
-    <div className="grid gap-4">
-      <table className="w-full table-auto text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-          <tr>
-            <th className="px-3 py-2">発送日時</th>
-            <th className="px-3 py-2">注文番号</th>
-            <th className="px-3 py-2">顧客</th>
-            <th className="px-3 py-2">配送先</th>
-            <th className="px-3 py-2">追跡番号</th>
-            <th className="px-3 py-2">配送業者</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shipments.map((shipment) => (
-            <tr key={shipment.id} className="border-b border-slate-100 align-top">
-              <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap">
-                {formatDate(shipment.shippedAt)}
-              </td>
-              <td className="px-3 py-3">
-                <span className="text-sm text-slate-600">{shipment.orderNumber}</span>
-              </td>
-              <td className="px-3 py-3 text-sm leading-relaxed">
-                {shipment.customerName ?? <span className="text-slate-400">-</span>}
-              </td>
-              <td className="px-3 py-3 text-xs text-slate-600">
-                {shipment.shippingAddress ? (
-                  <span className="block whitespace-pre-line leading-relaxed">
-                    {shipment.shippingAddress}
-                  </span>
-                ) : (
-                  <span className="text-slate-400">-</span>
-                )}
-              </td>
-              <td className="px-3 py-3 text-sm">
-                {shipment.trackingNumber ?? "-"}
-              </td>
-              <td className="px-3 py-3 text-sm capitalize">
-                {shipment.carrier ?? "-"}
-              </td>
+    <div className="grid gap-6">
+      <div className="hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
+        <table className="w-full table-auto text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-3 py-2">発送日時</th>
+              <th className="px-3 py-2">注文番号</th>
+              <th className="px-3 py-2">顧客</th>
+              <th className="px-3 py-2">配送先</th>
+              <th className="px-3 py-2">追跡番号</th>
+              <th className="px-3 py-2">配送業者</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {shipments.map((shipment) => (
+              <tr key={shipment.id} className="border-b border-slate-100 align-top">
+                <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap">
+                  {formatDate(shipment.shippedAt)}
+                </td>
+                <td className="px-3 py-3">
+                  <span className="text-sm text-slate-600">{shipment.orderNumber}</span>
+                </td>
+                <td className="px-3 py-3 text-sm leading-relaxed">
+                  {shipment.customerName ?? <span className="text-slate-400">-</span>}
+                </td>
+                <td className="px-3 py-3 text-xs text-slate-600">
+                  {shipment.shippingAddress ? (
+                    <span className="block whitespace-pre-line leading-relaxed">
+                      {shipment.shippingAddress}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">-</span>
+                  )}
+                </td>
+                <td className="px-3 py-3 text-sm">
+                  {shipment.trackingNumber ?? '-'}
+                </td>
+                <td className="px-3 py-3 text-sm capitalize">
+                  {shipment.carrier ?? '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid gap-3 md:hidden">
+        {shipments.map((shipment) => (
+          <div key={shipment.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <span className="font-medium text-foreground">{shipment.orderNumber}</span>
+              <span>{formatDate(shipment.shippedAt)}</span>
+            </div>
+            <div className="mt-3 space-y-2 text-sm text-slate-600">
+              <p>
+                <span className="text-xs text-slate-500">顧客</span>
+                <br />
+                {shipment.customerName ?? '-'}
+              </p>
+              <p>
+                <span className="text-xs text-slate-500">配送先</span>
+                <br />
+                {shipment.shippingAddress ?? '-'}
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <p>
+                  <span className="text-xs text-slate-500">追跡番号</span>
+                  <br />
+                  {shipment.trackingNumber ?? '-'}
+                </p>
+                <p>
+                  <span className="text-xs text-slate-500">配送業者</span>
+                  <br />
+                  {shipment.carrier ?? '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

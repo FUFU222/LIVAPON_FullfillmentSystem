@@ -39,7 +39,7 @@ export function VendorApplicationForm() {
       <div className="flex flex-col gap-2 text-center px-2">
         <h1 className="text-2xl font-semibold text-foreground">ベンダー利用申請</h1>
         <p className="text-sm leading-relaxed text-slate-500">
-          アカウント情報と会社情報を入力し、利用申請を送信してください。
+          アカウント情報と会社情報を入力し、利用申請をしてください。
         </p>
       </div>
 
@@ -61,7 +61,7 @@ export function VendorApplicationForm() {
 
         <div className="grid gap-2 text-sm text-slate-600">
           <label htmlFor="contactName" className="font-medium text-foreground">
-            担当者名 (任意)
+            担当者名
           </label>
           <Input id="contactName" name="contactName" placeholder="山田 太郎" />
         </div>

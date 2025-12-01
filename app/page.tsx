@@ -42,7 +42,7 @@ export default function HomePage() {
               <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-5xl sm:leading-tight">
                 配送管理コンソール
               </h1>
-              <p className="text-sm text-slate-600 sm:text-base whitespace-nowrap">
+              <p className="text-sm text-slate-600 sm:text-base">
                 LIVAPON 正式パートナーが、出荷に関わる入力と確認をまとめて行うための専用スペースです。
               </p>
             </div>

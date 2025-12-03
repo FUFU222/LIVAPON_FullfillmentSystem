@@ -4,6 +4,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatusBadge } from '@/components/orders/status-badge';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getRecentOrdersForAdmin } from '@/lib/data/orders';
 import {
@@ -107,7 +108,7 @@ export default async function AdminDashboardPage() {
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center justify-between text-sm font-medium text-foreground">
                         <span>{order.orderNumber}</span>
-                        <span className="text-xs text-slate-500">{order.status ?? '未設定'}</span>
+                        <StatusBadge status={order.status ?? 'unfulfilled'} />
                       </div>
                       <p className="text-xs text-slate-500">ベンダー: {order.vendorName ?? '未割当'}</p>
                       <p className="text-xs text-slate-400">更新日時: {toDisplayDate(order.updatedAt)}</p>

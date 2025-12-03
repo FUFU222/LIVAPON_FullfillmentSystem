@@ -61,8 +61,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         ) : null}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-        <div className="grid gap-2">
+      <div className="grid gap-2">
         <label htmlFor="contactName" className="text-sm font-medium text-foreground">
           担当者名
         </label>
@@ -73,28 +72,27 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
           placeholder="田中 太郎"
           autoComplete="name"
         />
-        </div>
+      </div>
 
-        <div className="grid gap-2">
-          <label htmlFor="contactPhone" className="text-sm font-medium text-foreground">
-            発送担当者の電話番号
-          </label>
-          <Input
-            id="contactPhone"
-            name="contactPhone"
-            type="tel"
-            defaultValue={initial.contactPhone ?? ''}
-            placeholder="03-1234-5678"
-            autoComplete="tel"
-            required
-            aria-invalid={state.fieldErrors?.contactPhone ? 'true' : 'false'}
-          />
-          {state.fieldErrors?.contactPhone ? (
-            <p className="text-xs text-red-600">{state.fieldErrors.contactPhone}</p>
-          ) : (
-            <p className="text-xs text-slate-500">緊急時の連絡先として利用します。</p>
-          )}
-        </div>
+      <div className="grid gap-2">
+        <label htmlFor="contactPhone" className="text-sm font-medium text-foreground">
+          発送担当者の電話番号
+        </label>
+        <Input
+          id="contactPhone"
+          name="contactPhone"
+          type="tel"
+          defaultValue={initial.contactPhone ?? ''}
+          placeholder="03-1234-5678"
+          autoComplete="tel"
+          required
+          aria-invalid={state.fieldErrors?.contactPhone ? 'true' : 'false'}
+        />
+        {state.fieldErrors?.contactPhone ? (
+          <p className="text-xs text-red-600">{state.fieldErrors.contactPhone}</p>
+        ) : (
+          <p className="text-xs text-slate-500">緊急時の連絡先として利用します。</p>
+        )}
       </div>
 
       <div className="grid gap-2">
@@ -158,13 +156,8 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         <Alert variant="destructive">{state.message ?? '更新に失敗しました。'}</Alert>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-slate-500">
-          ベンダーコード: <span className="font-mono text-slate-700">{initial.vendorCode ?? '未割当'}</span>
-        </p>
-        <div className="flex justify-end">
-          <SubmitButton />
-        </div>
+      <div className="flex justify-end">
+        <SubmitButton />
       </div>
     </form>
   );

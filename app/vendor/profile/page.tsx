@@ -51,7 +51,6 @@ export default async function VendorProfilePage() {
                 <CardTitle className="text-2xl font-semibold text-foreground">
                   {vendor.name}
                 </CardTitle>
-                <p>ベンダーコード: {vendor.code ?? '未割当'}</p>
               </div>
             </div>
           </CardHeader>

@@ -48,11 +48,7 @@ export function AdminVendorDetail({ vendor }: Props) {
     <div className="flex flex-col gap-6">
       <section className="grid gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-lg font-semibold text-foreground">{vendor.name}</span>
-            <span className="text-sm text-slate-500">コード: {vendor.code ?? '----'}</span>
-          </div>
-          <div className="flex flex-col gap-1 text-sm text-slate-600 sm:items-end">
+          <div className="flex flex-col gap-1 text-sm text-slate-600">
             {vendor.contactEmail ? <span>{vendor.contactEmail}</span> : null}
             {vendor.contactPhone ? <span>{vendor.contactPhone}</span> : null}
           </div>

@@ -264,9 +264,6 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
             <span className="text-xs text-slate-500">メモ</span>
             <span className="text-slate-700">{pendingApproval?.notes || '（メモ未入力）'}</span>
           </div>
-          <p className="text-xs text-amber-700">
-            Enter キーの押下でも直接送信されず、この確認モーダルでのみ確定できます。
-          </p>
         </div>
       </Modal>
       <ApprovalSuccessDialog

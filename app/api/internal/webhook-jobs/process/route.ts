@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { processWebhookJobs } from '@/lib/jobs/webhook-runner';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 const JOB_WORKER_SECRET = process.env.JOB_WORKER_SECRET;
 

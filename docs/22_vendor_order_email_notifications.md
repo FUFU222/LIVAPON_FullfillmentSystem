@@ -54,6 +54,8 @@
 5. **将来拡張**:
    - `order_status` 変化（例: `fulfilled`）時に発送完了通知、`shipment_adjustment_requests` 更新時通知なども同インフラで拡張できる。
    - ベンダー単位で通知 ON/OFF が設定できるよう `vendor_notification_settings` を追加する余地を記載。
+   - シンプルな案として `vendor` テーブルに `notify_new_orders boolean default true` を追加し、`/vendor/profile` にチェックボックスを配置する。詳細な通知種別を扱う場合は `vendor_notification_preferences(vendor_id, notification_type, enabled)` を設計する。
+   - OFF のベンダーには送信処理をスキップしつつ、`vendor_order_notifications` に `status='skipped'` でログを残し、監査できるようにする。
 
 ## 5. 開発ステップ案
 1. **スキーマ**: `20251204090000_create_vendor_notification_logs.sql`（仮）で `vendor_order_notifications` 作成・インデックス追加。
@@ -67,6 +69,8 @@
 - 再通知ポリシー（未読/未発送が一定時間続いた場合のリマインド）。
 - 複数メールアドレス（例: CC: ロジ担当）への配信。プロフィールに複数入力欄を追加する必要があるか検討。
 - 国際化（英語版メール）のタイミング。
+- 通知設定が OFF のベンダーがいる場合、誰がその変更を行ったか追跡できる仕組み（監査ログ）が必要か。
+- ベンダー側のメールサーバーでフィルタされた際のリカバリ手順（bounce 処理や自動再送ポリシー）を決める。
 
 ## 7. 参照
 - 既存ジョブ: `docs/60_development_status.md`（Webhook Jobs 概要）。

@@ -338,30 +338,12 @@ async function notifyVendorsOfNewOrder(
   }
   const vendorMap = new Map((vendorRows ?? []).map((row) => [row.id, row]));
 
-  const { data: existingNotifications, error: existingNotificationsError } = await client
-    .from('vendor_order_notifications')
-    .select('vendor_id, status')
-    .eq('order_id', orderId)
-    .eq('notification_type', 'new_order');
-  if (existingNotificationsError) {
-    throw existingNotificationsError;
-  }
-  const notificationMap = new Map(
-    (existingNotifications ?? [])
-      .filter((row) => typeof row.vendor_id === 'number')
-      .map((row) => [row.vendor_id as number, row])
-  );
-
   const shippingAddress = buildShippingAddress(payload);
   const customerName = buildCustomerName(payload);
 
   for (const [vendorId, items] of vendorItems.entries()) {
     const vendor = vendorMap.get(vendorId);
     if (!vendor) {
-      continue;
-    }
-
-    if (notificationMap.get(vendorId)?.status === 'sent') {
       continue;
     }
 
@@ -372,6 +354,11 @@ async function notifyVendorsOfNewOrder(
 
     if (!vendor.contact_email) {
       await upsertVendorNotificationRecord(client, orderId, vendorId, 'skipped', 'missing_contact_email');
+      continue;
+    }
+
+    const shouldSend = await acquireNotificationSendLock(client, orderId, vendorId);
+    if (!shouldSend) {
       continue;
     }
 
@@ -440,6 +427,71 @@ async function notifyVendorsOfNewOrder(
       );
     }
   }
+}
+
+async function acquireNotificationSendLock(
+  client: SupabaseClient<Database>,
+  orderId: number,
+  vendorId: number
+): Promise<boolean> {
+  const baseRecord = {
+    order_id: orderId,
+    vendor_id: vendorId,
+    notification_type: 'new_order',
+    status: 'sending' as const,
+    error_message: null,
+    sent_at: null
+  } satisfies Database['public']['Tables']['vendor_order_notifications']['Insert'];
+
+  const insertResult = await client
+    .from('vendor_order_notifications')
+    .insert(baseRecord)
+    .select('status')
+    .single();
+
+  if (!insertResult.error) {
+    return true;
+  }
+
+  if (insertResult.error.code && insertResult.error.code !== '23505') {
+    throw insertResult.error;
+  }
+
+  const { data: lockRow, error: lockError } = await client
+    .from('vendor_order_notifications')
+    .update({ status: 'sending', error_message: null, sent_at: null })
+    .eq('order_id', orderId)
+    .eq('vendor_id', vendorId)
+    .eq('notification_type', 'new_order')
+    .in('status', ['pending', 'error'])
+    .select('status')
+    .maybeSingle();
+
+  if (lockError && lockError.code !== 'PGRST116') {
+    throw lockError;
+  }
+
+  if (lockRow) {
+    return true;
+  }
+
+  const { data: existing, error: existingError } = await client
+    .from('vendor_order_notifications')
+    .select('status')
+    .eq('order_id', orderId)
+    .eq('vendor_id', vendorId)
+    .eq('notification_type', 'new_order')
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existing?.status === 'sent' || existing?.status === 'skipped' || existing?.status === 'sending') {
+    return false;
+  }
+
+  return false;
 }
 
 // ==========================

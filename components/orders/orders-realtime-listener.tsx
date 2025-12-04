@@ -23,7 +23,6 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const toastIdRef = useRef<string | null>(null);
   const refreshPendingRef = useRef(false);
   const pendingToastTimerRef = useRef<number | null>(null);
-  const vendorOrderMapRef = useRef<Set<number>>(new Set());
 
   const handleManualRefresh = useCallback(() => {
     if (isRefreshing) {
@@ -161,23 +160,6 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       registerPendingOrderRef.current(orderId);
     };
 
-    const handleOrderSegmentEvent = (payload: any) => {
-      const orderId = extractOrderId(payload as any);
-      if (typeof orderId !== 'number') {
-        return;
-      }
-      const eventType = (payload as any)?.eventType;
-      if (eventType === 'DELETE') {
-        vendorOrderMapRef.current.delete(orderId);
-        return;
-      }
-      vendorOrderMapRef.current.add(orderId);
-      const vendorMatches = (payload as any)?.new?.vendor_id === vendorId;
-      if (vendorMatches) {
-        registerPendingOrderRef.current(orderId);
-      }
-    };
-
     async function subscribeWithSession() {
       const { data, error } = await supabase.auth.getSession();
       if (!isMounted) {
@@ -212,21 +194,10 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
           {
             event: "*",
             schema: "public",
-            table: "orders"
+            table: "orders",
+            filter: `vendor_id=eq.${vendorId}`
           },
           (payload) => {
-            const orderId = extractOrderId(payload as any);
-            const nextVendor = (payload as any)?.new?.vendor_id;
-            const prevVendor = (payload as any)?.old?.vendor_id;
-            const vendorMatches =
-              typeof nextVendor === 'number'
-                ? nextVendor === vendorId
-                : typeof prevVendor === 'number'
-                  ? prevVendor === vendorId
-                  : vendorOrderMapRef.current.has(orderId ?? -1);
-            if (!vendorMatches) {
-              return;
-            }
             handleOrdersEvent(payload);
           }
         )
@@ -240,18 +211,6 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
           },
           (payload) => {
             handleLineItemEvent(payload);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "order_vendor_segments",
-            filter: `vendor_id=eq.${vendorId}`
-          },
-          (payload) => {
-            handleOrderSegmentEvent(payload);
           }
         );
 

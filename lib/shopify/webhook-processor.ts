@@ -54,7 +54,10 @@ export async function processShopifyWebhook(job: WebhookJobRecord) {
     throw new Error('Invalid order payload');
   }
 
-  await upsertShopifyOrder(payload, job.shop_domain);
+  const shouldSendVendorNotifications = job.topic === 'orders/create';
+  await upsertShopifyOrder(payload, job.shop_domain, {
+    sendVendorNotifications: shouldSendVendorNotifications
+  });
   const orderId = (payload as { id: number }).id;
 
   if (typeof orderId === 'number') {

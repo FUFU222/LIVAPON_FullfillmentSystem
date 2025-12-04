@@ -1,7 +1,7 @@
 # 次セッションへの申し送り – ベンダー通知メール対応（2025-12-04）
 
 ## 1. 現在の状態
-- Shopify Webhook → `upsertShopifyOrder` の段階でベンダーごとにメール通知を行う仕組みが仮実装済み。
+- Shopify `orders/create` Webhook → `upsertShopifyOrder` の段階でベンダーごとにメール通知を行う仕組みが実装済み。`orders/updated` などは通知スキップとして重複送信を防止。
 - ベンダープロフィールに「新規注文メール通知」のトグルがあり、`vendors.notify_new_orders` で制御。
 - 送信処理を Gmail API（`lib/notifications/email.ts`）経由へ切り替え済み。サービスアカウント + ドメインワイドデリゲーションで `information@chairman.jp` を `sub`/`sender` に設定する。
 - `vendor_order_notifications` テーブルで送信結果を記録済み（`sent / skipped / error`）。

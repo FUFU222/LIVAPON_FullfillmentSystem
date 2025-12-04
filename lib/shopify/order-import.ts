@@ -64,6 +64,10 @@ type VendorResolution = {
   vendorSkuId: number | null;
 };
 
+export type UpsertShopifyOrderOptions = {
+  sendVendorNotifications?: boolean;
+};
+
 // ==========================
 // Vendor Resolver
 // ==========================
@@ -461,9 +465,14 @@ function deriveOrderStatus(payload: ShopifyOrderPayload): string {
   return 'unfulfilled';
 }
 
-export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
+export async function upsertShopifyOrder(
+  payload: unknown,
+  shopDomain: string,
+  options?: UpsertShopifyOrderOptions
+) {
   const order = payload as ShopifyOrderPayload;
   const client = getShopifyServiceClient();
+  const shouldSendVendorNotifications = options?.sendVendorNotifications ?? true;
 
   const normalizedShopDomain = normalizeShopDomain(shopDomain);
 
@@ -487,13 +496,15 @@ export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
 
     const orderId = await upsertOrderRecord(client, order, lineItemVendors, normalizedShopDomain);
     await replaceLineItems(client, orderId, order, lineItemVendors);
-    try {
-      await notifyVendorsOfNewOrder(client, orderId, order, lineItemVendors);
-    } catch (notificationError) {
-      console.error('Failed to prepare vendor notifications', {
-        orderId,
-        error: notificationError
-      });
+    if (shouldSendVendorNotifications) {
+      try {
+        await notifyVendorsOfNewOrder(client, orderId, order, lineItemVendors);
+      } catch (notificationError) {
+        console.error('Failed to prepare vendor notifications', {
+          orderId,
+          error: notificationError
+        });
+      }
     }
 
     try {

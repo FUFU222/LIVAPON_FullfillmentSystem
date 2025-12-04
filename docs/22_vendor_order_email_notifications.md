@@ -12,6 +12,9 @@
 | 既存注文のベンダー割当 | `orders.vendor_id` が `NULL`→値ありに更新されたタイミング | SKU 解決後にベンダーが決まるケースを想定。|
 | 再通知 | デフォルトでは **なし**。メール未達やベンダー設定変更時は手動で再送できるよう CLI/管理画面に余地を残す。|
 
+実装備考（2025-12-04）:
+- Gmail API 版では Shopify Webhook のうち `orders/create` のみ自動送信対象とし、`orders/updated` / 再割当は今後の再送フロー整備後に対応予定。
+
 フィルタリング:
 - `orders.archived_at IS NULL` のみ。
 - `orders.status IN ('unfulfilled', 'partially_fulfilled')` のみ。

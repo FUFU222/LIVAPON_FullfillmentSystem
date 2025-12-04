@@ -2,6 +2,7 @@
 
 ## 1. 現在の実装状況
 - Shopify Webhook 取り込み (`processShopifyWebhook` → `upsertShopifyOrder`) の完了時に、ラインアイテムをベンダー単位で集計して通知処理を実行。
+- Shopify Webhook (`orders/create`) の完了時だけ自動でベンダー通知メールを送信。`orders/updated` などは upsert のみに留め、重複メールを防いでいる。
 - ベンダーごとの通知結果は `vendor_order_notifications` テーブルで冪等管理し、`sent / skipped / error` を記録。
 - ベンダープロフィールに「新規注文メール通知」のトグルを追加し、`vendors.notify_new_orders` で ON/OFF を制御。
 - メール本文は `lib/notifications/vendor-new-order.ts` で生成し、注文情報・配送先・商品名×数量を列挙するテキストメール。

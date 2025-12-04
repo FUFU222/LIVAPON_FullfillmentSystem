@@ -154,7 +154,7 @@ async function fetchShopifyOrderPayload(shopDomain: string, orderId: number) {
 async function ensureOrderRecord(shopDomain: string, shopifyOrderId: number): Promise<void> {
   try {
     const orderPayload = await fetchShopifyOrderPayload(shopDomain, shopifyOrderId);
-    await upsertShopifyOrder(orderPayload, shopDomain);
+    await upsertShopifyOrder(orderPayload, shopDomain, { sendVendorNotifications: false });
   } catch (error) {
     console.warn('Failed to auto-upsert Shopify order for fulfillment request', {
       error,

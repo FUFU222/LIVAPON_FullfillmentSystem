@@ -1,7 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
 import { getShopifyServiceClient } from '@/lib/shopify/service-client';
-import { sendVendorNewOrderEmail, type VendorNewOrderEmailLineItem } from '@/lib/notifications/vendor-new-order';
+import {
+  sendVendorNewOrderEmail,
+  type VendorNewOrderEmailLineItem,
+  type VendorNewOrderEmailPayload,
+  isResendRateLimitError
+} from '@/lib/notifications/vendor-new-order';
 
 // ==========================
 // Shop Domain Verification
@@ -174,6 +179,10 @@ function buildShippingAddress(payload: ShopifyOrderPayload) {
   };
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ==========================
 // Orders Table Upsert
 // ==========================
@@ -311,6 +320,7 @@ async function notifyVendorsOfNewOrder(
   payload: ShopifyOrderPayload,
   lineItemVendors: VendorResolution[]
 ) {
+  const RATE_LIMIT_DELAY_MS = 700;
   if (!Array.isArray(payload.line_items) || payload.line_items.length === 0) {
     return;
   }
@@ -382,23 +392,25 @@ async function notifyVendorsOfNewOrder(
       continue;
     }
 
-    try {
-      await sendVendorNewOrderEmail({
-        to: vendor.contact_email,
-        vendorName: vendor.name ?? 'ベンダー各位',
-        orderNumber: payload.name || payload.order_number,
-        orderCreatedAt: payload.created_at,
-        customerName,
-        shipping: {
-          postalCode: shippingAddress.postal,
-          address1: shippingAddress.address1,
-          address2: shippingAddress.address2,
-          city: shippingAddress.city,
-          state: shippingAddress.prefecture
-        },
-        lineItems: items
-      });
+    const emailPayload = {
+      to: vendor.contact_email,
+      vendorName: vendor.name ?? 'ベンダー各位',
+      orderNumber: payload.name || payload.order_number,
+      orderCreatedAt: payload.created_at,
+      customerName,
+      shipping: {
+        postalCode: shippingAddress.postal,
+        address1: shippingAddress.address1,
+        address2: shippingAddress.address2,
+        city: shippingAddress.city,
+        state: shippingAddress.prefecture
+      },
+      lineItems: items
+    } satisfies VendorNewOrderEmailPayload;
 
+    let sendError: unknown | null = null;
+    try {
+      await sendVendorNewOrderEmail(emailPayload);
       await upsertVendorNotificationRecord(
         client,
         orderId,
@@ -407,14 +419,38 @@ async function notifyVendorsOfNewOrder(
         null,
         new Date().toISOString()
       );
+      continue;
     } catch (error) {
-      console.error('Failed to send vendor new order email', { vendorId, orderId, error });
+      if (isResendRateLimitError(error)) {
+        console.warn('Resend rate limit hit, retrying new order email', { vendorId, orderId });
+        await sleep(RATE_LIMIT_DELAY_MS);
+        try {
+          await sendVendorNewOrderEmail(emailPayload);
+          await upsertVendorNotificationRecord(
+            client,
+            orderId,
+            vendorId,
+            'sent',
+            null,
+            new Date().toISOString()
+          );
+          continue;
+        } catch (retryError) {
+          sendError = retryError;
+        }
+      } else {
+        sendError = error;
+      }
+    }
+
+    if (sendError) {
+      console.error('Failed to send vendor new order email', { vendorId, orderId, error: sendError });
       await upsertVendorNotificationRecord(
         client,
         orderId,
         vendorId,
         'error',
-        error instanceof Error ? error.message : 'Unknown error'
+        sendError instanceof Error ? sendError.message : 'Unknown error'
       );
     }
   }

@@ -104,3 +104,13 @@ export async function sendVendorNewOrderEmail(payload: VendorNewOrderEmailPayloa
     text
   });
 }
+
+export function isResendRateLimitError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const code = (error as { name?: string }).name;
+  const statusCode = (error as { statusCode?: number }).statusCode;
+  const message = (error as { message?: string }).message ?? '';
+  return code === 'rate_limit_exceeded' || statusCode === 429 || message.includes('rate_limit');
+}

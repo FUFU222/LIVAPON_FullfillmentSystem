@@ -8,7 +8,7 @@ import { syncFulfillmentOrderMetadata } from '@/lib/data/orders';
 import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
 import type { Json } from '@/lib/supabase/types';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 const INLINE_PROCESSING_ENABLED = process.env.ENABLE_INLINE_WEBHOOK_PROCESSING !== 'false';
 const INLINE_BATCH_LIMIT = Math.max(1, Math.min(Number(process.env.INLINE_WEBHOOK_BATCH ?? '1'), 10));

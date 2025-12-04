@@ -6,7 +6,7 @@ import {
   handleFulfillmentServiceRequest
 } from '@/lib/data/fulfillment-requests';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 const textDecoder = new TextDecoder();
 

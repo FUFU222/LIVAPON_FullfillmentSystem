@@ -74,7 +74,11 @@
   すべての line_items をベンダー単位でフィルタし、メールには自社分のみを列挙する。
 
 ## 4. 技術アプローチ
-1. **送信者ライブラリ**: Resend か SendGrid を採用。Node.js からの実装容易さとインフラ負荷を考え、Resend を第一候補とする。
+1. **送信者ライブラリ**
+   - **フェーズ1（現行〜当面）**: Gmail（Google Workspace）API を利用。Next.js の Route Handler / Server Action から Gmail API を叩き、`notify@chairman.jp` を送信元として扱う。
+     - OAuth クライアントまたはサービスアカウントで認証し、Console のサーバーサイドでアクセストークンを保持。
+     - ベンダー通知・管理者通知ともに同じ送信ヘルパーで一元管理する。
+   - **フェーズ2（本格スケール後）**: メール送信部分だけ Resend / SES などへ差し替え。`sendVendorNewOrderEmail(payload)` のインターフェースは維持し、実装を差し替えるだけで移行できる構成にする。
    - `.env` に `RESEND_API_KEY`。
    - `lib/notifications/email.ts` に送信ヘルパーを作成し、テンプレート別に型安全な呼び出しにする。
 2. **非同期実行**:

@@ -7,6 +7,7 @@ import { updateVendorProfileAction } from '@/app/vendor/profile/actions';
 import type { VendorProfileActionState } from '@/app/vendor/profile/actions';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast-provider';
 
@@ -16,6 +17,7 @@ export type VendorProfileInitialValues = {
   email: string;
   vendorCode: string | null;
   contactPhone: string | null;
+  notifyNewOrders: boolean;
 };
 
 const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
@@ -93,6 +95,23 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         ) : (
           <p className="text-xs text-slate-500">緊急時の連絡先として利用します。</p>
         )}
+      </div>
+
+      <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <Checkbox
+          id="notifyNewOrders"
+          name="notifyNewOrders"
+          defaultChecked={initial.notifyNewOrders}
+          className="mt-1"
+        />
+        <div className="text-sm text-slate-600">
+          <label htmlFor="notifyNewOrders" className="font-medium text-foreground">
+            新規注文メール通知
+          </label>
+          <p className="text-xs text-slate-500">
+            Console を開いていない時でも注文内容をメールで受け取ります。不要な場合はチェックを外してください。
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-2">

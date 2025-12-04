@@ -18,25 +18,60 @@
 - 同一 `order_id + vendor_id` への通知は 1 件まで（取消・再割当時の再送は突き止めた上で別イベント `reassignment` として扱う）。
 
 ## 3. 送信先 & テンプレ
-- 送信先: `vendor.contact_email`（プロフィールで更新された最新アドレス）。必要に応じて個別通知先を追加できるよう `vendor_email_preferences` テーブルの追加も検討。
-- From: `notifications@livapon.jp`（SPF/DKIM 設定が必要）。
-- 件名: `【LIVAPON】新しい注文 #{{order_number}} が登録されました`
-- 本文（テキスト）:
+- 送信先: `vendor.contact_email`（プロフィールで更新された最新アドレス）。将来的に `vendor_email_preferences` で複数アドレスや CC を扱う拡張も可能。
+- From: `notifications@livapon.jp`（既存設定を流用）。
+- 件名: `【LIVAPON】新規注文のご連絡（注文番号：{{order_number}}）`
+- 本文（テキスト）: **以下の固定フォーマットに刷新する。**
   ```
-  {{vendor_name}} 御中
+  {{vendor_name}} 様
 
-  新しい注文 #{{order_number}} （顧客: {{customer_name}}）が登録されました。
+  LIVAPONをご利用いただきありがとうございます。
+  以下の内容で新規注文が登録されましたので、ご確認をお願いいたします。
 
-  - 注文日時: {{order_created_at}}
-  - 配送先: {{shipping_address_line1}} {{shipping_city}}
-  - ラインアイテム数: {{line_item_count}}
+  ────────────────────
+  ■ 注文情報
+  ・注文番号：{{order_number}}
+  ・注文日時：{{order_created_at}}
+  ・購入者名：{{customer_name}}
 
-  Console にログインして発送準備を進めてください。
+  ■ 配送先
+  {{shipping_postal_code}}
+  {{shipping_address1}}
+  {{shipping_address2}}
+  {{shipping_city}} {{shipping_state}}
+
+  ■ 注文内容
+  {{#each line_items}}
+  ・{{product_name}} × {{quantity}}
+  {{/each}}
+  ────────────────────
+
+  発送準備につきましては、ベンダー様用コンソールよりご対応をお願いいたします。
+  ▼管理画面はこちら
   https://livapon-fullfillment-system.vercel.app/orders
 
-  ※本メールは送信専用です。心当たりがない場合は運用担当までお知らせください。
+  お心当たりのない場合やご不明点がございましたら、
+  運用担当またはLIVAPON事務局までご連絡ください。
+  本メールは送信専用です。
+
+  ※本メールの受信有無は、ベンダープロフィール画面の通知設定から
+    いつでもオン／オフを切り替えていただけます。
+
+  よろしくお願いいたします。
+  LIVAPON 事務局
   ```
-- HTML テンプレートは `app/emails/vendor-new-order.tsx`（予定）でひな形化し、ブランドカラーに合わせたヘッダー/CTA ボタンを配置する。
+- HTML テンプレートも同構成で整える。line_items のループでは SKU/バリエーション名を括弧付きで表示できるよう `{{product_name}} (SKU: {{sku}})` を拡張余地として残す。
+- **動的項目一覧**
+  | プレースホルダ | 取得元 |
+  | --- | --- |
+  | `vendor_name` | `vendors.name` |
+  | `order_number` | `orders.order_number` |
+  | `order_created_at` | `orders.created_at`（JST 表記に整形） |
+  | `customer_name` | `orders.customer_name` |
+  | `shipping_postal_code` / `shipping_state` / `shipping_city` / `shipping_address1` / `shipping_address2` | `orders` の同名カラム |
+  | `line_items` | `line_items` テーブル（`product_name`, `quantity`, 任意で `sku`） |
+
+  すべての line_items をベンダー単位でフィルタし、メールには自社分のみを列挙する。
 
 ## 4. 技術アプローチ
 1. **送信者ライブラリ**: Resend か SendGrid を採用。Node.js からの実装容易さとインフラ負荷を考え、Resend を第一候補とする。
@@ -51,11 +86,10 @@
 4. **エラー処理**:
    - Resend エラーは `status='error'` と `error_message` を保存。GitHub Actions のジョブ Summary で件数を報告。
    - ベンダーのメール未登録の場合はログ警告＋後続の Slack 通知候補。
-5. **将来拡張**:
+5. **将来拡張 / 通知設定**:
    - `order_status` 変化（例: `fulfilled`）時に発送完了通知、`shipment_adjustment_requests` 更新時通知なども同インフラで拡張できる。
-   - ベンダー単位で通知 ON/OFF が設定できるよう `vendor_notification_settings` を追加する余地を記載。
-   - シンプルな案として `vendor` テーブルに `notify_new_orders boolean default true` を追加し、`/vendor/profile` にチェックボックスを配置する。詳細な通知種別を扱う場合は `vendor_notification_preferences(vendor_id, notification_type, enabled)` を設計する。
-   - OFF のベンダーには送信処理をスキップしつつ、`vendor_order_notifications` に `status='skipped'` でログを残し、監査できるようにする。
+   - ベンダープロフィール画面に「新規注文メール通知」のトグルを追加し、`vendors.notify_new_orders boolean default true` で制御する案を採用。より細かい粒度が必要になった場合は `vendor_notification_preferences(vendor_id, notification_type, enabled)` へ移行する。
+   - OFF のベンダーには送信処理をスキップしつつ、`vendor_order_notifications` に `status='skipped'` を記録して監査できるようにする。
 
 ## 5. 開発ステップ案
 1. **スキーマ**: `20251204090000_create_vendor_notification_logs.sql`（仮）で `vendor_order_notifications` 作成・インデックス追加。
@@ -69,7 +103,7 @@
 - 再通知ポリシー（未読/未発送が一定時間続いた場合のリマインド）。
 - 複数メールアドレス（例: CC: ロジ担当）への配信。プロフィールに複数入力欄を追加する必要があるか検討。
 - 国際化（英語版メール）のタイミング。
-- 通知設定が OFF のベンダーがいる場合、誰がその変更を行ったか追跡できる仕組み（監査ログ）が必要か。
+- 通知設定が OFF のベンダーがいる場合、誰がその変更を行ったか追跡できる仕組み（監査ログ）が必要か。`vendor_notification_settings_audit` のような履歴テーブルが候補。
 - ベンダー側のメールサーバーでフィルタされた際のリカバリ手順（bounce 処理や自動再送ポリシー）を決める。
 
 ## 7. 参照

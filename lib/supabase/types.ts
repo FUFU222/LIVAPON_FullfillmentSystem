@@ -812,6 +812,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string | null
           id: number
+          notify_new_orders: boolean | null
           name: string
         }
         Insert: {
@@ -821,6 +822,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: number
+          notify_new_orders?: boolean | null
           name: string
         }
         Update: {
@@ -830,9 +832,58 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: number
+          notify_new_orders?: boolean | null
           name?: string
         }
         Relationships: []
+      }
+      vendor_order_notifications: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: number
+          notification_type: string
+          order_id: number | null
+          sent_at: string | null
+          status: string
+          vendor_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          notification_type?: string
+          order_id?: number | null
+          sent_at?: string | null
+          status?: string
+          vendor_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          notification_type?: string
+          order_id?: number | null
+          sent_at?: string | null
+          status?: string
+          vendor_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_order_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_order_notifications_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

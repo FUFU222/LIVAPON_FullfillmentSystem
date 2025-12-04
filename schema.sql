@@ -10,6 +10,7 @@ CREATE TABLE vendors (
   contact_name VARCHAR(255),
   contact_email VARCHAR(255),
   contact_phone VARCHAR(100),
+  notify_new_orders BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -95,6 +96,18 @@ CREATE TABLE order_vendor_segments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (order_id, vendor_id)
+);
+
+CREATE TABLE vendor_order_notifications (
+  id BIGSERIAL PRIMARY KEY,
+  order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+  vendor_id INT REFERENCES vendors(id) ON DELETE CASCADE,
+  notification_type TEXT NOT NULL DEFAULT 'new_order',
+  status TEXT NOT NULL DEFAULT 'pending',
+  error_message TEXT,
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (order_id, vendor_id, notification_type)
 );
 
 CREATE TABLE shipments (

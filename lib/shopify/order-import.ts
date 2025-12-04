@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
 import { getShopifyServiceClient } from '@/lib/shopify/service-client';
+import { sendVendorNewOrderEmail, type VendorNewOrderEmailLineItem } from '@/lib/notifications/vendor-new-order';
 
 // ==========================
 // Shop Domain Verification
@@ -277,6 +278,148 @@ async function replaceLineItems(
   });
 }
 
+async function upsertVendorNotificationRecord(
+  client: SupabaseClient<Database>,
+  orderId: number,
+  vendorId: number,
+  status: string,
+  errorMessage?: string | null,
+  sentAt?: string | null
+) {
+  const { error } = await client
+    .from('vendor_order_notifications')
+    .upsert(
+      {
+        order_id: orderId,
+        vendor_id: vendorId,
+        notification_type: 'new_order',
+        status,
+        error_message: errorMessage ?? null,
+        sent_at: sentAt ?? null
+      },
+      { onConflict: 'order_id,vendor_id,notification_type' }
+    );
+
+  if (error) {
+    console.error('Failed to upsert vendor_order_notifications', { orderId, vendorId, status, error });
+  }
+}
+
+async function notifyVendorsOfNewOrder(
+  client: SupabaseClient<Database>,
+  orderId: number,
+  payload: ShopifyOrderPayload,
+  lineItemVendors: VendorResolution[]
+) {
+  if (!Array.isArray(payload.line_items) || payload.line_items.length === 0) {
+    return;
+  }
+
+  const vendorItems = new Map<number, VendorNewOrderEmailLineItem[]>();
+  payload.line_items.forEach((item, index) => {
+    const vendorId = lineItemVendors[index]?.vendorId;
+    if (!vendorId) {
+      return;
+    }
+    const list = vendorItems.get(vendorId) ?? [];
+    list.push({
+      productName: item.title,
+      quantity: item.quantity,
+      sku: item.sku ?? null,
+      variantTitle: item.variant_title ?? null
+    });
+    vendorItems.set(vendorId, list);
+  });
+
+  if (vendorItems.size === 0) {
+    return;
+  }
+
+  const vendorIds = Array.from(vendorItems.keys());
+  const { data: vendorRows, error: vendorError } = await client
+    .from('vendors')
+    .select('id, name, contact_email, notify_new_orders')
+    .in('id', vendorIds);
+  if (vendorError) {
+    throw vendorError;
+  }
+  const vendorMap = new Map((vendorRows ?? []).map((row) => [row.id, row]));
+
+  const { data: existingNotifications, error: existingNotificationsError } = await client
+    .from('vendor_order_notifications')
+    .select('vendor_id, status')
+    .eq('order_id', orderId)
+    .eq('notification_type', 'new_order');
+  if (existingNotificationsError) {
+    throw existingNotificationsError;
+  }
+  const notificationMap = new Map(
+    (existingNotifications ?? [])
+      .filter((row) => typeof row.vendor_id === 'number')
+      .map((row) => [row.vendor_id as number, row])
+  );
+
+  const shippingAddress = buildShippingAddress(payload);
+  const customerName = buildCustomerName(payload);
+
+  for (const [vendorId, items] of vendorItems.entries()) {
+    const vendor = vendorMap.get(vendorId);
+    if (!vendor) {
+      continue;
+    }
+
+    if (notificationMap.get(vendorId)?.status === 'sent') {
+      continue;
+    }
+
+    if (vendor.notify_new_orders === false) {
+      await upsertVendorNotificationRecord(client, orderId, vendorId, 'skipped', 'notifications_disabled');
+      continue;
+    }
+
+    if (!vendor.contact_email) {
+      await upsertVendorNotificationRecord(client, orderId, vendorId, 'skipped', 'missing_contact_email');
+      continue;
+    }
+
+    try {
+      await sendVendorNewOrderEmail({
+        to: vendor.contact_email,
+        vendorName: vendor.name ?? 'ベンダー各位',
+        orderNumber: payload.name || payload.order_number,
+        orderCreatedAt: payload.created_at,
+        customerName,
+        shipping: {
+          postalCode: shippingAddress.postal,
+          address1: shippingAddress.address1,
+          address2: shippingAddress.address2,
+          city: shippingAddress.city,
+          state: shippingAddress.prefecture
+        },
+        lineItems: items
+      });
+
+      await upsertVendorNotificationRecord(
+        client,
+        orderId,
+        vendorId,
+        'sent',
+        null,
+        new Date().toISOString()
+      );
+    } catch (error) {
+      console.error('Failed to send vendor new order email', { vendorId, orderId, error });
+      await upsertVendorNotificationRecord(
+        client,
+        orderId,
+        vendorId,
+        'error',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  }
+}
+
 // ==========================
 // Main Entry: upsertShopifyOrder
 // ==========================
@@ -331,6 +474,14 @@ export async function upsertShopifyOrder(payload: unknown, shopDomain: string) {
 
     const orderId = await upsertOrderRecord(client, order, lineItemVendors, normalizedShopDomain);
     await replaceLineItems(client, orderId, order, lineItemVendors);
+    try {
+      await notifyVendorsOfNewOrder(client, orderId, order, lineItemVendors);
+    } catch (notificationError) {
+      console.error('Failed to prepare vendor notifications', {
+        orderId,
+        error: notificationError
+      });
+    }
 
     try {
       const { syncFulfillmentOrderMetadata, markShipmentsCancelledForOrder } = await import(

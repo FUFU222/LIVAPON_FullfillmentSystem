@@ -40,6 +40,7 @@ export type VendorProfile = {
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  notifyNewOrders: boolean;
 };
 
 export type VendorListEntry = VendorProfile & {
@@ -207,7 +208,7 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, contact_name, contact_phone, created_at,
+      `id, code, name, contact_email, contact_name, contact_phone, notify_new_orders, created_at,
        vendor_applications:vendor_applications(
          id, status, company_name, contact_name, contact_email, contact_phone, message,
          reviewer_email, reviewed_at, created_at, updated_at, notes
@@ -265,6 +266,7 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
     contactName: record.contact_name ?? null,
     contactEmail: record.contact_email ?? null,
     contactPhone: record.contact_phone ?? null,
+    notifyNewOrders: record.notify_new_orders ?? true,
     createdAt: record.created_at ?? null,
     summary,
     applications
@@ -592,7 +594,7 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email, contact_name, contact_phone')
+    .select('id, code, name, contact_email, contact_name, contact_phone, notify_new_orders')
     .eq('id', vendorId)
     .maybeSingle();
 
@@ -610,7 +612,8 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
     name: data.name,
     contactName: data.contact_name,
     contactEmail: data.contact_email,
-    contactPhone: data.contact_phone ?? null
+    contactPhone: data.contact_phone ?? null,
+    notifyNewOrders: data.notify_new_orders ?? true
   };
 }
 
@@ -622,6 +625,7 @@ type VendorWithApplications = {
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string | null;
+  notify_new_orders: boolean | null;
   vendor_applications?: Array<{
     id: number;
     status: string | null;
@@ -684,6 +688,7 @@ function mapVendorsWithApplications(
       contactName: vendor.contact_name,
       contactEmail: vendor.contact_email,
       contactPhone: vendor.contact_phone ?? null,
+      notifyNewOrders: vendor.notify_new_orders ?? true,
       createdAt: vendor.created_at,
       lastApplication
     } satisfies VendorListEntry;
@@ -696,9 +701,9 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, contact_name, contact_phone, created_at,
+      `id, code, name, contact_email, contact_name, contact_phone, notify_new_orders, created_at,
        vendor_applications:vendor_applications(
-         id, status, reviewed_at, reviewer_email, auth_user_id, company_name, contact_phone, created_at
+          id, status, reviewed_at, reviewer_email, auth_user_id, company_name, contact_phone, created_at
        )`
     )
     .order('created_at', { ascending: false })
@@ -717,7 +722,7 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, contact_name, contact_phone, created_at,
+      `id, code, name, contact_email, contact_name, contact_phone, notify_new_orders, created_at,
        vendor_applications:vendor_applications(
          id, status, reviewed_at, reviewer_email, auth_user_id, company_name, contact_phone, created_at
        )`

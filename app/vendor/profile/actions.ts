@@ -37,6 +37,7 @@ export async function updateVendorProfileAction(
   const rawContactPhone = formData.get('contactPhone');
   const rawPassword = formData.get('password');
   const rawCurrentPassword = formData.get('currentPassword');
+  const notifyNewOrdersRaw = formData.get('notifyNewOrders');
 
   const companyName = typeof rawCompanyName === 'string' ? rawCompanyName.trim() : '';
   const contactName = typeof rawContactName === 'string' ? rawContactName.trim() : '';
@@ -44,6 +45,7 @@ export async function updateVendorProfileAction(
   const contactPhone = typeof rawContactPhone === 'string' ? rawContactPhone.trim() : '';
   const password = typeof rawPassword === 'string' ? rawPassword : '';
   const currentPassword = typeof rawCurrentPassword === 'string' ? rawCurrentPassword : '';
+  const notifyNewOrders = notifyNewOrdersRaw === 'on';
 
   const fieldErrors: VendorProfileActionState['fieldErrors'] = {};
 
@@ -91,7 +93,8 @@ export async function updateVendorProfileAction(
       name: companyName,
       contact_email: email,
       contact_name: contactName || null,
-      contact_phone: contactPhone || null
+      contact_phone: contactPhone || null,
+      notify_new_orders: notifyNewOrders
     })
     .eq('id', auth.vendorId)
     .select('id')

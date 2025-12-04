@@ -23,7 +23,7 @@ export default async function VendorProfilePage() {
   const supabase = getServerComponentClient();
   const { data: vendor, error } = await supabase
     .from('vendors')
-    .select('name, code, contact_email, contact_name, contact_phone')
+    .select('name, code, contact_email, contact_name, contact_phone, notify_new_orders')
     .eq('id', auth.vendorId)
     .maybeSingle();
 
@@ -38,6 +38,7 @@ export default async function VendorProfilePage() {
   const contactName =
     (vendor.contact_name ?? (auth.session.user.user_metadata?.contact_name ?? null)) as string | null;
   const email = auth.session.user.email ?? vendor.contact_email ?? '';
+  const notifyNewOrders = vendor.notify_new_orders ?? true;
 
   return (
     <OrdersRealtimeProvider>
@@ -61,7 +62,8 @@ export default async function VendorProfilePage() {
                 contactName,
                 email,
                 vendorCode: vendor.code,
-                contactPhone: vendor.contact_phone ?? null
+                contactPhone: vendor.contact_phone ?? null,
+                notifyNewOrders
               }}
             />
           </CardContent>

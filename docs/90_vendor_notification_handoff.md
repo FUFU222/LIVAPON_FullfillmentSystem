@@ -15,7 +15,7 @@
 ## 3. 合意済みの次ステップ案
 | フェーズ | 内容 |
 | --- | --- |
-| フェーズ1（現行〜当面） | Gmail (Google Workspace) API を利用し、`notify@chairman.jp` から送信する。Next.js の Route Handler / Server Action で Gmail API を叩き、ベンダー通知/管理者通知を一元管理する。 |
+| フェーズ1（現行〜当面） | Gmail (Google Workspace) API を利用し、ポリシーで指定されている `information@chairman.jp` から送信する。Next.js の Route Handler / Server Action で Gmail API を叩き、ベンダー通知/管理者通知を一元管理する。 |
 | フェーズ2（本格スケール） | メール送信レイヤーだけ Resend / SES などに差し替える。同じ `sendVendorNewOrderEmail(payload)` インターフェースを維持し、実装を差し替えるだけで移行する。 |
 | 共通課題 | `vendor_order_notifications` の `status='error'` 再送ジョブ、通知先の拡張（複数アドレス/CC）、監査ログの整備など。 |
 

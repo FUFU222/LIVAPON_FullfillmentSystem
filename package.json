@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-email/render": "^2.0.0",
     "@supabase/mcp-server-supabase": "^0.5.6",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.58.0",

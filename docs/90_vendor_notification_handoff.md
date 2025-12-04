@@ -20,7 +20,8 @@
 | 共通課題 | `vendor_order_notifications` の `status='error'` 再送ジョブ、通知先の拡張（複数アドレス/CC）、監査ログの整備など。 |
 
 ## 4. 引き継ぎポイント
-- **環境変数**: 現状は `RESEND_API_KEY` のみ利用。送信元アドレスを変更する場合も、Resend 側のドメイン/From 設定を合わせて更新する必要がある。
+- **環境変数**: Gmail API 版は `GMAIL_SERVICE_ACCOUNT_CLIENT_EMAIL`, `GMAIL_SERVICE_ACCOUNT_PRIVATE_KEY`, `GMAIL_IMPERSONATED_USER`（省略時は From と同じ）, `GMAIL_SENDER`（省略時 `information@chairman.jp`）を設定する。旧 `RESEND_API_KEY` はフェーズ2の他プロバイダ移行時に再利用予定。
+- **テスト送信**: `npm run test:vendor-email -- --to=recipient@example.com` を実行すると Gmail API 経由でダミー注文情報のメールが送られる。`.env.local` などで必要な Gmail Secrets を読み込んでから実行する。
 - **通知ログ**: Supabase の `vendor_order_notifications` は監査用途として重要。誤送信が無いか・メールが届かない場合のトラブルシュートに活用できる。
 - **UI 連動**: ベンダープロフィールで通知を OFF にしているとメールは送信されない（`status='skipped'`）。この仕様を運用チームに共有しておく。 |
 

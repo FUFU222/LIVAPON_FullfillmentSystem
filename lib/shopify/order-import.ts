@@ -5,7 +5,7 @@ import {
   sendVendorNewOrderEmail,
   type VendorNewOrderEmailLineItem,
   type VendorNewOrderEmailPayload,
-  isResendRateLimitError
+  isVendorEmailRetryableError
 } from '@/lib/notifications/vendor-new-order';
 
 // ==========================
@@ -421,8 +421,11 @@ async function notifyVendorsOfNewOrder(
       );
       continue;
     } catch (error) {
-      if (isResendRateLimitError(error)) {
-        console.warn('Resend rate limit hit, retrying new order email', { vendorId, orderId });
+      if (isVendorEmailRetryableError(error)) {
+        console.warn('Email provider rate limit/temporary error, retrying new order email', {
+          vendorId,
+          orderId
+        });
         await sleep(RATE_LIMIT_DELAY_MS);
         try {
           await sendVendorNewOrderEmail(emailPayload);

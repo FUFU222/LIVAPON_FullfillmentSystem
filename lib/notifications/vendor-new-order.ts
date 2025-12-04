@@ -1,7 +1,4 @@
-import { Resend } from 'resend';
-
-const resendApiKey = process.env.RESEND_API_KEY;
-const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
+import { sendEmail, isRetryableEmailError } from './email';
 
 export type VendorNewOrderEmailLineItem = {
   productName: string;
@@ -92,25 +89,14 @@ function buildEmailBody(payload: VendorNewOrderEmailPayload): string {
 }
 
 export async function sendVendorNewOrderEmail(payload: VendorNewOrderEmailPayload) {
-  if (!resendClient) {
-    throw new Error('RESEND_API_KEY is not configured');
-  }
-
   const text = buildEmailBody(payload);
-  await resendClient.emails.send({
-    from: 'LIVAPON 通知 <notifications@livapon.jp>',
+  await sendEmail({
     to: payload.to,
     subject: `【LIVAPON】新規注文のご連絡（注文番号：${payload.orderNumber}）`,
     text
   });
 }
 
-export function isResendRateLimitError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) {
-    return false;
-  }
-  const code = (error as { name?: string }).name;
-  const statusCode = (error as { statusCode?: number }).statusCode;
-  const message = (error as { message?: string }).message ?? '';
-  return code === 'rate_limit_exceeded' || statusCode === 429 || message.includes('rate_limit');
+export function isVendorEmailRetryableError(error: unknown): boolean {
+  return isRetryableEmailError(error);
 }

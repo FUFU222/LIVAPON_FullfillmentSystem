@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isRegisteredShopDomain } from '@/lib/shopify/order-import';
+import { isRegisteredShopDomain } from '@/lib/shopify/shop-domains';
 import { getWebhookSecretMetadata, verifyShopifyWebhook } from '@/lib/shopify/hmac';
 import { enqueueWebhookJob } from '@/lib/data/webhook-jobs';
 import { processWebhookJobs } from '@/lib/jobs/webhook-runner';

@@ -1,7 +1,5 @@
-import {
-  upsertShopifyOrder,
-  isRegisteredShopDomain
-} from '@/lib/shopify/order-import';
+import { upsertShopifyOrder } from '@/lib/shopify/order-import';
+import { isRegisteredShopDomain } from '@/lib/shopify/shop-domains';
 import {
   triggerShipmentResyncForShopifyOrder,
   syncFulfillmentOrderMetadata

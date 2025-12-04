@@ -7,32 +7,11 @@ import {
   type VendorNewOrderEmailPayload,
   isVendorEmailRetryableError
 } from '@/lib/notifications/vendor-new-order';
+import { normalizeShopDomain } from '@/lib/shopify/shop-domains';
 
 // ==========================
 // Shop Domain Verification
 // ==========================
-export async function isRegisteredShopDomain(shopDomain: string): Promise<boolean> {
-  const normalized = shopDomain.trim().toLowerCase();
-  if (!normalized) return false;
-
-  const client = getShopifyServiceClient();
-  console.log('🏪 Checking shop domain in Supabase:', normalized);
-
-  const { data, error } = await client
-    .from('shopify_connections')
-    .select('id')
-    .eq('shop', normalized)
-    .maybeSingle();
-
-  if (error) {
-    console.error('❌ Supabase domain check error:', error);
-    throw error;
-  }
-
-  console.log('🔍 Supabase domain check result:', { shop: normalized, found: !!data });
-  return Boolean(data);
-}
-
 // ==========================
 // Shopify Order Payload Types
 // ==========================
@@ -462,11 +441,6 @@ async function notifyVendorsOfNewOrder(
 // ==========================
 // Main Entry: upsertShopifyOrder
 // ==========================
-function normalizeShopDomain(shopDomain: string | null | undefined): string | null {
-  if (!shopDomain) return null;
-  return shopDomain.replace(/^https?:\/\//i, '').trim().toLowerCase() || null;
-}
-
 function deriveOrderStatus(payload: ShopifyOrderPayload): string {
   if (payload.cancelled_at) {
     return 'cancelled';

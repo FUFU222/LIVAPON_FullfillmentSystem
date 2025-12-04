@@ -1,7 +1,10 @@
 import { POST } from '@/app/api/shopify/orders/ingest/route';
 
 jest.mock('@/lib/shopify/order-import', () => ({
-  upsertShopifyOrder: jest.fn(),
+  upsertShopifyOrder: jest.fn()
+}));
+
+jest.mock('@/lib/shopify/shop-domains', () => ({
   isRegisteredShopDomain: jest.fn()
 }));
 
@@ -32,10 +35,13 @@ if (typeof (globalThis as Record<string, unknown>).TextDecoder === 'undefined') 
   (globalThis as Record<string, unknown>).TextDecoder = TextDecoder;
 }
 
-const { upsertShopifyOrder, isRegisteredShopDomain } = jest.requireMock<{
+const { upsertShopifyOrder } = jest.requireMock<{
   upsertShopifyOrder: jest.Mock;
-  isRegisteredShopDomain: jest.Mock;
 }>('@/lib/shopify/order-import');
+
+const { isRegisteredShopDomain } = jest.requireMock<{ isRegisteredShopDomain: jest.Mock }>(
+  '@/lib/shopify/shop-domains'
+);
 
 const { syncFulfillmentOrderMetadata, markShipmentsCancelledForOrder } = jest.requireMock<{
   syncFulfillmentOrderMetadata: jest.Mock;

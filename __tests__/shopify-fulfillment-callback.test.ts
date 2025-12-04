@@ -2,7 +2,7 @@ jest.mock('@/lib/shopify/hmac', () => ({
   verifyShopifyWebhook: jest.fn()
 }));
 
-jest.mock('@/lib/shopify/order-import', () => ({
+jest.mock('@/lib/shopify/shop-domains', () => ({
   isRegisteredShopDomain: jest.fn()
 }));
 
@@ -35,7 +35,7 @@ const { verifyShopifyWebhook } = jest.requireMock<{ verifyShopifyWebhook: jest.M
 );
 
 const { isRegisteredShopDomain } = jest.requireMock<{ isRegisteredShopDomain: jest.Mock }>(
-  '@/lib/shopify/order-import'
+  '@/lib/shopify/shop-domains'
 );
 
 const { handleFulfillmentServiceRequest, FulfillmentCallbackError } = jest.requireMock<{

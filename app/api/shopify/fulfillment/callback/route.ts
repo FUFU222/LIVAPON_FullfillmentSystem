@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyShopifyWebhook } from '@/lib/shopify/hmac';
-import { isRegisteredShopDomain } from '@/lib/shopify/order-import';
+import { isRegisteredShopDomain } from '@/lib/shopify/shop-domains';
 import {
   FulfillmentCallbackError,
   handleFulfillmentServiceRequest

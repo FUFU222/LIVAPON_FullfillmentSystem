@@ -18,6 +18,16 @@ function assertServiceClient(): SupabaseClient<Database> {
 
 export async function enqueueWebhookJob(data: EnqueuePayload): Promise<WebhookJobRecord> {
   const client = assertServiceClient();
+  if (data.webhookId) {
+    const existing = await findJobByWebhookId(client, data.webhookId);
+    if (existing) {
+      console.info('Webhook job already enqueued/processed. Skipping duplicate.', {
+        webhookId: data.webhookId,
+        status: existing.status
+      });
+      return existing;
+    }
+  }
   const payload: Database['public']['Tables']['webhook_jobs']['Insert'] = {
     shop_domain: data.shopDomain,
     topic: data.topic,
@@ -34,6 +44,16 @@ export async function enqueueWebhookJob(data: EnqueuePayload): Promise<WebhookJo
     .single();
 
   if (error || !inserted) {
+    if (data.webhookId && error && (error as { code?: string }).code === '23505') {
+      const existing = await findJobByWebhookId(client, data.webhookId);
+      if (existing) {
+        console.info('Webhook job insert hit unique constraint; returning existing job.', {
+          webhookId: data.webhookId,
+          status: existing.status
+        });
+        return existing;
+      }
+    }
     throw error || new Error('Failed to enqueue webhook job');
   }
 
@@ -81,4 +101,21 @@ export async function markJobFailed(jobId: number, errorMessage: string, options
   if (error) {
     throw error;
   }
+}
+
+async function findJobByWebhookId(
+  client: SupabaseClient<Database>,
+  webhookId: string
+): Promise<WebhookJobRecord | null> {
+  const { data, error } = await client
+    .from('webhook_jobs')
+    .select('*')
+    .eq('webhook_id', webhookId)
+    .maybeSingle();
+
+  if (error && (error as { code?: string }).code !== 'PGRST116') {
+    throw error;
+  }
+
+  return data ?? null;
 }

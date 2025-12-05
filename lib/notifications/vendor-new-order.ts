@@ -71,7 +71,7 @@ function buildPlainTextBody(payload: VendorNewOrderEmailPayload): string {
     + `${formatShippingBlock(payload.shipping)}\n\n`
     + '🛒 注文内容\n'
     + `${lineItemsBlock}\n\n`
-    + '🚪 ベンダーコンソール\n'
+    + '🚪 注文を確認する\n'
     + 'https://livapon-fullfillment-system.vercel.app/orders\n\n'
     + '※本メールは送信専用です。\n'
     + '設定から通知のオン／オフを切り替えられます。\n';
@@ -170,7 +170,7 @@ function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
               </tr>
               <tr>
                 <td style="padding-bottom:24px;">
-                  <a href="${portalUrl}" style="display:inline-block; padding:14px 28px; background-color:#0F172A; color:#FFFFFF; text-decoration:none; font-size:15px; font-weight:600; border-radius:999px;">ベンダーコンソールを開く</a>
+                  <a href="${portalUrl}" style="display:inline-block; padding:14px 28px; background-color:#0F172A; color:#FFFFFF; text-decoration:none; font-size:15px; font-weight:600; border-radius:999px;">注文を確認する</a>
                 </td>
               </tr>
               <tr>

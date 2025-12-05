@@ -90,6 +90,8 @@ function escapeHtml(value: string | null | undefined): string {
 }
 
 function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
+  const assetBaseUrl = process.env.LIVAPON_ASSET_BASE_URL ?? 'https://livapon-fullfillment-system.vercel.app';
+  const logoUrl = `${assetBaseUrl}/LIVAPON_logo_horizontal.svg`;
   const shippingParts = [
     payload.shipping.postalCode,
     payload.shipping.address1,
@@ -135,7 +137,7 @@ function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#FFFFFF; border-radius:8px; box-shadow:0 10px 30px rgba(15,23,42,0.08); padding:40px;">
               <tr>
                 <td style="text-align:center; padding-bottom:24px; border-bottom:1px solid #E4E7EC;">
-                  <span style="font-size:20px; font-weight:700; letter-spacing:0.04em; color:#0F172A;">LIVAPON</span>
+                  <img src="${logoUrl}" alt="LIVAPON" style="max-width:160px; height:auto; display:inline-block;" />
                 </td>
               </tr>
               <tr>

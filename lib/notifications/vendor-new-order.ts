@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { sendEmail, isRetryableEmailError } from './email';
 
 export type VendorNewOrderEmailLineItem = {
@@ -89,9 +91,35 @@ function escapeHtml(value: string | null | undefined): string {
     .replace(/'/g, '&#39;');
 }
 
+let cachedLogoSrc: string | null = null;
+
+function resolveVendorEmailLogo(): string {
+  if (cachedLogoSrc) {
+    return cachedLogoSrc;
+  }
+
+  if (process.env.LIVAPON_EMAIL_LOGO_URL) {
+    cachedLogoSrc = process.env.LIVAPON_EMAIL_LOGO_URL;
+    return cachedLogoSrc;
+  }
+
+  try {
+    const logoPath = process.env.LIVAPON_EMAIL_LOGO_PATH
+      ? process.env.LIVAPON_EMAIL_LOGO_PATH
+      : join(process.cwd(), 'public', 'livapon-logo-horizontal-white.png');
+    const file = readFileSync(logoPath);
+    cachedLogoSrc = `data:image/png;base64,${file.toString('base64')}`;
+    return cachedLogoSrc;
+  } catch (error) {
+    console.warn('Failed to load vendor email logo asset, falling back to remote URL.', error);
+    const fallbackBase = process.env.LIVAPON_ASSET_BASE_URL ?? 'https://livapon-fullfillment-system.vercel.app';
+    cachedLogoSrc = `${fallbackBase}/livapon-logo-horizontal-white.png`;
+    return cachedLogoSrc;
+  }
+}
+
 function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
-  const assetBaseUrl = process.env.LIVAPON_ASSET_BASE_URL ?? 'https://livapon-fullfillment-system.vercel.app';
-  const logoUrl = `${assetBaseUrl}/livapon-logo-horizontal-white.png`;
+  const logoUrl = resolveVendorEmailLogo();
   const shippingParts = [
     payload.shipping.postalCode,
     payload.shipping.address1,

@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { sendEmail, isRetryableEmailError } from './email';
 
 export type VendorNewOrderEmailLineItem = {
@@ -91,35 +89,7 @@ function escapeHtml(value: string | null | undefined): string {
     .replace(/'/g, '&#39;');
 }
 
-let cachedLogoSrc: string | null = null;
-
-function resolveVendorEmailLogo(): string {
-  if (cachedLogoSrc) {
-    return cachedLogoSrc;
-  }
-
-  if (process.env.LIVAPON_EMAIL_LOGO_URL) {
-    cachedLogoSrc = process.env.LIVAPON_EMAIL_LOGO_URL;
-    return cachedLogoSrc;
-  }
-
-  try {
-    const logoPath = process.env.LIVAPON_EMAIL_LOGO_PATH
-      ? process.env.LIVAPON_EMAIL_LOGO_PATH
-      : join(process.cwd(), 'public', 'livapon-logo-horizontal-white.png');
-    const file = readFileSync(logoPath);
-    cachedLogoSrc = `data:image/png;base64,${file.toString('base64')}`;
-    return cachedLogoSrc;
-  } catch (error) {
-    console.warn('Failed to load vendor email logo asset, falling back to remote URL.', error);
-    const fallbackBase = process.env.LIVAPON_ASSET_BASE_URL ?? 'https://livapon-fullfillment-system.vercel.app';
-    cachedLogoSrc = `${fallbackBase}/livapon-logo-horizontal-white.png`;
-    return cachedLogoSrc;
-  }
-}
-
 function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
-  const logoUrl = resolveVendorEmailLogo();
   const shippingParts = [
     payload.shipping.postalCode,
     payload.shipping.address1,
@@ -165,7 +135,7 @@ function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#FFFFFF; border-radius:8px; box-shadow:0 10px 30px rgba(15,23,42,0.08); padding:40px;">
               <tr>
                 <td style="text-align:center; padding-bottom:24px; border-bottom:1px solid #E4E7EC;">
-                  <img src="${logoUrl}" alt="LIVAPON" style="max-width:160px; height:auto; display:inline-block;" />
+                  <span style="font-size:20px; font-weight:700; letter-spacing:0.04em; color:#0F172A;">LIVAPON</span>
                 </td>
               </tr>
               <tr>

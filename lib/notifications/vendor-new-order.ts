@@ -51,9 +51,7 @@ function formatShippingBlock(shipping: VendorNewOrderEmailPayload['shipping']): 
 
 function formatLineItem(item: VendorNewOrderEmailLineItem): string {
   const info: string[] = [item.productName];
-  if (item.sku) {
-    info.push(`(SKU: ${item.sku})`);
-  } else if (item.variantTitle) {
+  if (item.variantTitle) {
     info.push(`(${item.variantTitle})`);
   }
   return `・${info.join(' ')} × ${item.quantity}`;
@@ -64,35 +62,26 @@ function buildEmailBody(payload: VendorNewOrderEmailPayload): string {
     ? payload.lineItems.map(formatLineItem).join('\n')
     : '・対象商品が特定できませんでした';
 
-  return `${payload.vendorName} 様\n\n`
-    + 'LIVAPONをご利用いただきありがとうございます。\n'
-    + '以下の内容で新規注文が登録されましたので、ご確認をお願いいたします。\n\n'
-    + '────────────────────\n'
-    + '■ 注文情報\n'
-    + `・注文番号：${payload.orderNumber}\n`
-    + `・注文日時：${formatOrderDate(payload.orderCreatedAt)}\n`
-    + `・購入者名：${payload.customerName ?? '-'}\n\n`
-    + '■ 配送先\n'
+  return `${payload.vendorName} 様\n`
+    + '━━━━━━━━━━━━━━━━━━━━━━\n'
+    + '🆕 新しい注文が届きました\n'
+    + '━━━━━━━━━━━━━━━━━━━━━━\n'
+    + `ご対応をお願いいたします（注文日時: ${formatOrderDate(payload.orderCreatedAt)}）\n\n`
+    + '📍 配送先\n'
     + `${formatShippingBlock(payload.shipping)}\n\n`
-    + '■ 注文内容\n'
-    + `${lineItemsBlock}\n`
-    + '────────────────────\n\n'
-    + '発送準備につきましては、ベンダー様用コンソールよりご対応をお願いいたします。\n'
-    + '▼管理画面はこちら\n'
+    + '🛒 注文内容\n'
+    + `${lineItemsBlock}\n\n`
+    + '🚪 ベンダーコンソール\n'
     + 'https://livapon-fullfillment-system.vercel.app/orders\n\n'
-    + 'お心当たりのない場合やご不明点がございましたら、\n'
-    + '運用担当またはLIVAPON事務局までご連絡ください。\n'
-    + '本メールは送信専用です。\n\n'
-    + '※本メールの受信有無は、ベンダープロフィール画面の通知設定からいつでもオン／オフを切り替えていただけます。\n\n'
-    + 'よろしくお願いいたします。\n'
-    + 'LIVAPON 事務局';
+    + '※本メールは送信専用です。\n'
+    + '設定から通知のオン／オフを切り替えられます。\n';
 }
 
 export async function sendVendorNewOrderEmail(payload: VendorNewOrderEmailPayload) {
   const text = buildEmailBody(payload);
   await sendEmail({
     to: payload.to,
-    subject: `【LIVAPON】新規注文のご連絡（注文番号：${payload.orderNumber}）`,
+    subject: '【LIVAPON】新しい注文のご案内',
     text
   });
 }

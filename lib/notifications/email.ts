@@ -6,7 +6,8 @@ const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 export type SendEmailPayload = {
   to: string | string[];
   subject: string;
-  text: string;
+  text?: string;
+  html?: string;
   fromName?: string;
 };
 
@@ -162,15 +163,44 @@ function buildMimeMessage(payload: SendEmailPayload, sender: string, fromName: s
     `To: ${formatRecipients(payload.to)}`,
     `Subject: ${encodeMimeHeader(payload.subject)}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
-    'Content-Transfer-Encoding: 8bit',
     `Date: ${new Date().toUTCString()}`
   ];
-  return `${headers.join('\r\n')}\r\n\r\n${payload.text.replace(/\r?\n/g, '\r\n')}`;
+
+  const normalizedText = payload.text?.replace(/\r?\n/g, '\r\n') ?? '';
+  const normalizedHtml = payload.html?.replace(/\r?\n/g, '\r\n');
+
+  if (normalizedHtml) {
+    const boundary = `mime_${Date.now().toString(16)}`;
+    headers.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+    const parts: string[] = [];
+    if (payload.text) {
+      parts.push(`--${boundary}`);
+      parts.push('Content-Type: text/plain; charset="UTF-8"');
+      parts.push('Content-Transfer-Encoding: 8bit');
+      parts.push('');
+      parts.push(normalizedText);
+      parts.push('');
+    }
+    parts.push(`--${boundary}`);
+    parts.push('Content-Type: text/html; charset="UTF-8"');
+    parts.push('Content-Transfer-Encoding: 8bit');
+    parts.push('');
+    parts.push(normalizedHtml);
+    parts.push('');
+    parts.push(`--${boundary}--`);
+    return `${headers.join('\r\n')}\r\n\r\n${parts.join('\r\n')}`;
+  }
+
+  headers.push('Content-Type: text/plain; charset="UTF-8"');
+  headers.push('Content-Transfer-Encoding: 8bit');
+  return `${headers.join('\r\n')}\r\n\r\n${normalizedText}`;
 }
 
 export async function sendEmail(payload: SendEmailPayload): Promise<void> {
   const config = getGmailConfig();
+  if (!payload.text && !payload.html) {
+    throw new GmailConfigError('Email payload must include text or html content');
+  }
   const accessToken = await fetchAccessToken(config);
   const defaultFromName = process.env.GMAIL_FROM_NAME ?? 'LIVAPON 事務局';
   const mime = buildMimeMessage(payload, config.sender, defaultFromName);

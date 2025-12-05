@@ -156,9 +156,9 @@ function formatRecipients(to: string | string[]): string {
   return Array.isArray(to) ? to.join(', ') : to;
 }
 
-function buildMimeMessage(payload: SendEmailPayload, sender: string): string {
+function buildMimeMessage(payload: SendEmailPayload, sender: string, fromName: string): string {
   const headers = [
-    `From: ${encodeMimeHeader(payload.fromName ?? 'LIVAPON 通知')} <${sender}>`,
+    `From: ${encodeMimeHeader(payload.fromName ?? fromName)} <${sender}>`,
     `To: ${formatRecipients(payload.to)}`,
     `Subject: ${encodeMimeHeader(payload.subject)}`,
     'MIME-Version: 1.0',
@@ -172,7 +172,8 @@ function buildMimeMessage(payload: SendEmailPayload, sender: string): string {
 export async function sendEmail(payload: SendEmailPayload): Promise<void> {
   const config = getGmailConfig();
   const accessToken = await fetchAccessToken(config);
-  const mime = buildMimeMessage(payload, config.sender);
+  const defaultFromName = process.env.GMAIL_FROM_NAME ?? 'LIVAPON 事務局';
+  const mime = buildMimeMessage(payload, config.sender, defaultFromName);
   const raw = base64UrlEncode(Buffer.from(mime, 'utf8'));
 
   const response = await fetch(

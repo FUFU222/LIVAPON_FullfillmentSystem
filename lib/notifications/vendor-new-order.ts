@@ -91,7 +91,7 @@ function escapeHtml(value: string | null | undefined): string {
 
 function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
   const assetBaseUrl = process.env.LIVAPON_ASSET_BASE_URL ?? 'https://livapon-fullfillment-system.vercel.app';
-  const logoUrl = `${assetBaseUrl}/LIVAPON_logo_horizontal.svg`;
+  const logoUrl = `${assetBaseUrl}/livapon-logo-horizontal-white.png`;
   const shippingParts = [
     payload.shipping.postalCode,
     payload.shipping.address1,

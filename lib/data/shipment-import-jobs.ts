@@ -115,13 +115,13 @@ export async function createShipmentImportJob(input: CreateJobInput): Promise<{ 
   return { jobId: job.id, totalCount: normalized.length };
 }
 
-export async function getShipmentImportJobSummary(jobId: number, context: SummaryContext): Promise<ShipmentJobSummary | null> {
+export async function getShipmentImportJob(jobId: number): Promise<ShipmentImportJob | null> {
   if (!Number.isInteger(jobId)) {
     return null;
   }
 
   const client = assertServiceClient();
-  const { data: job, error } = await client
+  const { data, error } = await client
     .from('shipment_import_jobs')
     .select('*')
     .eq('id', jobId)
@@ -131,6 +131,15 @@ export async function getShipmentImportJobSummary(jobId: number, context: Summar
     throw error;
   }
 
+  return data ?? null;
+}
+
+export async function getShipmentImportJobSummary(jobId: number, context: SummaryContext): Promise<ShipmentJobSummary | null> {
+  if (!Number.isInteger(jobId)) {
+    return null;
+  }
+
+  const job = await getShipmentImportJob(jobId);
   if (!job) {
     return null;
   }
@@ -139,6 +148,7 @@ export async function getShipmentImportJobSummary(jobId: number, context: Summar
     return null;
   }
 
+  const client = assertServiceClient();
   const { data: failures } = await client
     .from('shipment_import_job_items')
     .select('id, order_id, line_item_id, error_message')
@@ -160,6 +170,29 @@ export async function getShipmentImportJobSummary(jobId: number, context: Summar
     updatedAt: job.updated_at,
     recentFailures: failures ?? []
   };
+}
+
+export async function markShipmentJobRunning(job: ShipmentImportJob): Promise<ShipmentImportJob> {
+  const client = assertServiceClient();
+  const nowIso = new Date().toISOString();
+  const { data, error } = await client
+    .from('shipment_import_jobs')
+    .update({
+      status: 'running',
+      locked_at: nowIso,
+      last_attempt_at: nowIso,
+      attempts: (job.attempts ?? 0) + 1,
+      updated_at: nowIso
+    })
+    .eq('id', job.id)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Failed to mark shipment job as running');
+  }
+
+  return data;
 }
 
 export async function claimShipmentImportJobs(limit: number): Promise<ShipmentImportJob[]> {

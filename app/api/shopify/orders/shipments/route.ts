@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuthContext, assertAuthorizedVendor } from "@/lib/auth";
 import { type ShipmentSelection } from "@/lib/data/orders";
 import { createShipmentImportJob } from "@/lib/data/shipment-import-jobs";
+import { processShipmentImportJobById } from "@/lib/jobs/shipment-import-runner";
 
 type ShipmentRequestItem = {
   orderId: number;
@@ -52,6 +53,12 @@ export async function POST(request: Request) {
       carrier: carrier.trim(),
       selections: normalizedItems
     });
+
+    try {
+      await processShipmentImportJobById(job.jobId);
+    } catch (processError) {
+      console.error('Failed to process shipment job immediately', processError);
+    }
 
     return NextResponse.json({ ok: true, jobId: job.jobId, totalCount: job.totalCount }, { status: 202 });
   } catch (error) {

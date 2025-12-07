@@ -6,6 +6,8 @@ import {
   markJobItemsResult,
   updateShipmentJobProgress,
   countPendingJobItems,
+  getShipmentImportJob,
+  markShipmentJobRunning,
   type ShipmentImportJob,
   type ShipmentImportJobItem
 } from '@/lib/data/shipment-import-jobs';
@@ -52,6 +54,34 @@ export async function processShipmentImportJobs(options?: { jobLimit?: number; i
   }
 
   return summary;
+}
+
+export async function processShipmentImportJobById(jobId: number, options?: { itemLimit?: number }) {
+  const itemLimit = clamp(options?.itemLimit ?? DEFAULT_ITEM_LIMIT, 1, 100);
+  const job = await getShipmentImportJob(jobId);
+
+  if (!job) {
+    return {
+      jobId,
+      processed: 0,
+      failed: 0,
+      remaining: 0,
+      status: 'not_found'
+    };
+  }
+
+  if (job.status === 'succeeded' || job.status === 'failed') {
+    return {
+      jobId: job.id,
+      processed: job.processed_count,
+      failed: job.error_count,
+      remaining: job.total_count - job.processed_count - job.error_count,
+      status: job.status
+    };
+  }
+
+  const runningJob = await markShipmentJobRunning(job);
+  return handleSingleJob(runningJob, itemLimit);
 }
 
 async function handleSingleJob(job: ShipmentImportJob, itemLimit: number) {

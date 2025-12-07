@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderSummary } from "@/lib/data/orders";
@@ -29,6 +29,16 @@ type Props = {
   onRemoveOrder: (orderId: number) => void;
 };
 
+type ShipmentJobState = {
+  id: number;
+  status: string;
+  totalCount: number;
+  processedCount: number;
+  errorCount: number;
+  lastError: string | null;
+  recentFailures: Array<{ id: number; order_id: number | null; line_item_id: number | null; error_message: string | null }>;
+};
+
 export function OrdersDispatchPanel({
   orders,
   selectedLineItems,
@@ -51,6 +61,8 @@ export function OrdersDispatchPanel({
     carrier: string;
     items: Array<{ orderId: number; lineItemId: number; quantity: number }>;
   } | null>(null);
+  const [activeJob, setActiveJob] = useState<ShipmentJobState | null>(null);
+  const jobPollTimer = useRef<NodeJS.Timeout | null>(null);
 
   const selectedByOrder = useMemo(() => {
     const map = new Map<number, { order: OrderSummary; items: SelectedLineItem[] }>();
@@ -139,11 +151,15 @@ export function OrdersDispatchPanel({
         sendingToastRef.current = null;
       }
 
+      const result = (await response.json().catch(() => null)) as
+        | { jobId?: number; totalCount?: number }
+        | null;
+
       showToast({
-        variant: "success",
-        title: "発送登録が完了しました",
-        description: `${pendingShipment.items.length}件の明細を保存し、一覧に反映しました。`,
-        duration: 2500
+        variant: "info",
+        title: "発送ジョブを受け付けました",
+        description: "下部の進捗セクションで経過を確認できます。",
+        duration: 4000
       });
 
       onClearSelection();
@@ -152,9 +168,10 @@ export function OrdersDispatchPanel({
       setPendingShipment(null);
       setConfirmOpen(false);
       markOrdersAsRefreshed();
-      startRefresh(() => {
-        router.refresh();
-      });
+
+      if (result?.jobId) {
+        beginJobTracking(result.jobId, result.totalCount ?? pendingShipment.items.length);
+      }
     } catch (error) {
       console.error("Failed to submit shipment", error);
       if (sendingToastRef.current) {
@@ -170,6 +187,101 @@ export function OrdersDispatchPanel({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleJobCompletion = useCallback(
+    (job: ShipmentJobState) => {
+      if (job.status === 'succeeded') {
+        showToast({
+          variant: "success",
+          title: "発送登録が完了しました",
+          description: `${job.totalCount}件の明細が登録されました。`,
+          duration: 3000
+        });
+        startRefresh(() => {
+          router.refresh();
+        });
+      } else if (job.status === 'failed') {
+        showToast({
+          variant: "error",
+          title: "発送登録に失敗した明細があります",
+          description: job.lastError ?? "詳細は進捗セクションを確認してください。",
+          duration: 4000
+        });
+      }
+    },
+    [router, showToast, startRefresh]
+  );
+
+  const refreshJobStatus = useCallback(async (jobId: number) => {
+    const response = await fetch(`/api/shipment-jobs/${jobId}`, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error('ジョブ状態の取得に失敗しました');
+    }
+
+    const payload = (await response.json()) as { job?: ShipmentJobState };
+    if (!payload.job) {
+      throw new Error('ジョブ情報が見つかりません');
+    }
+    setActiveJob(payload.job);
+    if (isTerminalStatus(payload.job.status)) {
+      handleJobCompletion(payload.job);
+    }
+  }, [handleJobCompletion]);
+
+  const beginJobTracking = (jobId: number, totalCount: number) => {
+    setActiveJob({
+      id: jobId,
+      status: "pending",
+      totalCount,
+      processedCount: 0,
+      errorCount: 0,
+      lastError: null,
+      recentFailures: []
+    });
+    refreshJobStatus(jobId).catch((error) => {
+      console.error("Failed to refresh shipment job", error);
+    });
+  };
+
+  useEffect(() => {
+    if (!activeJob || isTerminalStatus(activeJob.status)) {
+      return () => undefined;
+    }
+
+    if (jobPollTimer.current) {
+      clearTimeout(jobPollTimer.current);
+    }
+
+    jobPollTimer.current = setTimeout(() => {
+      refreshJobStatus(activeJob.id).catch((error) => {
+        console.error("Failed to refresh shipment job", error);
+        showToast({
+          variant: "error",
+          title: "ジョブの確認に失敗しました",
+          description: error instanceof Error ? error.message : "サーバーエラーが発生しました。",
+          duration: 3000
+        });
+        setActiveJob(null);
+      });
+    }, 5000);
+
+    return () => {
+      if (jobPollTimer.current) {
+        clearTimeout(jobPollTimer.current);
+      }
+    };
+  }, [activeJob, refreshJobStatus, showToast]);
+
+  const dismissJobStatus = () => {
+    if (jobPollTimer.current) {
+      clearTimeout(jobPollTimer.current);
+    }
+    setActiveJob(null);
   };
 
   const previewItems = selectedLineItems.slice(0, 2);
@@ -188,7 +300,8 @@ export function OrdersDispatchPanel({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur">
+    <>
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1 text-sm text-slate-500">
@@ -276,6 +389,46 @@ export function OrdersDispatchPanel({
               )}
             </Button>
           </div>
+        </div>
+
+        {activeJob && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-semibold text-slate-900">発送ジョブ #{activeJob.id}</div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+                状態: {jobStatusLabel(activeJob.status)}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="px-2 py-1 text-xs"
+                  onClick={dismissJobStatus}
+                >
+                  閉じる
+                </Button>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-4 text-base">
+              <span>
+                進捗: {activeJob.processedCount} / {activeJob.totalCount} 件
+              </span>
+              <span className={activeJob.errorCount > 0 ? "text-red-600" : "text-slate-500"}>
+                失敗: {activeJob.errorCount} 件
+              </span>
+            </div>
+            {activeJob.recentFailures.length > 0 && (
+              <div className="mt-2 text-xs text-red-600">
+                最新の失敗:
+                <ul className="list-disc pl-4">
+                  {activeJob.recentFailures.map((failure) => (
+                    <li key={failure.id}>
+                      注文#{failure.order_id ?? '-'} / ライン {failure.line_item_id ?? '-'}: {failure.error_message ?? '理由不明'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
 
@@ -412,6 +565,23 @@ export function OrdersDispatchPanel({
           ))}
         </div>
       </Modal>
-    </div>
+    </>
   );
+}
+
+function isTerminalStatus(status: string) {
+  return status === 'succeeded' || status === 'failed';
+}
+
+function jobStatusLabel(status: string) {
+  switch (status) {
+    case 'succeeded':
+      return '完了';
+    case 'failed':
+      return '失敗';
+    case 'running':
+      return '処理中';
+    default:
+      return '待機中';
+  }
 }

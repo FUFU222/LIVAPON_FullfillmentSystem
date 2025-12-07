@@ -32,7 +32,7 @@ export default async function ShipmentAdjustmentPage() {
     return null;
   });
 
-  const supabase = getServerComponentClient();
+  const supabase = await getServerComponentClient();
   const { data: historyRows } = await supabase
     .from('shipment_adjustment_requests')
     .select(

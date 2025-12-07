@@ -20,7 +20,7 @@ export default async function VendorProfilePage() {
 
   assertAuthorizedVendor(auth.vendorId);
 
-  const supabase = getServerComponentClient();
+  const supabase = await getServerComponentClient();
   const { data: vendor, error } = await supabase
     .from('vendors')
     .select('name, code, contact_email, contact_name, contact_phone, notify_new_orders')

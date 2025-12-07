@@ -12,9 +12,10 @@ export {
   updateOrderStatus,
   cancelShipment,
   registerShipmentsFromSelections,
-  resyncPendingShipments
+  resyncPendingShipments,
+  prepareShipmentBatch
 } from './shipments';
-export type { ShipmentSelection, ShipmentResyncSummary } from './shipments';
+export type { ShipmentSelection, ShipmentResyncSummary, ShipmentBatchPlan } from './shipments';
 export {
   triggerShipmentResyncForShopifyOrder,
   syncFulfillmentOrderMetadata

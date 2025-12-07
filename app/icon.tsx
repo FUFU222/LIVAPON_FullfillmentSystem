@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { ImageResponse } from 'next/og';

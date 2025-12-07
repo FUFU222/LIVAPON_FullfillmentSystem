@@ -493,9 +493,6 @@ export function OrdersDispatchPanel({
                         {item.variantTitle ? (
                           <span className="text-[11px] text-slate-500">{item.variantTitle}</span>
                         ) : null}
-                        {item.sku ? (
-                          <span className="text-[11px] text-slate-400">SKU: {item.sku}</span>
-                        ) : null}
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right font-semibold text-foreground">{item.quantity}</td>

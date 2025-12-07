@@ -157,8 +157,8 @@ export function OrdersDispatchPanel({
 
       showToast({
         variant: "info",
-        title: "発送ジョブを受け付けました",
-        description: "下部の進捗セクションで経過を確認できます。",
+        title: "発送を登録しました",
+        description: "処理状況は画面下の進捗パネルで確認できます。",
         duration: 4000
       });
 

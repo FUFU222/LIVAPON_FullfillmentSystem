@@ -19,12 +19,15 @@ function safeRedirect(target: unknown): string {
   return target.length > 0 ? target : '/orders';
 }
 
+type SignInSearchParams = Promise<{ redirectTo?: string }> | undefined;
+
 export default async function SignInPage({
   searchParams
 }: {
-  searchParams: { redirectTo?: string };
+  searchParams?: SignInSearchParams;
 }) {
-  const redirectTo = safeRedirect(searchParams.redirectTo);
+  const resolvedParams = (await searchParams) ?? {};
+  const redirectTo = safeRedirect(resolvedParams.redirectTo);
   const auth = await getAuthContext();
 
   if (auth) {

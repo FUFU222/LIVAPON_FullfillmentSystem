@@ -135,6 +135,7 @@ async function fetchAccessToken(config: GmailConfig): Promise<string> {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    cache: 'no-store',
     body
   });
 
@@ -214,6 +215,7 @@ export async function sendEmail(payload: SendEmailPayload): Promise<void> {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
+      cache: 'no-store',
       body: JSON.stringify({ raw })
     }
   );

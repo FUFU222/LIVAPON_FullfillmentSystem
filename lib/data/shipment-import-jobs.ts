@@ -1,0 +1,295 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/supabase/types';
+import { getShopifyServiceClient } from '@/lib/shopify/service-client';
+import type { ShipmentSelection } from '@/lib/data/orders';
+
+export type ShipmentImportJob = Database['public']['Tables']['shipment_import_jobs']['Row'];
+export type ShipmentImportJobItem = Database['public']['Tables']['shipment_import_job_items']['Row'];
+
+export type ShipmentJobSummary = {
+  id: number;
+  status: string;
+  totalCount: number;
+  processedCount: number;
+  errorCount: number;
+  trackingNumber: string;
+  carrier: string;
+  lastError: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  recentFailures: Array<Pick<ShipmentImportJobItem, 'id' | 'order_id' | 'line_item_id' | 'error_message'>>;
+};
+
+type CreateJobInput = {
+  vendorId: number;
+  trackingNumber: string;
+  carrier: string;
+  selections: ShipmentSelection[];
+};
+
+type SummaryContext = {
+  vendorId: number | null;
+  isAdmin: boolean;
+};
+
+type JobProgressUpdate = {
+  processedDelta?: number;
+  errorDelta?: number;
+  status?: string;
+  lastError?: string | null;
+  unlock?: boolean;
+};
+
+type PendingItemsOptions = {
+  limit?: number;
+};
+
+function assertServiceClient(): SupabaseClient<Database> {
+  return getShopifyServiceClient();
+}
+
+function normalizeSelections(selections: ShipmentSelection[]): Array<{ orderId: number; lineItemId: number; quantity: number }> {
+  const map = new Map<string, { orderId: number; lineItemId: number; quantity: number }>();
+
+  selections.forEach((selection) => {
+    const orderId = Number(selection.orderId);
+    const lineItemId = Number(selection.lineItemId);
+    if (!Number.isInteger(orderId) || !Number.isInteger(lineItemId)) {
+      return;
+    }
+    const requested = typeof selection.quantity === 'number' && selection.quantity > 0
+      ? Math.floor(selection.quantity)
+      : 1;
+    const quantity = Math.max(1, Math.min(requested, 9999));
+    const key = `${orderId}:${lineItemId}`;
+    map.set(key, { orderId, lineItemId, quantity });
+  });
+
+  return Array.from(map.values());
+}
+
+export async function createShipmentImportJob(input: CreateJobInput): Promise<{ jobId: number; totalCount: number }> {
+  if (!Number.isInteger(input.vendorId)) {
+    throw new Error('A valid vendorId is required to create shipment jobs');
+  }
+
+  const normalized = normalizeSelections(input.selections);
+  if (normalized.length === 0) {
+    throw new Error('発送できる明細が見つかりませんでした');
+  }
+
+  const client = assertServiceClient();
+  const { data: job, error } = await client
+    .from('shipment_import_jobs')
+    .insert({
+      vendor_id: input.vendorId,
+      tracking_number: input.trackingNumber,
+      carrier: input.carrier,
+      status: 'pending',
+      total_count: normalized.length,
+      processed_count: 0,
+      error_count: 0
+    })
+    .select('id')
+    .single();
+
+  if (error || !job) {
+    throw error || new Error('Failed to create shipment import job');
+  }
+
+  const jobItems = normalized.map((selection) => ({
+    job_id: job.id,
+    vendor_id: input.vendorId,
+    order_id: selection.orderId,
+    line_item_id: selection.lineItemId,
+    quantity: selection.quantity,
+    status: 'pending'
+  } satisfies Database['public']['Tables']['shipment_import_job_items']['Insert']));
+
+  const { error: itemsError } = await client.from('shipment_import_job_items').insert(jobItems);
+  if (itemsError) {
+    await client.from('shipment_import_jobs').delete().eq('id', job.id);
+    throw itemsError;
+  }
+
+  return { jobId: job.id, totalCount: normalized.length };
+}
+
+export async function getShipmentImportJobSummary(jobId: number, context: SummaryContext): Promise<ShipmentJobSummary | null> {
+  if (!Number.isInteger(jobId)) {
+    return null;
+  }
+
+  const client = assertServiceClient();
+  const { data: job, error } = await client
+    .from('shipment_import_jobs')
+    .select('*')
+    .eq('id', jobId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!job) {
+    return null;
+  }
+
+  if (!context.isAdmin && job.vendor_id !== context.vendorId) {
+    return null;
+  }
+
+  const { data: failures } = await client
+    .from('shipment_import_job_items')
+    .select('id, order_id, line_item_id, error_message')
+    .eq('job_id', job.id)
+    .eq('status', 'failed')
+    .order('updated_at', { ascending: false, nullsFirst: false })
+    .limit(5);
+
+  return {
+    id: job.id,
+    status: job.status,
+    totalCount: job.total_count,
+    processedCount: job.processed_count,
+    errorCount: job.error_count,
+    trackingNumber: job.tracking_number,
+    carrier: job.carrier,
+    lastError: job.last_error,
+    createdAt: job.created_at,
+    updatedAt: job.updated_at,
+    recentFailures: failures ?? []
+  };
+}
+
+export async function claimShipmentImportJobs(limit: number): Promise<ShipmentImportJob[]> {
+  const client = assertServiceClient();
+  const batchLimit = Math.max(1, Math.min(limit, 5));
+  const { data, error } = await client.rpc('claim_pending_shipment_import_jobs', {
+    job_limit: batchLimit
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function loadPendingJobItems(jobId: number, options?: PendingItemsOptions): Promise<ShipmentImportJobItem[]> {
+  const client = assertServiceClient();
+  const limit = Math.max(1, Math.min(options?.limit ?? 50, 200));
+  const { data, error } = await client
+    .from('shipment_import_job_items')
+    .select('*')
+    .eq('job_id', jobId)
+    .eq('status', 'pending')
+    .order('id', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function incrementJobItemAttempts(items: ShipmentImportJobItem[]): Promise<void> {
+  if (!items.length) {
+    return;
+  }
+  const client = assertServiceClient();
+  const nowIso = new Date().toISOString();
+  await Promise.all(
+    items.map((item) =>
+      client
+        .from('shipment_import_job_items')
+        .update({
+          attempts: (item.attempts ?? 0) + 1,
+          last_attempt_at: nowIso,
+          updated_at: nowIso
+        })
+        .eq('id', item.id)
+    )
+  );
+}
+
+export async function markJobItemsResult(
+  jobItemIds: number[],
+  status: 'succeeded' | 'failed',
+  options?: { errorMessage?: string | null }
+) {
+  if (!jobItemIds.length) {
+    return;
+  }
+
+  const client = assertServiceClient();
+  const nowIso = new Date().toISOString();
+  const payload: Partial<ShipmentImportJobItem> = {
+    status,
+    error_message: status === 'failed' ? options?.errorMessage ?? null : null,
+    updated_at: nowIso
+  } as Partial<ShipmentImportJobItem>;
+
+  const { error } = await client
+    .from('shipment_import_job_items')
+    .update(payload)
+    .in('id', jobItemIds);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateShipmentJobProgress(job: ShipmentImportJob, update: JobProgressUpdate): Promise<ShipmentImportJob> {
+  const client = assertServiceClient();
+  const nowIso = new Date().toISOString();
+  const processed = job.processed_count + (update.processedDelta ?? 0);
+  const errors = job.error_count + (update.errorDelta ?? 0);
+
+  const payload: Partial<ShipmentImportJob> = {
+    processed_count: processed,
+    error_count: errors,
+    updated_at: nowIso
+  };
+
+  if (update.status) {
+    payload.status = update.status;
+  }
+
+  if (update.lastError !== undefined) {
+    payload.last_error = update.lastError;
+  }
+
+  if (update.unlock) {
+    payload.locked_at = null;
+  }
+
+  const { data, error } = await client
+    .from('shipment_import_jobs')
+    .update(payload)
+    .eq('id', job.id)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error || new Error('Failed to update shipment job progress');
+  }
+
+  return data;
+}
+
+export async function countPendingJobItems(jobId: number): Promise<number> {
+  const client = assertServiceClient();
+  const { count, error } = await client
+    .from('shipment_import_job_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('job_id', jobId)
+    .eq('status', 'pending');
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}

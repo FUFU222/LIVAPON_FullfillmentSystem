@@ -349,6 +349,139 @@ export type Database = {
           },
         ]
       }
+      shipment_import_job_items: {
+        Row: {
+          attempts: number
+          created_at: string | null
+          error_message: string | null
+          id: number
+          job_id: number
+          last_attempt_at: string | null
+          line_item_id: number | null
+          order_id: number | null
+          quantity: number
+          status: string
+          updated_at: string | null
+          vendor_id: number | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          job_id: number
+          last_attempt_at?: string | null
+          line_item_id?: number | null
+          order_id?: number | null
+          quantity?: number
+          status?: string
+          updated_at?: string | null
+          vendor_id?: number | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          job_id?: number
+          last_attempt_at?: string | null
+          line_item_id?: number | null
+          order_id?: number | null
+          quantity?: number
+          status?: string
+          updated_at?: string | null
+          vendor_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_import_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_import_job_items_line_item_id_fkey"
+            columns: ["line_item_id"]
+            isOneToOne: false
+            referencedRelation: "line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_import_job_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_import_job_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_import_jobs: {
+        Row: {
+          attempts: number
+          carrier: string
+          created_at: string | null
+          error_count: number
+          id: number
+          locked_at: string | null
+          last_attempt_at: string | null
+          last_error: string | null
+          processed_count: number
+          status: string
+          total_count: number
+          tracking_number: string
+          updated_at: string | null
+          vendor_id: number | null
+        }
+        Insert: {
+          attempts?: number
+          carrier: string
+          created_at?: string | null
+          error_count?: number
+          id?: number
+          locked_at?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          processed_count?: number
+          status?: string
+          total_count?: number
+          tracking_number: string
+          updated_at?: string | null
+          vendor_id?: number | null
+        }
+        Update: {
+          attempts?: number
+          carrier?: string
+          created_at?: string | null
+          error_count?: number
+          id?: number
+          locked_at?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          processed_count?: number
+          status?: string
+          total_count?: number
+          tracking_number?: string
+          updated_at?: string | null
+          vendor_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_import_jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipment_adjustment_requests: {
         Row: {
           contact_email: string | null
@@ -895,6 +1028,12 @@ export type Database = {
           batch_limit?: number | null
         }
         Returns: Database['public']['Tables']['webhook_jobs']['Row'][]
+      }
+      claim_pending_shipment_import_jobs: {
+        Args: {
+          job_limit?: number | null
+        }
+        Returns: Database['public']['Tables']['shipment_import_jobs']['Row'][]
       }
       sync_order_line_items: {
         Args: {

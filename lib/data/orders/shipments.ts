@@ -15,6 +15,12 @@ export type ShipmentSelection = {
   quantity?: number | null;
 };
 
+export type ShipmentBatchPlan = {
+  orderId: number;
+  lineItemIds: number[];
+  lineItemQuantities: Record<number, number>;
+};
+
 export type ShipmentResyncSummary = {
   total: number;
   succeeded: number;
@@ -94,37 +100,14 @@ export async function registerShipmentsFromSelections(
   const processedOrders: number[] = [];
 
   for (const [orderId, orderSelections] of grouped.entries()) {
-    const lineItemIds = orderSelections.map((selection) => selection.lineItemId);
-
-    const loadLineItems = async () => {
-      const { data, error } = await client
-        .from('line_items')
-        .select(
-          'id, vendor_id, order_id, quantity, fulfilled_quantity, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id'
-        )
-        .eq('order_id', orderId)
-        .eq('vendor_id', vendorId)
-        .in('id', lineItemIds);
-
-      if (error) {
-        throw error;
-      }
-
-      return data ?? [];
-    };
-
-    let lineItems = await loadLineItems();
-
-    if (!lineItems || lineItems.length === 0) {
-      continue;
-    }
+    let plan: ShipmentBatchPlan | null = null;
 
     try {
-      lineItems = await ensureFulfillmentOrderIsActive({
-        client,
+      plan = await prepareShipmentBatch({
+        vendorId,
         orderId,
-        lineItems,
-        loadLineItems
+        selections: orderSelections,
+        client
       });
     } catch (error) {
       console.warn('Fulfillment order closed during bulk shipment registration', {
@@ -134,46 +117,14 @@ export async function registerShipmentsFromSelections(
       throw error;
     }
 
-    const metadata = new Map<number, { quantity: number; fulfilled: number; fulfillable: number | null }>();
-    lineItems.forEach((item) => {
-      metadata.set(item.id, {
-        quantity: item.quantity ?? 0,
-        fulfilled: item.fulfilled_quantity ?? 0,
-        fulfillable: item.fulfillable_quantity ?? null
-      });
-    });
-
-    const quantityMap: Record<number, number> = {};
-    orderSelections.forEach((selection) => {
-      const info = metadata.get(selection.lineItemId);
-      if (!info) {
-        return;
-      }
-      const available = typeof info.fulfillable === 'number'
-        ? Math.max(info.fulfillable, 0)
-        : Math.max(info.quantity - info.fulfilled, 0);
-
-      if (available <= 0) {
-        return;
-      }
-
-      const requested = typeof selection.quantity === 'number' && selection.quantity > 0
-        ? Math.floor(selection.quantity)
-        : available;
-
-      quantityMap[selection.lineItemId] = Math.max(1, Math.min(available, requested));
-    });
-
-    const selectedLineItemIds = Object.keys(quantityMap).map((id) => Number(id));
-
-    if (selectedLineItemIds.length === 0) {
+    if (!plan) {
       continue;
     }
 
     await upsertShipment(
       {
-        lineItemIds: selectedLineItemIds,
-        lineItemQuantities: quantityMap,
+        lineItemIds: plan.lineItemIds,
+        lineItemQuantities: plan.lineItemQuantities,
         trackingNumber: options.trackingNumber,
         carrier: options.carrier,
         status: 'shipped'
@@ -189,6 +140,98 @@ export async function registerShipmentsFromSelections(
   }
 
   return processedOrders;
+}
+
+export async function prepareShipmentBatch(options: {
+  vendorId: number;
+  orderId: number;
+  selections: ShipmentSelection[];
+  client?: SupabaseClient<Database>;
+}): Promise<ShipmentBatchPlan | null> {
+  const { vendorId, orderId, selections } = options;
+  if (!Number.isInteger(vendorId) || !Number.isInteger(orderId)) {
+    return null;
+  }
+
+  const client = options.client ?? assertServiceClient();
+  const lineItemIds = selections
+    .map((selection) => selection.lineItemId)
+    .filter((id) => Number.isInteger(id)) as number[];
+
+  if (lineItemIds.length === 0) {
+    return null;
+  }
+
+  const loadLineItems = async () => {
+    const { data, error } = await client
+      .from('line_items')
+      .select(
+        'id, vendor_id, order_id, quantity, fulfilled_quantity, fulfillable_quantity, fulfillment_order_line_item_id, shopify_line_item_id'
+      )
+      .eq('order_id', orderId)
+      .eq('vendor_id', vendorId)
+      .in('id', lineItemIds);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
+  };
+
+  let lineItems = await loadLineItems();
+
+  if (!lineItems || lineItems.length === 0) {
+    return null;
+  }
+
+  lineItems = await ensureFulfillmentOrderIsActive({
+    client,
+    orderId,
+    lineItems,
+    loadLineItems
+  });
+
+  const metadata = new Map<number, { quantity: number; fulfilled: number; fulfillable: number | null }>();
+  lineItems.forEach((item) => {
+    metadata.set(item.id, {
+      quantity: item.quantity ?? 0,
+      fulfilled: item.fulfilled_quantity ?? 0,
+      fulfillable: item.fulfillable_quantity ?? null
+    });
+  });
+
+  const quantityMap: Record<number, number> = {};
+  selections.forEach((selection) => {
+    const info = metadata.get(selection.lineItemId);
+    if (!info) {
+      return;
+    }
+    const available = typeof info.fulfillable === 'number'
+      ? Math.max(info.fulfillable, 0)
+      : Math.max(info.quantity - info.fulfilled, 0);
+
+    if (available <= 0) {
+      return;
+    }
+
+    const requested = typeof selection.quantity === 'number' && selection.quantity > 0
+      ? Math.floor(selection.quantity)
+      : available;
+
+    quantityMap[selection.lineItemId] = Math.max(1, Math.min(available, requested));
+  });
+
+  const selectedLineItemIds = Object.keys(quantityMap).map((id) => Number(id));
+  if (selectedLineItemIds.length === 0) {
+    return null;
+  }
+
+  return {
+    orderId,
+    lineItemIds: selectedLineItemIds,
+    lineItemQuantities: quantityMap
+  } satisfies ShipmentBatchPlan;
 }
 
 export async function upsertShipment(

@@ -66,7 +66,7 @@ function resolveRole(user: User | null): string | null {
 }
 
 export async function getAuthContext(): Promise<AuthContext | null> {
-  const supabase = getServerComponentClient();
+  const supabase = await getServerComponentClient();
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
   if (sessionError) {

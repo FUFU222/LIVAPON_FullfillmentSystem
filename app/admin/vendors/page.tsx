@@ -5,11 +5,14 @@ import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getVendors, type VendorListEntry } from '@/lib/data/vendors';
 import { VendorBulkDeleteForm } from '@/components/admin/vendor-bulk-delete-form';
 
+type AdminVendorsSearchParams = { status?: string; error?: string };
+
 export default async function AdminVendorsPage({
   searchParams
 }: {
-  searchParams?: { status?: string; error?: string };
+  searchParams?: Promise<AdminVendorsSearchParams>;
 }) {
+  const resolvedParams = (await searchParams) ?? {};
   const auth = await getAuthContext();
 
   if (!auth) {
@@ -30,8 +33,8 @@ export default async function AdminVendorsPage({
     hasError = true;
   }
 
-  const statusMessage = searchParams?.status === 'deleted' ? 'ベンダーを削除しました。' : null;
-  const errorMessage = typeof searchParams?.error === 'string' ? searchParams.error : null;
+  const statusMessage = resolvedParams.status === 'deleted' ? 'ベンダーを削除しました。' : null;
+  const errorMessage = typeof resolvedParams.error === 'string' ? resolvedParams.error : null;
 
   return (
     <Card>

@@ -90,7 +90,7 @@ export async function submitShipmentAdjustmentRequest(
   const auth = await requireAuthContext();
   assertAuthorizedVendor(auth.vendorId);
 
-  const supabase = getServerActionClient();
+  const supabase = await getServerActionClient();
 
   let orderId: number | null = null;
   let shopifyOrderId: number | null = null;

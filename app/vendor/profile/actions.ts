@@ -85,7 +85,7 @@ export async function updateVendorProfileAction(
   const auth = await requireAuthContext();
   assertAuthorizedVendor(auth.vendorId);
 
-  const supabase = getServerActionClient();
+  const supabase = await getServerActionClient();
 
   const { error: vendorUpdateError } = await supabase
     .from('vendors')

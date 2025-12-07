@@ -151,6 +151,38 @@ CREATE TABLE shipment_line_items (
   PRIMARY KEY (shipment_id, line_item_id)
 );
 
+CREATE TABLE shipment_import_jobs (
+  id BIGSERIAL PRIMARY KEY,
+  vendor_id INT REFERENCES vendors(id),
+  tracking_number VARCHAR(200) NOT NULL,
+  carrier VARCHAR(100) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  total_count INT NOT NULL DEFAULT 0,
+  processed_count INT NOT NULL DEFAULT 0,
+  error_count INT NOT NULL DEFAULT 0,
+  last_error TEXT,
+  attempts INT NOT NULL DEFAULT 0,
+  locked_at TIMESTAMPTZ,
+  last_attempt_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE shipment_import_job_items (
+  id BIGSERIAL PRIMARY KEY,
+  job_id BIGINT REFERENCES shipment_import_jobs(id) ON DELETE CASCADE,
+  vendor_id INT REFERENCES vendors(id),
+  order_id INT REFERENCES orders(id) ON DELETE SET NULL,
+  line_item_id INT REFERENCES line_items(id) ON DELETE SET NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  error_message TEXT,
+  attempts INT NOT NULL DEFAULT 0,
+  last_attempt_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE shipment_adjustment_requests (
   id SERIAL PRIMARY KEY,
   vendor_id INT REFERENCES vendors(id) ON DELETE CASCADE,
@@ -208,6 +240,12 @@ CREATE INDEX idx_vendor_applications_status ON vendor_applications(status);
 CREATE INDEX idx_vendor_applications_vendor_code ON vendor_applications(vendor_code);
 CREATE INDEX idx_shipments_vendor_id ON shipments(vendor_id);
 CREATE INDEX idx_shipment_line_items_line_item_id ON shipment_line_items(line_item_id);
+CREATE INDEX idx_shipment_import_jobs_vendor_id ON shipment_import_jobs(vendor_id);
+CREATE INDEX idx_shipment_import_jobs_status ON shipment_import_jobs(status);
+CREATE INDEX idx_shipment_import_jobs_created_at ON shipment_import_jobs(created_at);
+CREATE INDEX idx_shipment_import_job_items_job_id ON shipment_import_job_items(job_id);
+CREATE INDEX idx_shipment_import_job_items_vendor_id ON shipment_import_job_items(vendor_id);
+CREATE INDEX idx_shipment_import_job_items_status ON shipment_import_job_items(status);
 CREATE INDEX idx_orders_shop_domain ON orders(shop_domain);
 CREATE INDEX idx_orders_shopify_fo_id ON orders(shopify_fulfillment_order_id);
 CREATE INDEX idx_line_items_fo_line_item_id ON line_items(fulfillment_order_line_item_id);
@@ -225,6 +263,8 @@ CREATE INDEX idx_shipment_adjustment_comments_vendor_id ON shipment_adjustment_c
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipment_import_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipment_import_job_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_vendor_segments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_comments ENABLE ROW LEVEL SECURITY;
@@ -301,6 +341,44 @@ CREATE POLICY "ShipmentAdjustmentCommentsVendorReadable" ON shipment_adjustment_
   FOR SELECT USING (
     vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
     AND LOWER(COALESCE(NULLIF(visibility, ''), 'vendor')) <> 'internal'
+  );
+
+DROP POLICY IF EXISTS "ShipmentImportJobsVendorReadable" ON shipment_import_jobs;
+CREATE POLICY "ShipmentImportJobsVendorReadable" ON shipment_import_jobs
+  FOR SELECT USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "ShipmentImportJobsVendorModify" ON shipment_import_jobs;
+CREATE POLICY "ShipmentImportJobsVendorModify" ON shipment_import_jobs
+  FOR INSERT WITH CHECK (
+    vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "ShipmentImportJobsAdminAll" ON shipment_import_jobs;
+CREATE POLICY "ShipmentImportJobsAdminAll" ON shipment_import_jobs
+  FOR ALL USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  )
+  WITH CHECK (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  );
+
+DROP POLICY IF EXISTS "ShipmentImportJobItemsVendorReadable" ON shipment_import_job_items;
+CREATE POLICY "ShipmentImportJobItemsVendorReadable" ON shipment_import_job_items
+  FOR SELECT USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "ShipmentImportJobItemsAdminAll" ON shipment_import_job_items;
+CREATE POLICY "ShipmentImportJobItemsAdminAll" ON shipment_import_job_items
+  FOR ALL USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  )
+  WITH CHECK (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
   );
 
 ALTER TABLE orders REPLICA IDENTITY FULL;
@@ -597,6 +675,35 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION public.claim_pending_shipment_import_jobs(job_limit integer DEFAULT 1)
+RETURNS SETOF shipment_import_jobs
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  limit_value integer;
+BEGIN
+  limit_value := GREATEST(1, LEAST(COALESCE(job_limit, 1), 10));
+
+  RETURN QUERY
+    WITH cte AS (
+      SELECT id
+      FROM shipment_import_jobs
+      WHERE status = 'pending'
+      ORDER BY created_at
+      LIMIT limit_value
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE shipment_import_jobs
+    SET status = 'running',
+        locked_at = NOW(),
+        attempts = attempts + 1,
+        last_attempt_at = NOW(),
+        updated_at = NOW()
+    WHERE id IN (SELECT id FROM cte)
+    RETURNING *;
+END;
+$$;
 ALTER TABLE webhook_jobs
   ADD CONSTRAINT webhook_jobs_webhook_id_unique UNIQUE (webhook_id)
   DEFERRABLE INITIALLY DEFERRED;

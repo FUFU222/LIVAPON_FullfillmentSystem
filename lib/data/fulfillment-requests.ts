@@ -135,7 +135,8 @@ async function fetchShopifyOrderPayload(shopDomain: string, orderId: number) {
     headers: {
       Accept: 'application/json',
       'X-Shopify-Access-Token': accessToken
-    }
+    },
+    cache: 'no-store'
   });
 
   if (!response.ok) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuthContext, assertAuthorizedVendor } from "@/lib/auth";
-import { registerShipmentsFromSelections, type ShipmentSelection } from "@/lib/data/orders";
+import { type ShipmentSelection } from "@/lib/data/orders";
+import { createShipmentImportJob } from "@/lib/data/shipment-import-jobs";
 
 type ShipmentRequestItem = {
   orderId: number;
@@ -45,22 +46,28 @@ export async function POST(request: Request) {
   }));
 
   try {
-    const processedOrders = await registerShipmentsFromSelections(normalizedItems, auth.vendorId, {
+    const job = await createShipmentImportJob({
+      vendorId: auth.vendorId,
       trackingNumber: trackingNumber.trim(),
-      carrier: carrier.trim()
+      carrier: carrier.trim(),
+      selections: normalizedItems
     });
 
-    return NextResponse.json({ ok: true, processedOrders }, { status: 200 });
+    return NextResponse.json({ ok: true, jobId: job.jobId, totalCount: job.totalCount }, { status: 202 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'failed';
-    const isClientError =
-      message === 'line item selections are required' ||
-      message === '発送できる明細が見つかりませんでした';
+    const isClientError = clientErrorMessages.has(message);
 
     if (!isClientError) {
-      console.error("Failed to create bulk shipment", error);
+      console.error("Failed to enqueue shipment import job", error);
     }
 
     return NextResponse.json({ error: message }, { status: isClientError ? 400 : 500 });
   }
 }
+
+const clientErrorMessages = new Set([
+  'line item selections are required',
+  '発送できる明細が見つかりませんでした',
+  'A valid vendorId is required to create shipment jobs'
+]);

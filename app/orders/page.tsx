@@ -13,9 +13,11 @@ import { getAuthContext } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 type SearchParams = { [key: string]: string | string[] | undefined };
+type SearchParamsInput = Promise<SearchParams> | undefined;
 
-export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
-  const redirectTarget = buildRedirectTarget(searchParams);
+export default async function OrdersPage({ searchParams }: { searchParams?: SearchParamsInput }) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const redirectTarget = buildRedirectTarget(resolvedSearchParams);
   const auth = await getAuthContext();
 
   if (!auth) {
@@ -31,10 +33,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   }
 
   const params = {
-    q: Array.isArray(searchParams.q) ? searchParams.q[0] : searchParams.q,
-    status: Array.isArray(searchParams.status) ? searchParams.status[0] : searchParams.status
+    q: Array.isArray(resolvedSearchParams.q) ? resolvedSearchParams.q[0] : resolvedSearchParams.q,
+    status: Array.isArray(resolvedSearchParams.status) ? resolvedSearchParams.status[0] : resolvedSearchParams.status
   };
-  const pageParam = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  const pageParam = Array.isArray(resolvedSearchParams.page)
+    ? resolvedSearchParams.page[0]
+    : resolvedSearchParams.page;
   const requestedPage = Number(pageParam ?? '1');
   const PAGE_SIZE = 20;
 

@@ -13,9 +13,9 @@ function ensureEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_ANON
 
 type CookieWriteMode = 'allow-write' | 'read-only';
 
-function createServerSupabaseClient(mode: CookieWriteMode): SupabaseClient<Database> {
-  const cookieStore = cookies();
-  type CookieSetterOptions = Parameters<typeof cookieStore.set>[2];
+async function createServerSupabaseClient(mode: CookieWriteMode): Promise<SupabaseClient<Database>> {
+  const cookieStore = await cookies();
+  type CookieSetterOptions = Parameters<(typeof cookieStore)['set']>[2];
   const url = ensureEnv('NEXT_PUBLIC_SUPABASE_URL');
   const anonKey = ensureEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
@@ -43,10 +43,10 @@ function createServerSupabaseClient(mode: CookieWriteMode): SupabaseClient<Datab
   });
 }
 
-export function getServerComponentClient(): SupabaseClient<Database> {
+export function getServerComponentClient(): Promise<SupabaseClient<Database>> {
   return createServerSupabaseClient('read-only');
 }
 
-export function getServerActionClient(): SupabaseClient<Database> {
+export function getServerActionClient(): Promise<SupabaseClient<Database>> {
   return createServerSupabaseClient('allow-write');
 }

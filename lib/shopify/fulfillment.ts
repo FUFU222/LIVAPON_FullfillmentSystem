@@ -75,7 +75,8 @@ async function shopifyRequest<T>(
       'X-Shopify-Access-Token': accessToken,
       Accept: 'application/json',
       ...(init?.headers ?? {})
-    }
+    },
+    cache: 'no-store'
   });
 
   if (!response.ok) {

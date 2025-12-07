@@ -37,7 +37,7 @@ export async function submitVendorApplication(
   }
 
   try {
-    const supabase = getServerActionClient();
+    const supabase = await getServerActionClient();
 
     const signUpResult = await supabase.auth.signUp({
       email: contactEmail,

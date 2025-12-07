@@ -54,6 +54,7 @@ export async function exchangeAccessToken(shop: string, code: string) {
     headers: {
       'Content-Type': 'application/json'
     },
+    cache: 'no-store',
     body: JSON.stringify({
       client_id: apiKey,
       client_secret: apiSecret,

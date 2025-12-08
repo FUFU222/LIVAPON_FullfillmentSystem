@@ -54,6 +54,7 @@ export function OrdersDispatchPanel({
   const [trackingNumber, setTrackingNumber] = useState("");
   const [carrier, setCarrier] = useState(carrierOptions[0]?.value ?? "");
   const [isSubmitting, setSubmitting] = useState(false);
+  const trackingInputRef = useRef<HTMLInputElement | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingShipment, setPendingShipment] = useState<{
@@ -292,8 +293,13 @@ export function OrdersDispatchPanel({
       setDetailOpen(false);
       setConfirmOpen(false);
       setPendingShipment(null);
+      return;
     }
-  }, [selectedLineItems.length]);
+
+    if (!isSubmitting) {
+      trackingInputRef.current?.focus();
+    }
+  }, [selectedLineItems.length, isSubmitting]);
 
   if (selectedLineItems.length === 0) {
     return null;
@@ -362,6 +368,7 @@ export function OrdersDispatchPanel({
           <div className="flex basis-full flex-col gap-1 sm:basis-2/3">
             <label className="text-xs font-medium text-foreground">追跡番号</label>
             <Input
+              ref={trackingInputRef}
               value={trackingNumber}
               onChange={(event) => setTrackingNumber(event.target.value)}
               placeholder="YT123456789JP"

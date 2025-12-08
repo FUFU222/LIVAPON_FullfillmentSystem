@@ -307,9 +307,9 @@ export function OrdersDispatchPanel({
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="pointer-events-none fixed bottom-4 left-0 right-0 z-40 flex justify-center px-4">
+        <div className="pointer-events-auto w-full max-w-3xl rounded-2xl border border-slate-200 bg-white/95 px-5 py-4 shadow-xl backdrop-blur">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1 text-sm text-slate-500">
             <span className="text-xs uppercase text-slate-400">選択中</span>
             <div className="flex items-center gap-2">

@@ -46,8 +46,8 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     }
     toastIdRef.current = showToast({
       id: "orders-realtime-pending",
-      title: "新しい更新があります",
-      description: `注文 ${pendingCount}件`,
+      title: "新しい注文が届きました",
+      description: `更新が必要な注文が ${pendingCount}件あります。`,
       duration: Infinity,
       variant: "info",
       action: {
@@ -91,7 +91,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     if (!isRefreshing && refreshPendingRef.current) {
       refreshPendingRef.current = false;
       showToast({
-        title: "注文一覧を更新しました",
+        title: "注文一覧を最新の状態にしました",
         variant: "success",
         duration: 2000
       });

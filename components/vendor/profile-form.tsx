@@ -33,13 +33,19 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
 
   useEffect(() => {
     if (state.status === 'success' && state.message) {
-      showToast({ variant: 'success', title: state.message });
+      showToast({
+        variant: 'success',
+        title: 'ベンダー情報を保存しました。最新の内容が反映されています。'
+      });
       formRef.current?.reset();
       router.refresh();
     }
 
     if (state.status === 'error' && state.message) {
-      showToast({ variant: 'error', title: state.message });
+      showToast({
+        variant: 'error',
+        title: '保存に失敗しました。時間を置いて再度お試しください。'
+      });
     }
   }, [router, showToast, state.message, state.status]);
 

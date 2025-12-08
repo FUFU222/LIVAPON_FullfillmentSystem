@@ -83,8 +83,8 @@ export function OrdersDispatchPanel({
     if (!trackingNumber.trim()) {
       showToast({
         variant: "warning",
-        title: "追跡番号を入力してください",
-        description: "発送登録には追跡番号が必要です。",
+        title: "追跡番号が入力されていません",
+        description: "入力のうえで登録してください。",
         duration: 2500
       });
       return;
@@ -96,8 +96,8 @@ export function OrdersDispatchPanel({
     if (invalidItem) {
       showToast({
         variant: "warning",
-        title: "出荷数量を確認してください",
-        description: `${invalidItem.productName} の数量が不正です。1〜${invalidItem.availableQuantity}の範囲にしてください。`,
+        title: "数量をご確認ください",
+        description: `${invalidItem.productName} は 1〜${invalidItem.availableQuantity} の範囲で入力できます。`,
         duration: 3000
       });
       return;
@@ -125,8 +125,8 @@ export function OrdersDispatchPanel({
     setSubmitting(true);
     const infoToastId = showToast({
       variant: "info",
-      title: "発送情報を送信しています…",
-      description: "システムと同期が完了するまでお待ちください。",
+      title: "発送情報を登録しています",
+      description: "完了までお待ちください。",
       duration: Infinity
     });
     sendingToastRef.current = infoToastId;
@@ -158,8 +158,8 @@ export function OrdersDispatchPanel({
 
       showToast({
         variant: "info",
-        title: "発送を登録しました",
-        description: "処理状況は画面下の進捗パネルで確認できます。",
+        title: "発送情報を受け付けました",
+        description: "続きの処理を行っています。",
         duration: 4000
       });
 
@@ -196,7 +196,7 @@ export function OrdersDispatchPanel({
         showToast({
           variant: "success",
           title: "発送登録が完了しました",
-          description: `${job.totalCount}件の明細が登録されました。`,
+          description: `${job.totalCount}件の発送が反映されました。`,
           duration: 3000
         });
         startRefresh(() => {
@@ -205,8 +205,8 @@ export function OrdersDispatchPanel({
       } else if (job.status === 'failed') {
         showToast({
           variant: "error",
-          title: "発送登録に失敗した明細があります",
-          description: job.lastError ?? "詳細は進捗セクションを確認してください。",
+          title: "一部の発送が登録できませんでした",
+          description: job.lastError ?? "画面下の詳細をご確認ください。",
           duration: 4000
         });
       }
@@ -263,8 +263,8 @@ export function OrdersDispatchPanel({
         console.error("Failed to refresh shipment job", error);
         showToast({
           variant: "error",
-          title: "ジョブの確認に失敗しました",
-          description: error instanceof Error ? error.message : "サーバーエラーが発生しました。",
+          title: "処理状況を取得できませんでした",
+          description: error instanceof Error ? error.message : "時間を置いて再度お試しください。",
           duration: 3000
         });
         setActiveJob(null);

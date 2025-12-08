@@ -25,8 +25,8 @@ export function OrdersRefreshButton() {
 
     const toastId = showToast({
       id: "orders-refresh-progress",
-      title: "注文情報を更新中…",
-      description: "最新の注文データを取得しています。",
+      title: "注文情報を読み込んでいます",
+      description: "しばらくお待ちください。",
       duration: Infinity,
       variant: "info",
     });
@@ -48,14 +48,14 @@ export function OrdersRefreshButton() {
       const toastPayload = hadUpdates
         ? {
             id: "orders-refresh-complete",
-            title: "注文が最新の状態になりました",
-            description: `注文 ${pendingSnapshotRef.current}件を反映しました。`,
+            title: "注文情報を更新しました",
+            description: `内容を ${pendingSnapshotRef.current}件反映しました。`,
             variant: "success" as const,
           }
         : {
             id: "orders-refresh-nochange",
-            title: "更新はありませんでした",
-            description: "一覧は最新の状態です。",
+            title: "一覧は最新の状態です",
+            description: undefined,
             variant: "info" as const,
           };
 

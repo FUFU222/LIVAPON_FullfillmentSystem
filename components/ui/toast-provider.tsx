@@ -15,7 +15,7 @@ import {
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MAX_VISIBLE_TOASTS = 1;
+const MAX_VISIBLE_TOASTS = 2;
 const EXIT_ANIMATION_MS = 220;
 
 export type ToastVariant = 'default' | 'info' | 'success' | 'warning' | 'error';
@@ -42,7 +42,8 @@ type ToastInternal = Required<Pick<ToastOptions, 'id' | 'title'>> & {
   duration: number;
   action?: ToastAction;
   dismissed?: boolean;
-  offset?: number;
+  order: number;
+  visible: boolean;
 };
 
 type ToastContextValue = {
@@ -77,10 +78,34 @@ const variantIcons: Record<ToastVariant, typeof Info> = {
 };
 
 let toastIdCounter = 0;
+let toastOrderCounter = 0;
 
 function createToastId() {
   toastIdCounter += 1;
   return `toast-${toastIdCounter}`;
+}
+
+function applyVisibility(toasts: ToastInternal[]) {
+  if (toasts.length === 0) {
+    return toasts;
+  }
+
+  const visibleIds = new Set<string>();
+  const ordered = [...toasts].sort((a, b) => a.order - b.order);
+
+  for (const toast of ordered) {
+    if (!toast.dismissed && visibleIds.size < MAX_VISIBLE_TOASTS) {
+      visibleIds.add(toast.id);
+    }
+  }
+
+  return toasts.map((toast) => {
+    const nextVisible = visibleIds.has(toast.id);
+    if (toast.visible === nextVisible) {
+      return toast;
+    }
+    return { ...toast, visible: nextVisible };
+  });
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -98,6 +123,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   >(new Map());
   const removalTimersRef = useRef<Map<string, number>>(new Map());
 
+  const updateToasts = useCallback(
+    (updater: (current: ToastInternal[]) => ToastInternal[]) => {
+      setToasts((current) => applyVisibility(updater(current)));
+    },
+    []
+  );
+
   const clearTimer = useCallback((id: string) => {
     const entry = timersRef.current.get(id);
     if (entry?.timeoutId != null) {
@@ -108,7 +140,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const scheduleRemoval = useCallback((id: string) => {
     if (typeof window === 'undefined') {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
+      updateToasts((current) => current.filter((toast) => toast.id !== id));
       return;
     }
 
@@ -117,16 +149,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
 
     const timerId = window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
+      updateToasts((current) => current.filter((toast) => toast.id !== id));
       removalTimersRef.current.delete(id);
     }, EXIT_ANIMATION_MS);
 
     removalTimersRef.current.set(id, timerId);
-  }, []);
+  }, [updateToasts]);
 
   const dismissToast = useCallback(
     (id: string) => {
-      setToasts((current) =>
+      updateToasts((current) =>
         current.map((toast) => (toast.id === id ? { ...toast, dismissed: true } : toast))
       );
       const entry = timersRef.current.get(id);
@@ -136,7 +168,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       timersRef.current.delete(id);
       scheduleRemoval(id);
     },
-    [scheduleRemoval]
+    [scheduleRemoval, updateToasts]
   );
 
   const scheduleTimer = useCallback(
@@ -164,10 +196,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showToast = useCallback(
     ({ id, title, description, duration = 3000, variant = 'default', action }: ToastOptions) => {
       const toastId = id ?? createToastId();
+      toastOrderCounter += 1;
 
-      setToasts((current) => {
+      updateToasts((current) => {
         const filtered = current.filter((toast) => toast.id !== toastId);
-        const next = [
+        return [
           ...filtered,
           {
             id: toastId,
@@ -176,30 +209,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             variant,
             duration,
             action,
-            dismissed: false
+            dismissed: false,
+            order: toastOrderCounter,
+            visible: false
           }
         ];
-
-        const limited = next.slice(-MAX_VISIBLE_TOASTS);
-        const limitedIds = new Set(limited.map((toast) => toast.id));
-
-        next.forEach((toast) => {
-          if (!limitedIds.has(toast.id)) {
-            clearTimer(toast.id);
-          }
-        });
-
-        return limited.map((toast, index) => ({
-          ...toast,
-          offset: index
-        }));
       });
-
-      scheduleTimer(toastId, duration);
 
       return toastId;
     },
-    [clearTimer, scheduleTimer]
+    [updateToasts]
   );
 
   const handleMouseEnter = useCallback((toastId: string) => {
@@ -250,6 +269,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ showToast, dismissToast }), [showToast, dismissToast]);
 
   useEffect(() => {
+    toasts.forEach((toast) => {
+      const hasTimer = timersRef.current.has(toast.id);
+      const shouldRunTimer = toast.visible && !toast.dismissed && toast.duration !== Infinity;
+
+      if (shouldRunTimer && !hasTimer) {
+        scheduleTimer(toast.id, toast.duration);
+      }
+
+      if (!shouldRunTimer && hasTimer) {
+        clearTimer(toast.id);
+      }
+    });
+  }, [clearTimer, scheduleTimer, toasts]);
+
+  useEffect(() => {
     const timers = timersRef.current;
     const removalTimers = removalTimersRef.current;
     return () => {
@@ -272,10 +306,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-live="polite"
         aria-atomic="true"
       >
-        {toasts.map((toast, index) => (
-          <div
-            key={toast.id}
-            className={cn(
+        {toasts
+          .filter((toast) => toast.visible)
+          .map((toast, index) => (
+            <div
+              key={toast.id}
+              className={cn(
               'pointer-events-auto group relative isolate flex w-full max-w-sm items-start gap-3 overflow-hidden rounded-2xl px-5 py-4 text-sm font-medium shadow-[0_20px_50px_rgba(15,23,42,0.35)] ring-1 backdrop-blur-lg transition-[transform,opacity] motion-safe:animate-toast-in',
               toast.dismissed && 'motion-safe:animate-toast-out opacity-0',
               'motion-safe:hover:translate-y-[-1px] sm:max-w-md',
@@ -285,7 +321,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             onMouseEnter={() => handleMouseEnter(toast.id)}
             onMouseLeave={() => handleMouseLeave(toast.id)}
             style={{
-              transitionDelay: `${(toast.offset ?? index) * 40}ms`
+              transitionDelay: `${index * 40}ms`
             }}
           >
             {toast.duration !== Infinity ? (

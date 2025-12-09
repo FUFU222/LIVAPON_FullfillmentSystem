@@ -115,7 +115,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
             新規注文メール通知
           </label>
           <p className="text-xs text-slate-500">
-            Console を開いていない時でも注文内容をメールで受け取ります。不要な場合はチェックを外してください。
+            登録メールアドレスへ注文内容の通知が届きます。不要な場合はチェックを外してください。
           </p>
         </div>
       </div>

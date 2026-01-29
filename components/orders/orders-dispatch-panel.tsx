@@ -310,134 +310,134 @@ export function OrdersDispatchPanel({
       <div className="pointer-events-none fixed bottom-4 left-0 right-0 z-40 flex justify-center px-4">
         <div className="pointer-events-auto w-full max-w-3xl rounded-2xl border border-slate-200 bg-white/95 px-5 py-4 shadow-xl backdrop-blur">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-1 text-sm text-slate-500">
-            <span className="text-xs uppercase text-slate-400">選択中</span>
-            <div className="flex items-center gap-2">
-              <div className="flex max-w-[60vw] items-center gap-2 overflow-x-auto">
-                {previewItems.map((item) => (
-                  <span
-                    key={item.lineItemId}
-                    className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600"
-                  >
-                    {item.orderNumber}: {item.productName}
-                    {item.variantTitle ? `（${item.variantTitle}）` : ""}
-                    <button
-                      type="button"
-                      className="text-slate-400 transition hover:text-slate-600"
-                      onClick={() => onRemoveLineItem(item.lineItemId)}
-                      aria-label={`${item.productName} を選択から外す`}
+            <div className="flex flex-col gap-1 text-sm text-slate-500">
+              <span className="text-xs uppercase text-slate-400">選択中</span>
+              <div className="flex items-center gap-2">
+                <div className="flex max-w-[60vw] items-center gap-2 overflow-x-auto">
+                  {previewItems.map((item) => (
+                    <span
+                      key={item.lineItemId}
+                      className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600"
                     >
-                      <X className="h-3 w-3" aria-hidden="true" />
-                    </button>
-                  </span>
+                      {item.orderNumber}: {item.productName}
+                      {item.variantTitle ? `（${item.variantTitle}）` : ""}
+                      <button
+                        type="button"
+                        className="text-slate-400 transition hover:text-slate-600"
+                        onClick={() => onRemoveLineItem(item.lineItemId)}
+                        aria-label={`${item.productName} を選択から外す`}
+                      >
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                  {overflowCount > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-xs text-slate-500 hover:text-slate-700"
+                      onClick={() => setDetailOpen(true)}
+                    >
+                      +{overflowCount}件
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-xs text-slate-500 hover:text-slate-700"
+                onClick={() => setDetailOpen(true)}
+              >
+                詳細を表示
+              </Button>
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+                onClick={onClearSelection}
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+                選択をクリア
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex basis-full flex-col gap-1 sm:basis-2/3">
+              <label className="text-xs font-medium text-foreground">追跡番号</label>
+              <Input
+                ref={trackingInputRef}
+                value={trackingNumber}
+                onChange={(event) => setTrackingNumber(event.target.value)}
+                placeholder="YT123456789JP"
+              />
+            </div>
+            <div className="flex flex-col gap-1 sm:basis-1/3">
+              <label className="text-xs font-medium text-foreground">配送業者</label>
+              <Select value={carrier} onChange={(event) => setCarrier(event.target.value)}>
+                {carrierOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
                 ))}
-                {overflowCount > 0 ? (
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="default" disabled={isSubmitting} className="gap-2" onClick={handleSubmit}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    <span>送信中…</span>
+                  </>
+                ) : (
+                  `${selectedLineItems.length}件を発送登録`
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {activeJob && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="font-semibold text-slate-900">発送ジョブ #{activeJob.id}</div>
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+                  状態: {jobStatusLabel(activeJob.status)}
                   <Button
                     type="button"
                     variant="ghost"
-                    className="text-xs text-slate-500 hover:text-slate-700"
-                    onClick={() => setDetailOpen(true)}
+                    className="px-2 py-1 text-xs"
+                    onClick={dismissJobStatus}
                   >
-                    +{overflowCount}件
+                    閉じる
                   </Button>
-                ) : null}
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-xs text-slate-500 hover:text-slate-700"
-              onClick={() => setDetailOpen(true)}
-            >
-              詳細を表示
-            </Button>
-            <button
-              type="button"
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
-              onClick={onClearSelection}
-            >
-              <X className="h-3 w-3" aria-hidden="true" />
-              選択をクリア
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex basis-full flex-col gap-1 sm:basis-2/3">
-            <label className="text-xs font-medium text-foreground">追跡番号</label>
-            <Input
-              ref={trackingInputRef}
-              value={trackingNumber}
-              onChange={(event) => setTrackingNumber(event.target.value)}
-              placeholder="YT123456789JP"
-            />
-          </div>
-          <div className="flex flex-col gap-1 sm:basis-1/3">
-            <label className="text-xs font-medium text-foreground">配送業者</label>
-            <Select value={carrier} onChange={(event) => setCarrier(event.target.value)}>
-              {carrierOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="default" disabled={isSubmitting} className="gap-2" onClick={handleSubmit}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  <span>送信中…</span>
-                </>
-              ) : (
-                `${selectedLineItems.length}件を発送登録`
+              <div className="mt-2 flex flex-wrap gap-4 text-base">
+                <span>
+                  進捗: {activeJob.processedCount} / {activeJob.totalCount} 件
+                </span>
+                <span className={activeJob.errorCount > 0 ? "text-red-600" : "text-slate-500"}>
+                  失敗: {activeJob.errorCount} 件
+                </span>
+              </div>
+              {activeJob.recentFailures.length > 0 && (
+                <div className="mt-2 text-xs text-red-600">
+                  最新の失敗:
+                  <ul className="list-disc pl-4">
+                    {activeJob.recentFailures.map((failure) => (
+                      <li key={failure.id}>
+                        注文#{failure.order_id ?? '-'} / ライン {failure.line_item_id ?? '-'}: {failure.error_message ?? '理由不明'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
-
-        {activeJob && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-semibold text-slate-900">発送ジョブ #{activeJob.id}</div>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
-                状態: {jobStatusLabel(activeJob.status)}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="px-2 py-1 text-xs"
-                  onClick={dismissJobStatus}
-                >
-                  閉じる
-                </Button>
-              </div>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-4 text-base">
-              <span>
-                進捗: {activeJob.processedCount} / {activeJob.totalCount} 件
-              </span>
-              <span className={activeJob.errorCount > 0 ? "text-red-600" : "text-slate-500"}>
-                失敗: {activeJob.errorCount} 件
-              </span>
-            </div>
-            {activeJob.recentFailures.length > 0 && (
-              <div className="mt-2 text-xs text-red-600">
-                最新の失敗:
-                <ul className="list-disc pl-4">
-                  {activeJob.recentFailures.map((failure) => (
-                    <li key={failure.id}>
-                      注文#{failure.order_id ?? '-'} / ライン {failure.line_item_id ?? '-'}: {failure.error_message ?? '理由不明'}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
       </div>
-    </div>
 
       <Modal
         open={confirmOpen}
@@ -479,7 +479,7 @@ export function OrdersDispatchPanel({
             </p>
           </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            数量と追跡番号をご確認のうえ、登録をお願いします。
+            数量、追跡番号、およびOS番号をご確認のうえ、登録をお願いします。
           </div>
           <div className="max-h-52 overflow-y-auto rounded-md border border-slate-200">
             <table className="w-full text-xs">

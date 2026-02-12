@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 
 type OverlayContextValue = {
   beginNavigation: () => void;
+  active: boolean;
 };
 
 const NavigationOverlayContext = createContext<OverlayContextValue | null>(null);
@@ -80,7 +81,7 @@ export function NavigationOverlayProvider({ children }: { children: ReactNode })
     }
   }, [pathname, resetNavigationState]);
 
-  const contextValue = useMemo<OverlayContextValue>(() => ({ beginNavigation }), [beginNavigation]);
+  const contextValue = useMemo<OverlayContextValue>(() => ({ beginNavigation, active }), [active, beginNavigation]);
 
   useEffect(() => {
     return () => {
@@ -92,19 +93,28 @@ export function NavigationOverlayProvider({ children }: { children: ReactNode })
   return (
     <NavigationOverlayContext.Provider value={contextValue}>
       {children}
-      {active ? (
-        <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-sm">
-          <div className="flex h-full items-center justify-center">
-            <div
-              className="flex items-center rounded-xl border border-slate-200 bg-white/90 px-6 py-4 shadow-lg"
-              role="status"
-              aria-label="読み込み中"
-            >
-              <Loader2 className="h-5 w-5 animate-spin text-slate-500" aria-hidden="true" />
-            </div>
-          </div>
-        </div>
-      ) : null}
     </NavigationOverlayContext.Provider>
+  );
+}
+
+export function NavigationOverlayLayer() {
+  const { active } = useNavigationOverlay();
+
+  if (!active) {
+    return null;
+  }
+
+  return (
+    <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-sm">
+      <div className="flex h-full items-center justify-center">
+        <div
+          className="flex items-center rounded-xl border border-slate-200 bg-white/90 px-6 py-4 shadow-lg"
+          role="status"
+          aria-label="読み込み中"
+        >
+          <Loader2 className="h-5 w-5 animate-spin text-slate-500" aria-hidden="true" />
+        </div>
+      </div>
+    </div>
   );
 }

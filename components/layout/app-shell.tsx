@@ -9,7 +9,11 @@ import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { GradientAvatar } from '@/components/ui/avatar';
-import { NavigationOverlayProvider, useNavigationOverlay } from '@/components/layout/navigation-overlay';
+import {
+  NavigationOverlayLayer,
+  NavigationOverlayProvider,
+  useNavigationOverlay
+} from '@/components/layout/navigation-overlay';
 
 export type AppShellInitialAuth = {
   status: 'signed-in' | 'signed-out';
@@ -405,9 +409,12 @@ function AppShellContent({
           </div>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-6">
-        {children}
-      </main>
+      <div className="relative mx-auto flex w-full max-w-6xl flex-1">
+        <main className="flex w-full flex-1 flex-col gap-8 px-6 py-6">
+          {children}
+        </main>
+        <NavigationOverlayLayer />
+      </div>
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <span>© {new Date().getFullYear()} LIVAPON Logistics</span>

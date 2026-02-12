@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +30,9 @@ type LoadState = 'idle' | 'loading' | 'error';
 
 export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const formRef = useRef<HTMLFormElement>(null);
+  const bulkDeleteFormRef = useRef<HTMLFormElement>(null);
   const [isBulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkDeleteQueued, setBulkDeleteQueued] = useState(false);
   const [activeVendorId, setActiveVendorId] = useState<number | null>(null);
   const [activeDetail, setActiveDetail] = useState<VendorDetail | null>(null);
   const [detailCache, setDetailCache] = useState<Record<number, VendorDetail>>({});
@@ -111,8 +112,23 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
 
   const modalTitle = activeDetail?.name ?? cachedDetail?.name ?? 'ベンダー詳細';
 
+  useEffect(() => {
+    if (!bulkDeleteQueued || isBulkConfirmOpen) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      bulkDeleteFormRef.current?.requestSubmit();
+      setBulkDeleteQueued(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [bulkDeleteQueued, isBulkConfirmOpen]);
+
   return (
-    <form ref={formRef} action={bulkDeleteVendorsAction} className="grid gap-3">
+    <div className="grid gap-3">
       <div className="flex justify-end">
         <button
           type="button"
@@ -156,8 +172,6 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
                   onKeyDown={(event) => event.stopPropagation()}
                 >
                   <Checkbox
-                    name="vendorIds"
-                    value={vendor.id}
                     checked={selectedIds.includes(vendor.id)}
                     onChange={(event) => {
                       setSelectedIds((current) =>
@@ -207,6 +221,11 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
           </tbody>
         </table>
       </div>
+      <form ref={bulkDeleteFormRef} action={bulkDeleteVendorsAction} className="sr-only" aria-hidden="true">
+        {selectedIds.map((id) => (
+          <input key={id} type="hidden" name="vendorIds" value={id} />
+        ))}
+      </form>
 
       <Modal
         open={activeVendorId !== null}
@@ -241,7 +260,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
               disabled={selectedIds.length === 0}
               onClick={() => {
                 setBulkConfirmOpen(false);
-                formRef.current?.requestSubmit();
+                setBulkDeleteQueued(true);
               }}
             >
               削除する
@@ -253,6 +272,6 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
           選択したベンダーが完全に削除されます。必要に応じてバックアップを取得してから実行してください。
         </p>
       </Modal>
-    </form>
+    </div>
   );
 }

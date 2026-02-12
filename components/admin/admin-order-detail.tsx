@@ -19,6 +19,28 @@ function formatDate(value: string | null) {
   });
 }
 
+function formatShippingAddress(order: OrderDetail): string {
+  const lines: string[] = [];
+  if (order.shippingPostal) {
+    lines.push(`〒${order.shippingPostal}`);
+  }
+
+  const baseLine = [order.shippingPrefecture, order.shippingCity, order.shippingAddress1]
+    .filter((part) => (part ?? '').trim().length > 0)
+    .join(' ')
+    .trim();
+
+  if (baseLine.length > 0) {
+    lines.push(baseLine);
+  }
+
+  if (order.shippingAddress2 && order.shippingAddress2.trim().length > 0) {
+    lines.push(order.shippingAddress2.trim());
+  }
+
+  return lines.length > 0 ? lines.join(' ') : '-';
+}
+
 export function AdminOrderDetail({ order }: Props) {
   const uniqueShipments = order.shipments;
   const lineItemLookup = new Map<number, { name: string; sku: string | null }>();
@@ -31,7 +53,6 @@ export function AdminOrderDetail({ order }: Props) {
     <div className="flex flex-col gap-6">
       <section className="grid gap-2">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-base font-semibold text-foreground">{order.orderNumber}</span>
           <Badge intent={order.status}>{order.status ?? '未設定'}</Badge>
         </div>
         <dl className="grid grid-cols-1 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3">
@@ -42,6 +63,10 @@ export function AdminOrderDetail({ order }: Props) {
           <div className="flex flex-col gap-1">
             <dt className="text-xs uppercase tracking-wide text-slate-500">最終更新</dt>
             <dd className="text-slate-700">{formatDate(order.updatedAt)}</dd>
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <dt className="text-xs uppercase tracking-wide text-slate-500">配送先住所</dt>
+            <dd className="text-slate-700">{formatShippingAddress(order)}</dd>
           </div>
         </dl>
       </section>
@@ -56,7 +81,6 @@ export function AdminOrderDetail({ order }: Props) {
                 <th className="px-3 py-2">SKU</th>
                 <th className="px-3 py-2">ベンダー</th>
                 <th className="px-3 py-2">数量</th>
-                <th className="px-3 py-2">発送</th>
               </tr>
             </thead>
             <tbody>
@@ -80,22 +104,6 @@ export function AdminOrderDetail({ order }: Props) {
                       <span>発送済: {item.shippedQuantity}</span>
                       <span>残数: {item.remainingQuantity}</span>
                     </div>
-                  </td>
-                  <td className="px-3 py-2">
-                    {order.status === 'cancelled' ? (
-                      <span className="text-slate-400">キャンセル済</span>
-                    ) : item.shipments.length === 0 ? (
-                      <span className="text-slate-400">未発送</span>
-                    ) : (
-                      <ul className="flex flex-col gap-1 text-xs text-slate-600">
-                        {item.shipments.map((shipment) => (
-                          <li key={`${shipment.id}-${shipment.trackingNumber ?? 'pending'}`}>
-                            {shipment.trackingNumber ?? '追跡未登録'}
-                            <span className="ml-2">({shipment.quantity ?? item.quantity}個)</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </td>
                 </tr>
               ))}

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
@@ -109,6 +109,7 @@ function AppShellContent({
   initialAuth: AppShellInitialAuth;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'signed-in' | 'signed-out'>(
     initialAuth.status
   );
@@ -266,6 +267,7 @@ function AppShellContent({
   })();
 
   const { beginNavigation } = useNavigationOverlay();
+  const navigationFallbackTimerRef = useRef<number | null>(null);
 
   const brandHref = (() => {
     if (status !== 'signed-in') {
@@ -283,14 +285,58 @@ function AppShellContent({
     return '/';
   })();
 
-  const handleNavigation = useCallback(
+  const clearNavigationFallback = useCallback(() => {
+    if (navigationFallbackTimerRef.current !== null) {
+      window.clearTimeout(navigationFallbackTimerRef.current);
+      navigationFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleNavigationFallback = useCallback(
     (href: string) => {
+      clearNavigationFallback();
+      navigationFallbackTimerRef.current = window.setTimeout(() => {
+        if (window.location.pathname !== href) {
+          window.location.assign(href);
+        }
+      }, 1800);
+    },
+    [clearNavigationFallback]
+  );
+
+  useEffect(() => {
+    clearNavigationFallback();
+  }, [pathname, clearNavigationFallback]);
+
+  useEffect(() => {
+    return () => {
+      clearNavigationFallback();
+    };
+  }, [clearNavigationFallback]);
+
+  const handleNavigation = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+
       if (!pathname || pathname === href) {
         return;
       }
+
+      event.preventDefault();
       beginNavigation();
+      router.push(href);
+      scheduleNavigationFallback(href);
     },
-    [beginNavigation, pathname]
+    [beginNavigation, pathname, router, scheduleNavigationFallback]
   );
 
   return (
@@ -300,7 +346,7 @@ function AppShellContent({
           <Link
             href={brandHref}
             className="flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground"
-            onClick={() => handleNavigation(brandHref)}
+            onClick={(event) => handleNavigation(event, brandHref)}
           >
             <Image
               src="/LIVAPON_logo_horizontal.svg"
@@ -326,7 +372,7 @@ function AppShellContent({
                         ? 'bg-foreground text-white shadow-sm'
                       : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
-                    onClick={() => handleNavigation(item.href)}
+                    onClick={(event) => handleNavigation(event, item.href)}
                   >
                     {item.label}
                   </Link>

@@ -40,13 +40,42 @@ function ActionMessage({ state }: { state: AdminActionState }) {
   return null;
 }
 
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return '-';
+  }
+  try {
+    return new Date(value).toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return value;
+  }
+}
+
 function ApprovalSuccessDialog({
   open,
   vendorCode,
+  companyName,
+  contactName,
+  contactEmail,
+  approvedAt,
+  notificationStatus,
+  notificationError,
   onClose
 }: {
   open: boolean;
   vendorCode: string | null;
+  companyName: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  approvedAt: string | null;
+  notificationStatus: 'sent' | 'failed' | 'skipped';
+  notificationError: string | null;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -77,10 +106,39 @@ function ApprovalSuccessDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
         <div className="mb-4 flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-foreground">申請を承認しました</h2>
+          <h2 className="text-lg font-semibold text-foreground">承認しました</h2>
           <p className="text-sm text-slate-600">
-            ベンダー向け機能が開放されました。必要に応じてベンダーへ通知してください。
+            利用開始のご案内ステータスを確認してください。
           </p>
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+            <div className="grid gap-1">
+              <span className="text-xs text-slate-500">会社名</span>
+              <span className="font-semibold text-slate-800">{companyName ?? '-'}</span>
+            </div>
+            <div className="mt-2 grid gap-1">
+              <span className="text-xs text-slate-500">担当者</span>
+              <span className="text-slate-700">{contactName ?? '-'}</span>
+            </div>
+            <div className="mt-2 grid gap-1">
+              <span className="text-xs text-slate-500">通知先メール</span>
+              <span className="text-slate-700">{contactEmail ?? '-'}</span>
+            </div>
+            <div className="mt-2 grid gap-1">
+              <span className="text-xs text-slate-500">承認日時</span>
+              <span className="text-slate-700">{formatDateTime(approvedAt)}</span>
+            </div>
+          </div>
+          <div className={`rounded-md px-3 py-2 text-xs ${
+            notificationStatus === 'sent'
+              ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+              : notificationStatus === 'failed'
+                ? 'border border-rose-200 bg-rose-50 text-rose-700'
+                : 'border border-slate-200 bg-slate-50 text-slate-700'
+          }`}>
+            {notificationStatus === 'sent' && '利用開始メールを送信しました。'}
+            {notificationStatus === 'failed' && `利用開始メールの送信に失敗しました。${notificationError ? ` (${notificationError})` : ''}`}
+            {notificationStatus === 'skipped' && '通知先メールが未設定のため、利用開始メールは送信していません。'}
+          </div>
           {vendorCode ? (
             <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-2xl font-mono font-semibold text-emerald-700">
               {vendorCode}
@@ -110,7 +168,15 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
   const approveFormRef = useRef<HTMLFormElement>(null);
   const bypassConfirmRef = useRef(false);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
-  const [latestCode, setLatestCode] = useState<string | null>(null);
+  const [latestApproval, setLatestApproval] = useState<{
+    vendorCode: string | null;
+    companyName: string | null;
+    contactName: string | null;
+    contactEmail: string | null;
+    approvedAt: string | null;
+    notificationStatus: 'sent' | 'failed' | 'skipped';
+    notificationError: string | null;
+  } | null>(null);
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<{
     vendorCode: string;
@@ -120,10 +186,18 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
   useEffect(() => {
     if (approveState.status === 'success') {
       rejectFormRef.current?.reset();
-      setLatestCode(approveState.details?.vendorCode ?? null);
+      setLatestApproval({
+        vendorCode: approveState.details?.vendorCode ?? null,
+        companyName: approveState.details?.companyName ?? application.companyName,
+        contactName: approveState.details?.contactName ?? application.contactName ?? null,
+        contactEmail: approveState.details?.contactEmail ?? application.contactEmail,
+        approvedAt: approveState.details?.approvedAt ?? null,
+        notificationStatus: approveState.details?.notificationStatus ?? 'skipped',
+        notificationError: approveState.details?.notificationError ?? null
+      });
       setShowApprovalDialog(true);
     }
-  }, [approveState.status, approveState.details]);
+  }, [approveState.status, approveState.details, application.companyName, application.contactEmail, application.contactName]);
 
   function handleApproveSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (bypassConfirmRef.current) {
@@ -268,7 +342,13 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
       </Modal>
       <ApprovalSuccessDialog
         open={showApprovalDialog}
-        vendorCode={latestCode}
+        vendorCode={latestApproval?.vendorCode ?? null}
+        companyName={latestApproval?.companyName ?? null}
+        contactName={latestApproval?.contactName ?? null}
+        contactEmail={latestApproval?.contactEmail ?? null}
+        approvedAt={latestApproval?.approvedAt ?? null}
+        notificationStatus={latestApproval?.notificationStatus ?? 'skipped'}
+        notificationError={latestApproval?.notificationError ?? null}
         onClose={() => setShowApprovalDialog(false)}
       />
     </div>

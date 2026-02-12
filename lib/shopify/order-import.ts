@@ -8,6 +8,7 @@ import {
   isVendorEmailRetryableError
 } from '@/lib/notifications/vendor-new-order';
 import { normalizeShopDomain } from '@/lib/shopify/shop-domains';
+import { extractOsNumber, extractOsNumberFromParts } from '@/lib/orders/os-number';
 
 // ==========================
 // Shop Domain Verification
@@ -36,6 +37,8 @@ type ShopifyOrderPayload = {
     city?: string | null;
     address1?: string | null;
     address2?: string | null;
+    company?: string | null;
+    name?: string | null;
   } | null;
   line_items: Array<{
     id: number;
@@ -153,12 +156,28 @@ function buildShippingAddress(payload: ShopifyOrderPayload) {
     };
   }
 
+  const address1 = shipping.address1 ?? null;
+  const address2 = shipping.address2 ?? null;
+  const osNumber = extractOsNumberFromParts([
+    address2,
+    address1,
+    shipping.company,
+    shipping.name
+  ]);
+  const hasOsInAddress = Boolean(extractOsNumber(address1) || extractOsNumber(address2));
+  const normalizedAddress2 =
+    osNumber && !hasOsInAddress
+      ? address2 && address2.trim().length > 0
+        ? `${address2} (${osNumber})`
+        : `(${osNumber})`
+      : address2;
+
   return {
     postal: shipping.zip ?? shipping.postal_code ?? null,
     prefecture: shipping.province ?? shipping.province_code ?? null,
     city: shipping.city ?? null,
-    address1: shipping.address1 ?? null,
-    address2: shipping.address2 ?? null
+    address1,
+    address2: normalizedAddress2
   };
 }
 

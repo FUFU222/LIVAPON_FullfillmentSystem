@@ -64,6 +64,7 @@ describe('orders transformers', () => {
     const summary = mapDetailToSummary(detail!);
     expect(summary.status).toBe('partially_fulfilled');
     expect(summary.lineItems).toHaveLength(1);
+    expect(summary.osNumber).toBeNull();
     expect(summary.shippingAddressLines).toEqual([
       '〒1350001',
       '東京都 江東区 青海1-1-1',
@@ -74,5 +75,34 @@ describe('orders transformers', () => {
   it('returns null when vendor filter removes all line items', () => {
     const detail = toOrderDetailFromRecord(baseRecord, 999);
     expect(detail).toBeNull();
+  });
+
+  it('extracts OS number from shipping address', () => {
+    const detail = toOrderDetailFromRecord(
+      {
+        ...baseRecord,
+        shipping_address2: 'テストビル5F (OS-01115463)'
+      },
+      200
+    );
+
+    expect(detail).not.toBeNull();
+    expect(detail?.osNumber).toBe('OS-01115463');
+
+    const summary = mapDetailToSummary(detail!);
+    expect(summary.osNumber).toBe('OS-01115463');
+  });
+
+  it('normalizes OS number even when hyphen is missing', () => {
+    const detail = toOrderDetailFromRecord(
+      {
+        ...baseRecord,
+        shipping_address2: 'テストビル5F OS01115463'
+      },
+      200
+    );
+
+    expect(detail).not.toBeNull();
+    expect(detail?.osNumber).toBe('OS-01115463');
   });
 });

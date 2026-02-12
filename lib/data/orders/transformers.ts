@@ -6,6 +6,7 @@ import type {
   RawOrderRecord,
   RawShipmentPivot
 } from './types';
+import { extractOsNumberFromParts } from '@/lib/orders/os-number';
 
 const KNOWN_ORDER_STATUSES = new Set([
   'unfulfilled',
@@ -205,6 +206,7 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     isArchived,
     shippingAddress,
     shippingAddressLines: shippingLines,
+    osNumber: order.osNumber,
     trackingNumbers: Array.from(trackingNumbers),
     updatedAt: order.updatedAt,
     createdAt: order.createdAt,
@@ -358,6 +360,13 @@ export function toOrderDetailFromRecord(
     return detailLocalStatus ?? 'unfulfilled';
   })();
 
+  const osNumber = extractOsNumberFromParts([
+    record.shipping_address2,
+    record.shipping_address1,
+    record.shipping_city,
+    record.shipping_prefecture
+  ]);
+
   return {
     id: record.id,
     orderNumber: record.order_number,
@@ -373,6 +382,7 @@ export function toOrderDetailFromRecord(
     shippingCity: record.shipping_city ?? null,
     shippingAddress1: record.shipping_address1 ?? null,
     shippingAddress2: record.shipping_address2 ?? null,
+    osNumber,
     shipments,
     lineItems: detailLineItems
   };

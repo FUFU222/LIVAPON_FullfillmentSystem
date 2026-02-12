@@ -3,6 +3,12 @@ export type AdminActionState = {
   message: string | null;
   details?: {
     vendorCode?: string;
+    companyName?: string;
+    contactName?: string | null;
+    contactEmail?: string;
+    approvedAt?: string;
+    notificationStatus?: 'sent' | 'failed' | 'skipped';
+    notificationError?: string | null;
   } | null;
 };
 

@@ -79,6 +79,16 @@ export function OrdersDispatchPanel({
     return Array.from(map.values());
   }, [orders, selectedLineItems]);
 
+  const orderLookup = useMemo(() => {
+    return new Map<number, OrderSummary>(orders.map((order) => [order.id, order]));
+  }, [orders]);
+
+  const missingOsOrderNumbers = useMemo(() => {
+    return selectedByOrder
+      .filter(({ order }) => !order.osNumber)
+      .map(({ order }) => order.orderNumber);
+  }, [selectedByOrder]);
+
   const handleSubmit = () => {
     if (!trackingNumber.trim()) {
       showToast({
@@ -481,11 +491,19 @@ export function OrdersDispatchPanel({
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             数量、追跡番号、およびOS番号をご確認のうえ、登録をお願いします。
           </div>
+          {missingOsOrderNumbers.length > 0 ? (
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+              OS番号未取得の注文: {missingOsOrderNumbers.join(', ')}
+              <br />
+              テスト注文などOS番号が無いケースは、そのまま登録して問題ありません。
+            </div>
+          ) : null}
           <div className="max-h-52 overflow-y-auto rounded-md border border-slate-200">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-500">
                 <tr>
                   <th className="px-3 py-2 text-left">注文番号</th>
+                  <th className="px-3 py-2 text-left">OS番号</th>
                   <th className="px-3 py-2 text-left">商品</th>
                   <th className="px-3 py-2 text-right">出荷数</th>
                 </tr>
@@ -494,6 +512,9 @@ export function OrdersDispatchPanel({
                 {selectedLineItems.map((item) => (
                   <tr key={`confirm-${item.lineItemId}`} className="border-t border-slate-100">
                     <td className="px-3 py-2 font-medium text-slate-700">{item.orderNumber}</td>
+                    <td className="px-3 py-2 font-mono text-slate-600">
+                      {orderLookup.get(item.orderId)?.osNumber ?? '-'}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col">
                         <span>{item.productName}</span>
@@ -524,6 +545,9 @@ export function OrdersDispatchPanel({
                 <div className="flex flex-col gap-1">
                   <span className="text-lg font-semibold text-slate-900">{order.orderNumber}</span>
                   <span className="text-lg text-slate-800">{order.customerName ?? '-'}</span>
+                  {order.osNumber ? (
+                    <span className="text-sm font-semibold text-slate-700">OS番号: {order.osNumber}</span>
+                  ) : null}
                   {order.shippingAddressLines.length > 0 ? (
                     <span className="text-sm text-slate-600">
                       {order.shippingAddressLines.join(' / ')}

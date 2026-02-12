@@ -36,6 +36,7 @@ function buildOrder(partial?: Partial<OrderSummary>): OrderSummary {
     isArchived: partial?.isArchived ?? false,
     shippingAddress: partial?.shippingAddress ?? '〒123-4567 東京都千代田区1-1-1',
     shippingAddressLines: partial?.shippingAddressLines ?? ['〒123-4567', '東京都千代田区1-1-1'],
+    osNumber: partial?.osNumber ?? null,
     trackingNumbers: partial?.trackingNumbers ?? [],
     updatedAt: partial?.updatedAt ?? '2025-11-11T10:00:00Z',
     createdAt: partial?.createdAt ?? '2025-11-11T09:00:00Z',

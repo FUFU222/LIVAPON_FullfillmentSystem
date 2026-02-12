@@ -459,7 +459,14 @@ export async function approveVendorApplication(params: {
   reviewerEmail: string | null;
   vendorCode?: string | null;
   notes?: string | null;
-}): Promise<{ vendorId: number; vendorCode: string }> {
+}): Promise<{
+  vendorId: number;
+  vendorCode: string;
+  companyName: string;
+  contactName: string | null;
+  contactEmail: string;
+  approvedAt: string;
+}> {
   const client = assertServiceClient();
 
   const { data: application, error: fetchError } = await client
@@ -508,17 +515,18 @@ export async function approveVendorApplication(params: {
     }
   }
 
+  const approvedAt = new Date().toISOString();
   const { error: updateApplicationError } = await client
     .from('vendor_applications')
     .update({
       status: 'approved',
       vendor_id: vendor.id,
       vendor_code: vendor.code,
-      reviewed_at: new Date().toISOString(),
+      reviewed_at: approvedAt,
       reviewer_id: params.reviewerId,
       reviewer_email: params.reviewerEmail,
       notes: params.notes ?? null,
-      updated_at: new Date().toISOString()
+      updated_at: approvedAt
     })
     .eq('id', params.applicationId);
 
@@ -542,7 +550,11 @@ export async function approveVendorApplication(params: {
 
   return {
     vendorId: vendor.id,
-    vendorCode: vendor.code ?? ''
+    vendorCode: vendor.code ?? '',
+    companyName: application.company_name,
+    contactName: application.contact_name ?? null,
+    contactEmail: application.contact_email,
+    approvedAt
   };
 }
 

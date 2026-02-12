@@ -15,6 +15,7 @@ const demoOrders: OrderDetail[] = [
     shippingCity: '渋谷区神宮前',
     shippingAddress1: '1-2-3 LIVAPONビル',
     shippingAddress2: null,
+    osNumber: null,
     shipments: [
       {
         id: 5001,
@@ -91,6 +92,7 @@ const demoOrders: OrderDetail[] = [
     shippingCity: '横浜市西区みなとみらい',
     shippingAddress1: '2-3-4 テストタワー 10F',
     shippingAddress2: null,
+    osNumber: null,
     shipments: [],
     lineItems: [
       {

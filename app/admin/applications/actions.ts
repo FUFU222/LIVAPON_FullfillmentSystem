@@ -3,7 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { approveVendorApplication, rejectVendorApplication } from '@/lib/data/vendors';
 import { requireAuthContext, assertAdmin } from '@/lib/auth';
+import {
+  isVendorApprovalEmailRetryableError,
+  sendVendorApprovalEmail
+} from '@/lib/notifications/vendor-approval';
 import type { AdminActionState } from './state';
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function approveApplicationAction(
   _prevState: AdminActionState,
@@ -37,13 +45,59 @@ export async function approveApplicationAction(
       notes
     });
 
+    let notificationStatus: 'sent' | 'failed' | 'skipped' = 'skipped';
+    let notificationError: string | null = null;
+
+    if (result.contactEmail) {
+      try {
+        await sendVendorApprovalEmail({
+          to: result.contactEmail,
+          contactName: result.contactName
+        });
+        notificationStatus = 'sent';
+      } catch (error) {
+        if (isVendorApprovalEmailRetryableError(error)) {
+          await sleep(700);
+          try {
+            await sendVendorApprovalEmail({
+              to: result.contactEmail,
+              contactName: result.contactName
+            });
+            notificationStatus = 'sent';
+          } catch (retryError) {
+            notificationStatus = 'failed';
+            notificationError = retryError instanceof Error ? retryError.message : '通知メールの送信に失敗しました';
+          }
+        } else {
+          notificationStatus = 'failed';
+          notificationError = error instanceof Error ? error.message : '通知メールの送信に失敗しました';
+        }
+      }
+    }
+
     revalidatePath('/admin/applications');
+
+    const message = (() => {
+      if (notificationStatus === 'sent') {
+        return '申請を承認し、利用開始メールを送信しました。';
+      }
+      if (notificationStatus === 'failed') {
+        return '申請を承認しましたが、利用開始メールの送信に失敗しました。';
+      }
+      return '申請を承認しました。';
+    })();
 
     return {
       status: 'success',
-      message: `申請を承認しました（ベンダーコード: ${result.vendorCode}）`,
+      message,
       details: {
-        vendorCode: result.vendorCode
+        vendorCode: result.vendorCode,
+        companyName: result.companyName,
+        contactName: result.contactName,
+        contactEmail: result.contactEmail,
+        approvedAt: result.approvedAt,
+        notificationStatus,
+        notificationError
       }
     };
   } catch (error) {

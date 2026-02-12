@@ -26,6 +26,7 @@ export type OrderDetail = {
   shippingCity: string | null;
   shippingAddress1: string | null;
   shippingAddress2: string | null;
+  osNumber: string | null;
   shipments: OrderShipment[];
   lineItems: Array<{
     id: number;
@@ -70,6 +71,7 @@ export type OrderSummary = {
   isArchived: boolean;
   shippingAddress: string | null;
   shippingAddressLines: string[];
+  osNumber: string | null;
   trackingNumbers: string[];
   updatedAt: string | null;
   createdAt: string | null;

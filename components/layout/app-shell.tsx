@@ -299,7 +299,7 @@ function AppShellContent({
         if (window.location.pathname !== href) {
           window.location.assign(href);
         }
-      }, 1800);
+      }, 6000);
     },
     [clearNavigationFallback]
   );
@@ -313,6 +313,23 @@ function AppShellContent({
       clearNavigationFallback();
     };
   }, [clearNavigationFallback]);
+
+  useEffect(() => {
+    const prefetchTargets = Array.from(
+      new Set<string>([
+        brandHref,
+        ...links.map((item) => item.href)
+      ])
+    );
+
+    prefetchTargets.forEach((href) => {
+      try {
+        router.prefetch(href);
+      } catch {
+        // Ignore prefetch failures and keep navigation functional.
+      }
+    });
+  }, [brandHref, links, router]);
 
   const handleNavigation = useCallback(
     (event: MouseEvent<HTMLAnchorElement>, href: string) => {

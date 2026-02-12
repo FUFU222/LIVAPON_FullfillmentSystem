@@ -21,8 +21,10 @@ export function useNavigationOverlay() {
 export function NavigationOverlayProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [active, setActive] = useState(false);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
   const showTimerRef = useRef<number | null>(null);
+  const failSafeTimerRef = useRef<number | null>(null);
+  const navigationInFlightRef = useRef(false);
+  const startPathRef = useRef<string | null>(pathname ?? null);
 
   const clearShowTimer = useCallback(() => {
     if (showTimerRef.current !== null) {
@@ -31,70 +33,61 @@ export function NavigationOverlayProvider({ children }: { children: ReactNode })
     }
   }, []);
 
+  const clearFailSafeTimer = useCallback(() => {
+    if (failSafeTimerRef.current !== null) {
+      window.clearTimeout(failSafeTimerRef.current);
+      failSafeTimerRef.current = null;
+    }
+  }, []);
+
+  const resetNavigationState = useCallback(() => {
+    navigationInFlightRef.current = false;
+    startPathRef.current = pathname ?? null;
+    clearShowTimer();
+    clearFailSafeTimer();
+    setActive(false);
+  }, [clearFailSafeTimer, clearShowTimer, pathname]);
+
   const beginNavigation = useCallback(() => {
-    if (active || showTimerRef.current !== null) {
+    if (navigationInFlightRef.current) {
       return;
     }
-    const DELAY_MS = 200;
+
+    navigationInFlightRef.current = true;
+    startPathRef.current = pathname ?? null;
+
+    const DELAY_MS = 120;
     showTimerRef.current = window.setTimeout(() => {
-      setStartedAt(Date.now());
       setActive(true);
       showTimerRef.current = null;
     }, DELAY_MS);
-  }, [active]);
 
-  // Hide overlay only after the new pathname has rendered and
-  // we have shown it long enough to avoid flicker.
+    // Failsafe only for pathological cases; normal hide is driven by pathname change.
+    const FAILSAFE_MS = 15000;
+    failSafeTimerRef.current = window.setTimeout(() => {
+      resetNavigationState();
+    }, FAILSAFE_MS);
+  }, [pathname, resetNavigationState]);
+
   useEffect(() => {
-    if (!active || startedAt === null) {
+    if (!navigationInFlightRef.current) {
+      startPathRef.current = pathname ?? null;
       return;
     }
 
-    const MIN_VISIBLE_MS = 600;
-    const elapsed = Date.now() - startedAt;
-    const remaining = Math.max(MIN_VISIBLE_MS - elapsed, 0);
-
-    const timer = setTimeout(() => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setActive(false);
-          setStartedAt(null);
-        });
-      });
-    }, remaining);
-
-    return () => clearTimeout(timer);
-  }, [pathname, active, startedAt]);
-
-  // Cancel pending show timers when navigation completes before delay.
-  useEffect(() => {
-    if (!active) {
-      clearShowTimer();
+    if ((pathname ?? null) !== startPathRef.current) {
+      resetNavigationState();
     }
-  }, [pathname, active, clearShowTimer]);
-
-  // Safety guard: ensure overlay never stays indefinitely (e.g. navigation error).
-  useEffect(() => {
-    if (!active || startedAt === null) {
-      return;
-    }
-
-    const MAX_VISIBLE_MS = 3000;
-    const timer = setTimeout(() => {
-      setActive(false);
-      setStartedAt(null);
-    }, MAX_VISIBLE_MS);
-
-    return () => clearTimeout(timer);
-  }, [active, startedAt]);
+  }, [pathname, resetNavigationState]);
 
   const contextValue = useMemo<OverlayContextValue>(() => ({ beginNavigation }), [beginNavigation]);
 
   useEffect(() => {
     return () => {
       clearShowTimer();
+      clearFailSafeTimer();
     };
-  }, [clearShowTimer]);
+  }, [clearFailSafeTimer, clearShowTimer]);
 
   return (
     <NavigationOverlayContext.Provider value={contextValue}>

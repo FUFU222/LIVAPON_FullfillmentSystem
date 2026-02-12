@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
+  NavigationOverlayLayer,
   NavigationOverlayProvider,
   useNavigationOverlay
 } from '@/components/layout/navigation-overlay';
@@ -26,7 +27,9 @@ describe('NavigationOverlayProvider', () => {
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
     jest.useRealTimers();
   });
 
@@ -34,6 +37,7 @@ describe('NavigationOverlayProvider', () => {
     const view = render(
       <NavigationOverlayProvider>
         <Trigger />
+        <NavigationOverlayLayer />
       </NavigationOverlayProvider>
     );
 
@@ -55,6 +59,7 @@ describe('NavigationOverlayProvider', () => {
     view.rerender(
       <NavigationOverlayProvider>
         <Trigger />
+        <NavigationOverlayLayer />
       </NavigationOverlayProvider>
     );
 
@@ -65,6 +70,7 @@ describe('NavigationOverlayProvider', () => {
     const view = render(
       <NavigationOverlayProvider>
         <Trigger />
+        <NavigationOverlayLayer />
       </NavigationOverlayProvider>
     );
 
@@ -74,6 +80,7 @@ describe('NavigationOverlayProvider', () => {
     view.rerender(
       <NavigationOverlayProvider>
         <Trigger />
+        <NavigationOverlayLayer />
       </NavigationOverlayProvider>
     );
 
@@ -84,4 +91,3 @@ describe('NavigationOverlayProvider', () => {
     expect(screen.queryByLabelText('読み込み中')).not.toBeInTheDocument();
   });
 });
-

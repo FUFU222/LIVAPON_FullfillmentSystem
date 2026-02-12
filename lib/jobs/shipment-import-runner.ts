@@ -1,13 +1,13 @@
 import { upsertShipment, prepareShipmentBatch, type ShipmentSelection } from '@/lib/data/orders';
 import {
   claimShipmentImportJobs,
+  claimShipmentImportJobById,
   loadPendingJobItems,
   incrementJobItemAttempts,
   markJobItemsResult,
   updateShipmentJobProgress,
   countPendingJobItems,
   getShipmentImportJob,
-  markShipmentJobRunning,
   type ShipmentImportJob,
   type ShipmentImportJobItem
 } from '@/lib/data/shipment-import-jobs';
@@ -56,35 +56,50 @@ export async function processShipmentImportJobs(options?: { jobLimit?: number; i
   return summary;
 }
 
-export async function processShipmentImportJobById(jobId: number, options?: { itemLimit?: number }) {
+export async function processShipmentImportJobById(
+  jobId: number,
+  options?: { itemLimit?: number; orderLimit?: number }
+) {
   const itemLimit = clamp(options?.itemLimit ?? DEFAULT_ITEM_LIMIT, 1, 100);
-  const job = await getShipmentImportJob(jobId);
+  const orderLimit = typeof options?.orderLimit === 'number'
+    ? clamp(options.orderLimit, 1, 20)
+    : null;
+  const claimed = await claimShipmentImportJobById(jobId);
 
-  if (!job) {
+  if (!claimed) {
+    const latest = await getShipmentImportJob(jobId);
+    if (!latest) {
+      return {
+        jobId,
+        processed: 0,
+        failed: 0,
+        remaining: 0,
+        status: 'not_found'
+      };
+    }
     return {
-      jobId,
-      processed: 0,
-      failed: 0,
-      remaining: 0,
-      status: 'not_found'
+      jobId: latest.id,
+      processed: latest.processed_count,
+      failed: latest.error_count,
+      remaining: latest.total_count - latest.processed_count - latest.error_count,
+      status: latest.status
     };
   }
 
-  if (job.status === 'succeeded' || job.status === 'failed') {
+  if (claimed.status === 'succeeded' || claimed.status === 'failed') {
     return {
-      jobId: job.id,
-      processed: job.processed_count,
-      failed: job.error_count,
-      remaining: job.total_count - job.processed_count - job.error_count,
-      status: job.status
+      jobId: claimed.id,
+      processed: claimed.processed_count,
+      failed: claimed.error_count,
+      remaining: claimed.total_count - claimed.processed_count - claimed.error_count,
+      status: claimed.status
     };
   }
 
-  const runningJob = await markShipmentJobRunning(job);
-  return handleSingleJob(runningJob, itemLimit);
+  return handleSingleJob(claimed, itemLimit, orderLimit);
 }
 
-async function handleSingleJob(job: ShipmentImportJob, itemLimit: number) {
+async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderLimit?: number | null) {
   if (!Number.isInteger(job.vendor_id)) {
     job = await updateShipmentJobProgress(job, {
       status: 'failed',
@@ -139,7 +154,10 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number) {
   const invalidIds = new Set(invalidItems.map((item) => item.id));
   const byOrder = groupItemsByOrder(pendingItems.filter((item) => !invalidIds.has(item.id)));
 
-  for (const [orderId, items] of byOrder.entries()) {
+  const orderEntries = Array.from(byOrder.entries());
+  const entriesToProcess = orderLimit ? orderEntries.slice(0, orderLimit) : orderEntries;
+
+  for (const [orderId, items] of entriesToProcess) {
     const selections: ShipmentSelection[] = items.map((item) => ({
       orderId,
       lineItemId: item.line_item_id as number,
@@ -172,7 +190,8 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number) {
           carrier: job.carrier,
           status: 'shipped'
         },
-        job.vendor_id as number
+        job.vendor_id as number,
+        { skipFulfillmentOrderSync: true }
       );
 
       processedCount += items.length;

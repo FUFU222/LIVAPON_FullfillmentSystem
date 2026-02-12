@@ -129,7 +129,8 @@ export async function registerShipmentsFromSelections(
         carrier: options.carrier,
         status: 'shipped'
       },
-      vendorId
+      vendorId,
+      { skipFulfillmentOrderSync: true }
     );
 
     processedOrders.push(orderId);
@@ -244,7 +245,10 @@ export async function upsertShipment(
     shippedAt?: string | null;
     lineItemQuantities?: Record<number, number | null>;
   },
-  vendorId: number
+  vendorId: number,
+  options?: {
+    skipFulfillmentOrderSync?: boolean;
+  }
 ) {
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to update shipments');
@@ -287,16 +291,18 @@ export async function upsertShipment(
     throw new Error('Line items must belong to the same order');
   }
 
-  lineItems = await ensureFulfillmentOrderIsActive({
-    client,
-    orderId,
-    lineItems,
-    loadLineItems
-  });
+  if (!options?.skipFulfillmentOrderSync) {
+    lineItems = await ensureFulfillmentOrderIsActive({
+      client,
+      orderId,
+      lineItems,
+      loadLineItems
+    });
 
-  const unauthorizedAfterSync = lineItems.some((item) => item.vendor_id !== vendorId);
-  if (unauthorizedAfterSync) {
-    throw new Error('Unauthorized line items included in shipment');
+    const unauthorizedAfterSync = lineItems.some((item) => item.vendor_id !== vendorId);
+    if (unauthorizedAfterSync) {
+      throw new Error('Unauthorized line items included in shipment');
+    }
   }
 
   const nowIso = new Date().toISOString();

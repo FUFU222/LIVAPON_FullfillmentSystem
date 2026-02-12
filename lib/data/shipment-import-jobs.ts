@@ -44,6 +44,10 @@ type PendingItemsOptions = {
   limit?: number;
 };
 
+type ClaimJobOptions = {
+  staleAfterSeconds?: number;
+};
+
 function assertServiceClient(): SupabaseClient<Database> {
   return getShopifyServiceClient();
 }
@@ -172,29 +176,6 @@ export async function getShipmentImportJobSummary(jobId: number, context: Summar
   };
 }
 
-export async function markShipmentJobRunning(job: ShipmentImportJob): Promise<ShipmentImportJob> {
-  const client = assertServiceClient();
-  const nowIso = new Date().toISOString();
-  const { data, error } = await client
-    .from('shipment_import_jobs')
-    .update({
-      status: 'running',
-      locked_at: nowIso,
-      last_attempt_at: nowIso,
-      attempts: (job.attempts ?? 0) + 1,
-      updated_at: nowIso
-    })
-    .eq('id', job.id)
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Failed to mark shipment job as running');
-  }
-
-  return data;
-}
-
 export async function claimShipmentImportJobs(limit: number): Promise<ShipmentImportJob[]> {
   const client = assertServiceClient();
   const batchLimit = Math.max(1, Math.min(limit, 5));
@@ -207,6 +188,81 @@ export async function claimShipmentImportJobs(limit: number): Promise<ShipmentIm
   }
 
   return data ?? [];
+}
+
+export async function claimShipmentImportJobById(
+  jobId: number,
+  options?: ClaimJobOptions
+): Promise<ShipmentImportJob | null> {
+  if (!Number.isInteger(jobId)) {
+    return null;
+  }
+
+  const client = assertServiceClient();
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const staleAfterSeconds = Math.max(
+    30,
+    Math.min(options?.staleAfterSeconds ?? Number(process.env.SHIPMENT_JOB_LOCK_STALE_SECONDS ?? '90'), 3600)
+  );
+  const staleBeforeIso = new Date(now - staleAfterSeconds * 1000).toISOString();
+
+  const { data: current, error: currentError } = await client
+    .from('shipment_import_jobs')
+    .select('id, status, attempts, locked_at')
+    .eq('id', jobId)
+    .maybeSingle();
+
+  if (currentError) {
+    throw currentError;
+  }
+
+  if (!current) {
+    return null;
+  }
+
+  const attempts = current.attempts ?? 0;
+  const claimPayload: Partial<ShipmentImportJob> = {
+    status: 'running',
+    locked_at: nowIso,
+    last_attempt_at: nowIso,
+    attempts: attempts + 1,
+    updated_at: nowIso
+  };
+
+  if (current.status === 'pending') {
+    const { data } = await client
+      .from('shipment_import_jobs')
+      .update(claimPayload)
+      .eq('id', jobId)
+      .eq('status', 'pending')
+      .select('*')
+      .maybeSingle();
+    return data ?? null;
+  }
+
+  if (current.status !== 'running') {
+    return null;
+  }
+
+  const lockedAt = current.locked_at;
+  const isStale = !lockedAt || Date.parse(lockedAt) <= Date.parse(staleBeforeIso);
+  if (!isStale) {
+    return null;
+  }
+
+  const staleClaimQuery = client
+    .from('shipment_import_jobs')
+    .update(claimPayload)
+    .eq('id', jobId)
+    .eq('status', 'running')
+    .select('*');
+
+  const { data } = lockedAt
+    ? await staleClaimQuery.lte('locked_at', staleBeforeIso).maybeSingle()
+    : await staleClaimQuery.is('locked_at', null).maybeSingle();
+
+  return data ?? null;
 }
 
 export async function loadPendingJobItems(jobId: number, options?: PendingItemsOptions): Promise<ShipmentImportJobItem[]> {

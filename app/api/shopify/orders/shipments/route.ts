@@ -54,11 +54,16 @@ export async function POST(request: Request) {
       selections: normalizedItems
     });
 
-    try {
-      await processShipmentImportJobById(job.jobId);
-    } catch (processError) {
-      console.error('Failed to process shipment job immediately', processError);
-    }
+    const kickoffItemLimit = parseLimit(
+      process.env.SHIPMENT_JOB_KICKOFF_ITEM_LIMIT,
+      Number(process.env.SHIPMENT_JOB_ITEM_LIMIT ?? '50'),
+      1,
+      50
+    );
+
+    void processShipmentImportJobById(job.jobId, { itemLimit: kickoffItemLimit, orderLimit: 1 }).catch((processError) => {
+      console.error('Failed to process shipment job asynchronously', processError);
+    });
 
     return NextResponse.json({ ok: true, jobId: job.jobId, totalCount: job.totalCount }, { status: 202 });
   } catch (error) {
@@ -71,6 +76,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: message }, { status: isClientError ? 400 : 500 });
   }
+}
+
+function parseLimit(value: string | undefined, fallback: number, min: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return Math.max(min, Math.min(fallback, max));
+  }
+  return Math.max(min, Math.min(parsed, max));
 }
 
 const clientErrorMessages = new Set([

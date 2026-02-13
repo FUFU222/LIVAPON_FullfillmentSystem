@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import type { OrderLineItemSummary, OrderSummary } from "@/lib/data/orders";
@@ -11,9 +11,10 @@ import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
 import { Badge } from "@/components/ui/badge";
 import { SelectedLineItem } from "@/components/orders/types";
 
-const ORDER_ROW_HEAD = "px-3 py-2 text-[11px] tracking-normal";
-const ORDER_ROW_CELL = "px-3 py-2 align-middle";
-const ORDER_ROW_CELL_MUTED = "px-3 py-2 align-middle text-sm leading-snug text-slate-600 whitespace-pre-line";
+const ORDER_ROW_HEAD = "px-2 py-2 text-[11px] tracking-normal sm:px-3";
+const ORDER_ROW_CELL = "px-2 py-2 align-middle sm:px-3";
+const ORDER_ROW_CELL_MUTED =
+  "px-2 py-2 align-middle text-xs leading-snug text-slate-600 whitespace-pre-line sm:px-3 sm:text-sm";
 const LINE_ITEM_HEAD = "px-3 py-1.5 text-xs font-medium text-slate-500";
 const LINE_ITEM_CELL = "px-3 py-1.5 text-xs";
 const LINE_ITEM_PRODUCT = "px-3 py-1.5 text-xs text-slate-700";
@@ -273,16 +274,17 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
 
   return (
     <div className="space-y-4">
+      <p className="px-1 text-xs text-slate-500 md:hidden">表は左右にスクロールできます。</p>
       <div className="overflow-x-auto rounded-lg border border-slate-200">
-        <Table className="min-w-[980px]">
+        <Table className="min-w-[760px] md:min-w-[860px] lg:min-w-[980px]">
         <TableHeader>
           <TableRow>
             <TableHead className={cn("w-16", ORDER_ROW_HEAD)}>選択</TableHead>
             <TableHead className={ORDER_ROW_HEAD}>注文番号</TableHead>
-            <TableHead className={ORDER_ROW_HEAD}>顧客名</TableHead>
+            <TableHead className={cn(ORDER_ROW_HEAD, "hidden md:table-cell")}>顧客名</TableHead>
             <TableHead className={ORDER_ROW_HEAD}>配送先住所</TableHead>
             <TableHead className={ORDER_ROW_HEAD}>ステータス</TableHead>
-            <TableHead className={ORDER_ROW_HEAD}>注文日時</TableHead>
+            <TableHead className={cn(ORDER_ROW_HEAD, "hidden lg:table-cell")}>注文日時</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -296,9 +298,8 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
             const orderDisabled = order.isArchived;
 
             return (
-              <>
+              <Fragment key={order.id}>
               <TableRow
-                key={`order-${order.id}`}
                 className={cn(
                   "relative align-top cursor-pointer transition-colors duration-200",
                   isExpanded && "bg-slate-50/60",
@@ -329,7 +330,9 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                     <Badge className="ml-2 bg-slate-200 text-slate-700">アーカイブ済み</Badge>
                   ) : null}
                 </TableCell>
-                <TableCell className={cn(ORDER_ROW_CELL, "text-sm font-medium text-slate-900")}>{order.customerName ?? '-'}</TableCell>
+                <TableCell className={cn(ORDER_ROW_CELL, "hidden text-sm font-medium text-slate-900 md:table-cell")}>
+                  {order.customerName ?? '-'}
+                </TableCell>
                 <TableCell className={ORDER_ROW_CELL_MUTED}>
                   {order.shippingAddressLines.length > 0 ? (
                     <span className="whitespace-pre-line text-slate-700">{order.shippingAddressLines.join('\n')}</span>
@@ -340,10 +343,10 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                 <TableCell className={ORDER_ROW_CELL}>
                   <StatusBadge status={order.status ?? order.localStatus ?? 'unfulfilled'} />
                 </TableCell>
-                <TableCell className={ORDER_ROW_CELL}>{formatDate(order.createdAt)}</TableCell>
+                <TableCell className={cn(ORDER_ROW_CELL, "hidden lg:table-cell")}>{formatDate(order.createdAt)}</TableCell>
               </TableRow>
 
-                <TableRow key={`order-${order.id}-items`} className="bg-slate-50">
+                <TableRow className="bg-slate-50">
                   <td colSpan={6} className="bg-slate-50 p-0">
                     <div
                       className={cn(
@@ -421,7 +424,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                     </div>
                   </td>
                 </TableRow>
-              </>
+              </Fragment>
             );
           })}
         </TableBody>

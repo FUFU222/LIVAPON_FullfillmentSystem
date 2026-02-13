@@ -363,10 +363,10 @@ function AppShellContent({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between md:gap-6 md:px-6 md:py-4">
           <Link
             href={brandHref}
-            className="flex items-center gap-3 text-lg font-semibold tracking-tight text-foreground"
+            className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground sm:gap-3"
             onClick={(event) => handleNavigation(event, brandHref)}
           >
             <Image
@@ -375,12 +375,12 @@ function AppShellContent({
               width={192}
               height={40}
               priority
-              className="h-[4.5rem] w-auto"
+              className="h-12 w-auto sm:h-14 md:h-[4.5rem]"
             />
             <span className="hidden text-base font-semibold text-slate-500 sm:inline">配送管理コンソール</span>
           </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <nav className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-between gap-3 text-sm md:w-auto md:justify-end md:gap-4">
+            <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pb-1 md:flex-none md:overflow-visible md:pb-0">
             {links
                 .filter((item) => item.href !== '/import')
                 .map((item) => (
@@ -388,7 +388,7 @@ function AppShellContent({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98]',
+                      'whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98] sm:px-3 sm:py-2 sm:text-sm',
                       isNavActive(pathname ?? null, item.href)
                         ? 'bg-foreground text-white shadow-sm'
                       : 'text-foreground/70 hover:bg-muted hover:text-foreground'
@@ -410,13 +410,13 @@ function AppShellContent({
         </div>
       </header>
       <div className="relative mx-auto flex w-full max-w-6xl flex-1">
-        <main className="flex w-full flex-1 flex-col gap-8 px-6 py-6">
+        <main className="flex w-full flex-1 flex-col gap-6 px-3 py-4 sm:px-4 sm:py-5 md:gap-8 md:px-6 md:py-6">
           {children}
         </main>
         <NavigationOverlayLayer />
       </div>
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-3 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-4 md:px-6">
           <span>© {new Date().getFullYear()} LIVAPON Logistics</span>
           <nav className="flex gap-4">
             <Link href="/terms" className="transition hover:text-foreground">

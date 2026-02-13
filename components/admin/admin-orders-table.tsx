@@ -124,7 +124,29 @@ export function AdminOrdersTable({ orders }: Props) {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="grid gap-3 md:hidden">
+        {sortedOrders.map((order) => (
+          <article key={order.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <button
+              type="button"
+              className="grid w-full gap-2 text-left"
+              onClick={() => handleOpenOrder(order.id)}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold text-foreground">{order.orderNumber}</span>
+                <StatusBadge status={order.status} />
+              </div>
+              <div className="grid gap-1 text-sm text-slate-600">
+                <p>顧客: {order.customerName ?? '-'}</p>
+                <p>ベンダー: {order.vendorName ?? '未割当'}</p>
+                <p className="text-xs text-slate-500">最終更新: {formatDate(order.updatedAt)}</p>
+              </div>
+            </button>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full table-auto text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>

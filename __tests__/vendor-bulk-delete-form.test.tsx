@@ -44,7 +44,7 @@ describe('VendorBulkDeleteForm', () => {
     const bulkButton = screen.getByRole('button', { name: '選択したベンダーを削除' });
     expect(bulkButton).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByLabelText('テストベンダー を削除対象として選択'));
     expect(bulkButton).toBeEnabled();
 
     fireEvent.click(bulkButton);

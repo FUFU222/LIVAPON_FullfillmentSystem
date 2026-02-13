@@ -132,14 +132,59 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
       <div className="flex justify-end">
         <button
           type="button"
-          className={buttonClasses('outline', 'text-sm text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed')}
+          className={buttonClasses('outline', 'w-full text-sm text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed md:w-auto')}
           disabled={selectedIds.length === 0}
           onClick={() => setBulkConfirmOpen(true)}
         >
           選択したベンダーを削除
         </button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="grid gap-3 md:hidden">
+        {vendors.map((vendor) => (
+          <article key={vendor.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => handleOpenVendor(vendor.id)}
+              >
+                <p className="truncate text-sm font-semibold text-foreground">{vendor.name}</p>
+                <p className="text-xs text-slate-500">コード: {vendor.code ?? '----'}</p>
+              </button>
+              <Checkbox
+                checked={selectedIds.includes(vendor.id)}
+                onChange={(event) => {
+                  setSelectedIds((current) =>
+                    event.target.checked
+                      ? [...current, vendor.id]
+                      : current.filter((id) => id !== vendor.id)
+                  );
+                }}
+                aria-label={`${vendor.name} を削除対象として選択`}
+              />
+            </div>
+            <div className="mt-3 grid gap-1 text-xs text-slate-600">
+              <p>
+                ステータス:{' '}
+                {vendor.lastApplication
+                  ? vendor.lastApplication.status === 'approved'
+                    ? '承認済み'
+                    : vendor.lastApplication.status === 'rejected'
+                      ? '却下'
+                      : '審査中'
+                  : '審査情報なし'}
+              </p>
+              <p className="truncate">メール: {vendor.contactEmail ?? '-'}</p>
+              <p>登録日: {toDisplayDate(vendor.createdAt)}</p>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <VendorDeleteButton vendorId={vendor.id} vendorName={vendor.name} />
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full table-auto text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>

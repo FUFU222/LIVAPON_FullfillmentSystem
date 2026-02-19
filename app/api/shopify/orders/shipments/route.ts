@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAuthContext, assertAuthorizedVendor } from "@/lib/auth";
 import { type ShipmentSelection } from "@/lib/data/orders";
-import { createShipmentImportJob } from "@/lib/data/shipment-import-jobs";
+import {
+  createShipmentImportJob,
+  validateShipmentSelectionsForVendor
+} from "@/lib/data/shipment-import-jobs";
 import { processShipmentImportJobById } from "@/lib/jobs/shipment-import-runner";
 import { isSameOriginRequest } from "@/lib/security/csrf";
 
@@ -51,6 +54,11 @@ export async function POST(request: Request) {
         : null
   }));
 
+  const selectionsAuthorized = await validateShipmentSelectionsForVendor(auth.vendorId, normalizedItems);
+  if (!selectionsAuthorized) {
+    return NextResponse.json({ error: "Unauthorized line item selections" }, { status: 403 });
+  }
+
   try {
     const job = await createShipmentImportJob({
       vendorId: auth.vendorId,
@@ -93,6 +101,7 @@ function parseLimit(value: string | undefined, fallback: number, min: number, ma
 
 const clientErrorMessages = new Set([
   'line item selections are required',
+  'Unauthorized line item selections',
   '発送できる明細が見つかりませんでした',
   'A valid vendorId is required to create shipment jobs'
 ]);

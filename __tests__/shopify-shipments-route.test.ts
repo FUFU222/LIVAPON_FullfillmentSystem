@@ -20,7 +20,8 @@ jest.mock('@/lib/auth', () => ({
 }));
 
 jest.mock('@/lib/data/shipment-import-jobs', () => ({
-  createShipmentImportJob: jest.fn()
+  createShipmentImportJob: jest.fn(),
+  validateShipmentSelectionsForVendor: jest.fn()
 }));
 
 jest.mock('@/lib/jobs/shipment-import-runner', () => ({
@@ -34,6 +35,10 @@ const { requireAuthContext, assertAuthorizedVendor } = jest.requireMock<{
 
 const { createShipmentImportJob } = jest.requireMock<{
   createShipmentImportJob: jest.Mock;
+}>('@/lib/data/shipment-import-jobs');
+
+const { validateShipmentSelectionsForVendor } = jest.requireMock<{
+  validateShipmentSelectionsForVendor: jest.Mock;
 }>('@/lib/data/shipment-import-jobs');
 
 const { processShipmentImportJobById } = jest.requireMock<{
@@ -66,6 +71,7 @@ describe('POST /api/shopify/orders/shipments', () => {
     jest.resetAllMocks();
     requireAuthContext.mockResolvedValue({ vendorId: 10 });
     assertAuthorizedVendor.mockImplementation(() => undefined);
+    validateShipmentSelectionsForVendor.mockResolvedValue(true);
     createShipmentImportJob.mockResolvedValue({ jobId: 55, totalCount: 2 });
   });
 
@@ -110,9 +116,32 @@ describe('POST /api/shopify/orders/shipments', () => {
     const response = winner as Response;
     expect(response.status).toBe(202);
     expect(createShipmentImportJob).toHaveBeenCalledTimes(1);
+    expect(validateShipmentSelectionsForVendor).toHaveBeenCalledWith(
+      10,
+      expect.arrayContaining([
+        expect.objectContaining({ orderId: 1, lineItemId: 11 }),
+        expect.objectContaining({ orderId: 2, lineItemId: 22 })
+      ])
+    );
     expect(processShipmentImportJobById).toHaveBeenCalledWith(
       55,
       expect.objectContaining({ orderLimit: 1 })
     );
+  });
+
+  it('returns 403 when selected items are not authorized for vendor', async () => {
+    validateShipmentSelectionsForVendor.mockResolvedValue(false);
+
+    const response = await POST(
+      buildRequest({
+        trackingNumber: 'TRK-123',
+        carrier: 'yamato',
+        items: [{ orderId: 999, lineItemId: 111, quantity: 1 }]
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(createShipmentImportJob).not.toHaveBeenCalled();
+    expect(processShipmentImportJobById).not.toHaveBeenCalled();
   });
 });

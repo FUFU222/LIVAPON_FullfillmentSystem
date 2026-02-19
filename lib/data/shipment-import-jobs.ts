@@ -119,6 +119,45 @@ export async function createShipmentImportJob(input: CreateJobInput): Promise<{ 
   return { jobId: job.id, totalCount: normalized.length };
 }
 
+export async function validateShipmentSelectionsForVendor(
+  vendorId: number,
+  selections: ShipmentSelection[]
+): Promise<boolean> {
+  if (!Number.isInteger(vendorId)) {
+    throw new Error('A valid vendorId is required to validate shipment selections');
+  }
+
+  const normalized = normalizeSelections(selections);
+  if (normalized.length === 0) {
+    return false;
+  }
+
+  const lineItemIds = Array.from(new Set(normalized.map((selection) => selection.lineItemId)));
+  const client = assertServiceClient();
+  const { data, error } = await client
+    .from('line_items')
+    .select('id, order_id')
+    .eq('vendor_id', vendorId)
+    .in('id', lineItemIds);
+
+  if (error) {
+    throw error;
+  }
+
+  const lineItemMap = new Map<number, { id: number; order_id: number | null }>();
+  (data ?? []).forEach((item) => {
+    lineItemMap.set(item.id, item);
+  });
+
+  return normalized.every((selection) => {
+    const lineItem = lineItemMap.get(selection.lineItemId);
+    if (!lineItem) {
+      return false;
+    }
+    return lineItem.order_id === selection.orderId;
+  });
+}
+
 export async function getShipmentImportJob(jobId: number): Promise<ShipmentImportJob | null> {
   if (!Number.isInteger(jobId)) {
     return null;

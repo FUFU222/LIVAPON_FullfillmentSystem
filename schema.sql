@@ -272,7 +272,8 @@ ALTER TABLE shipment_adjustment_comments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "OrdersReadable" ON orders;
 CREATE POLICY "OrdersReadable" ON orders
   FOR SELECT USING (
-    (vendor_id = COALESCE(NULLIF((auth.jwt()->>'vendor_id'),'')::INT, -1))
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR (vendor_id = COALESCE(NULLIF((auth.jwt()->>'vendor_id'),'')::INT, -1))
     OR EXISTS (
       SELECT 1 FROM line_items li
       WHERE li.order_id = orders.id
@@ -280,9 +281,14 @@ CREATE POLICY "OrdersReadable" ON orders
     )
   );
 
-DROP POLICY IF EXISTS "OrdersInsertUpdate" ON orders;
-CREATE POLICY "OrdersInsertUpdate" ON orders
-  FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "OrdersAdminWrite" ON orders;
+CREATE POLICY "OrdersAdminWrite" ON orders
+  FOR ALL USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  )
+  WITH CHECK (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  );
 
 DROP POLICY IF EXISTS "LineItemsReadable" ON line_items;
 CREATE POLICY "LineItemsReadable" ON line_items

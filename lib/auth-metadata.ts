@@ -2,7 +2,8 @@ import type { User } from '@supabase/supabase-js';
 
 type MetadataUser = Pick<User, 'app_metadata' | 'user_metadata' | 'email'>;
 
-const DEFAULT_ADMIN_EMAIL_ALLOWLIST = ['a.tanaka@chairman.jp'];
+const DEFAULT_ADMIN_EMAIL_ALLOWLIST: string[] = [];
+const DEFAULT_ADMIN_EMAIL_DOMAIN_ALLOWLIST = ['@chairman.jp'];
 
 function toMetadataRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object') {
@@ -70,6 +71,30 @@ function parseAdminEmailAllowlist(value: string | undefined): string[] {
     .filter((entry): entry is string => Boolean(entry));
 }
 
+function normalizeEmailDomainSuffix(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  return normalized.startsWith('@') ? normalized : `@${normalized}`;
+}
+
+function parseAdminEmailDomainAllowlist(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((entry) => normalizeEmailDomainSuffix(entry))
+    .filter((entry): entry is string => Boolean(entry));
+}
+
 function resolveAdminEmailAllowlist(): Set<string> {
   const allowlist = new Set<string>(
     DEFAULT_ADMIN_EMAIL_ALLOWLIST
@@ -85,11 +110,43 @@ function resolveAdminEmailAllowlist(): Set<string> {
   return allowlist;
 }
 
+function resolveAdminEmailDomainAllowlist(): Set<string> {
+  const allowlist = new Set<string>(
+    DEFAULT_ADMIN_EMAIL_DOMAIN_ALLOWLIST
+      .map((entry) => normalizeEmailDomainSuffix(entry))
+      .filter((entry): entry is string => Boolean(entry))
+  );
+
+  parseAdminEmailDomainAllowlist(process.env.ADMIN_EMAIL_DOMAIN_ALLOWLIST).forEach((entry) =>
+    allowlist.add(entry)
+  );
+  parseAdminEmailDomainAllowlist(process.env.NEXT_PUBLIC_ADMIN_EMAIL_DOMAIN_ALLOWLIST).forEach(
+    (entry) => allowlist.add(entry)
+  );
+
+  return allowlist;
+}
+
 const ADMIN_EMAIL_ALLOWLIST = resolveAdminEmailAllowlist();
+const ADMIN_EMAIL_DOMAIN_ALLOWLIST = resolveAdminEmailDomainAllowlist();
 
 function isAllowlistedAdminEmail(email: unknown): boolean {
   const normalized = normalizeEmail(email);
-  return normalized !== null && ADMIN_EMAIL_ALLOWLIST.has(normalized);
+  if (normalized === null) {
+    return false;
+  }
+
+  if (ADMIN_EMAIL_ALLOWLIST.has(normalized)) {
+    return true;
+  }
+
+  for (const domainSuffix of ADMIN_EMAIL_DOMAIN_ALLOWLIST) {
+    if (normalized.endsWith(domainSuffix)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function resolveVendorIdFromAuthUser(user: MetadataUser | null): number | null {

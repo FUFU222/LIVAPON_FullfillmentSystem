@@ -32,6 +32,7 @@ describe('auth metadata resolution', () => {
 
   it('prefers role from app_metadata', () => {
     const user = {
+      email: 'vendor@example.com',
       app_metadata: {
         role: 'ADMIN'
       },
@@ -45,6 +46,7 @@ describe('auth metadata resolution', () => {
 
   it('normalizes administrator-style role names from app_metadata', () => {
     const user = {
+      email: 'vendor@example.com',
       app_metadata: {
         role: 'Administrator'
       },
@@ -56,6 +58,7 @@ describe('auth metadata resolution', () => {
 
   it('allows pending_vendor fallback from user_metadata', () => {
     const user = {
+      email: 'vendor@example.com',
       app_metadata: {},
       user_metadata: {
         role: ' pending_vendor '
@@ -67,6 +70,7 @@ describe('auth metadata resolution', () => {
 
   it('rejects privileged role fallback from user_metadata', () => {
     const user = {
+      email: 'vendor@example.com',
       app_metadata: {},
       user_metadata: {
         role: 'admin'
@@ -74,5 +78,29 @@ describe('auth metadata resolution', () => {
     } as MetadataUserInput;
 
     expect(resolveRoleFromAuthUser(user)).toBeNull();
+  });
+
+  it('allows trusted admin email fallback from user_metadata', () => {
+    const user = {
+      email: 'a.tanaka@chairman.jp',
+      app_metadata: {},
+      user_metadata: {
+        role: 'admin'
+      }
+    } as MetadataUserInput;
+
+    expect(resolveRoleFromAuthUser(user)).toBe('admin');
+  });
+
+  it('keeps allowlisted admin as admin even if app_metadata is pending', () => {
+    const user = {
+      email: 'a.tanaka@chairman.jp',
+      app_metadata: {
+        role: 'pending_vendor'
+      },
+      user_metadata: {}
+    } as MetadataUserInput;
+
+    expect(resolveRoleFromAuthUser(user)).toBe('admin');
   });
 });

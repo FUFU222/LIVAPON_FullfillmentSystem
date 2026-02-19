@@ -25,6 +25,14 @@ export default async function ShipmentAdjustmentPage() {
     redirect('/pending');
   }
 
+  if (auth.role === 'admin') {
+    redirect('/admin');
+  }
+
+  if (auth.vendorId === null) {
+    redirect('/pending');
+  }
+
   assertAuthorizedVendor(auth.vendorId);
 
   const vendorProfile = await getVendorProfile(auth.vendorId).catch((error) => {

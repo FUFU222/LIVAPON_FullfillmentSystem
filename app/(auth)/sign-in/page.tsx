@@ -39,7 +39,11 @@ export default async function SignInPage({
       redirect('/pending');
     }
 
-    redirect(redirectTo);
+    if (auth.vendorId !== null) {
+      redirect(redirectTo);
+    }
+
+    redirect('/pending');
   }
 
   return (

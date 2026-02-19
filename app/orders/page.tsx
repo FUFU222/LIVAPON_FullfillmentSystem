@@ -24,12 +24,16 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
     redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
   }
 
+  if (auth.role === 'admin') {
+    redirect('/admin');
+  }
+
   if (auth.role === 'pending_vendor') {
     redirect('/pending');
   }
 
   if (auth.vendorId === null) {
-    redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
+    redirect('/pending');
   }
 
   const params = {

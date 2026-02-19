@@ -18,6 +18,14 @@ export default async function VendorProfilePage() {
     redirect('/pending');
   }
 
+  if (auth.role === 'admin') {
+    redirect('/admin');
+  }
+
+  if (auth.vendorId === null) {
+    redirect('/pending');
+  }
+
   assertAuthorizedVendor(auth.vendorId);
 
   const supabase = await getServerComponentClient();

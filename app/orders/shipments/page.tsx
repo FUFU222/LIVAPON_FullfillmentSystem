@@ -10,11 +10,19 @@ import { getAuthContext } from "@/lib/auth";
 export default async function ShipmentsPage() {
   const auth = await getAuthContext();
 
-  if (!auth || auth.vendorId === null) {
+  if (!auth) {
     redirect(`/sign-in?redirectTo=${encodeURIComponent("/orders/shipments")}`);
   }
 
+  if (auth.role === "admin") {
+    redirect("/admin");
+  }
+
   if (auth.role === "pending_vendor") {
+    redirect("/pending");
+  }
+
+  if (auth.vendorId === null) {
     redirect("/pending");
   }
 

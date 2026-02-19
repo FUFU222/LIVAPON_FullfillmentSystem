@@ -15,8 +15,12 @@ export default async function ImportPage() {
     redirect('/pending');
   }
 
+  if (auth.role === 'admin') {
+    redirect('/admin');
+  }
+
   if (auth.vendorId === null) {
-    redirect('/sign-in?redirectTo=/import');
+    redirect('/pending');
   }
 
   return (

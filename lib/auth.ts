@@ -1,5 +1,9 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { getServerComponentClient } from '@/lib/supabase/server';
+import {
+  resolveRoleFromAuthUser,
+  resolveVendorIdFromAuthUser
+} from '@/lib/auth-metadata';
 
 export type AuthContext = {
   session: Session;
@@ -20,49 +24,6 @@ export class ForbiddenError extends Error {
     super(message);
     this.name = 'ForbiddenError';
   }
-}
-
-function resolveVendorId(user: User | null): number | null {
-  if (!user) {
-    return null;
-  }
-
-  const metadata = {
-    ...(user.user_metadata ?? {}),
-    ...(user.app_metadata ?? {})
-  } as Record<string, unknown>;
-
-  const candidate = metadata.vendor_id ?? metadata.vendorId;
-
-  if (typeof candidate === 'number') {
-    return candidate;
-  }
-
-  if (typeof candidate === 'string') {
-    const parsed = Number(candidate);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-}
-
-function resolveRole(user: User | null): string | null {
-  if (!user) {
-    return null;
-  }
-
-  const metadata = {
-    ...(user.user_metadata ?? {}),
-    ...(user.app_metadata ?? {})
-  } as Record<string, unknown>;
-
-  const candidate = metadata.role ?? metadata.user_role ?? metadata.app_role;
-
-  if (typeof candidate === 'string' && candidate.trim().length > 0) {
-    return candidate.trim().toLowerCase();
-  }
-
-  return null;
 }
 
 export async function getAuthContext(): Promise<AuthContext | null> {
@@ -99,8 +60,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   return {
     session,
     user,
-    vendorId: resolveVendorId(user),
-    role: resolveRole(user)
+    vendorId: resolveVendorIdFromAuthUser(user),
+    role: resolveRoleFromAuthUser(user)
   };
 }
 

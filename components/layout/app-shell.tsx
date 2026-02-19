@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNo
 import type { Session } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
+import { resolveRoleFromAuthUser, resolveVendorIdFromAuthUser } from '@/lib/auth-metadata';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { GradientAvatar } from '@/components/ui/avatar';
 import {
@@ -37,39 +38,6 @@ const adminNavItems = [
 
 const publicNavItems = [{ href: '/apply', label: '利用申請' }];
 const pendingNavItems = [{ href: '/pending', label: '審査状況' }];
-
-function parseVendorId(meta: Record<string, unknown> | undefined): number | null {
-  if (!meta) {
-    return null;
-  }
-
-  const value = meta.vendor_id ?? meta.vendorId;
-
-  if (typeof value === 'number') {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-}
-
-function parseRole(meta: Record<string, unknown> | undefined): string | null {
-  if (!meta) {
-    return null;
-  }
-
-  const value = meta.role ?? meta.user_role ?? meta.app_role;
-
-  if (typeof value === 'string' && value.trim().length > 0) {
-    return value.trim().toLowerCase();
-  }
-
-  return null;
-}
 
 function isNavActive(pathname: string | null, href: string) {
   if (!pathname) {
@@ -159,12 +127,9 @@ function AppShellContent({
 
       if (session?.user) {
         setEmail(session.user.email ?? null);
-        const nextVendorId = parseVendorId({
-          ...session.user.user_metadata,
-          ...session.user.app_metadata
-        });
+        const nextVendorId = resolveVendorIdFromAuthUser(session.user);
         setVendorId(nextVendorId);
-        setRole(parseRole({ ...session.user.user_metadata, ...session.user.app_metadata }));
+        setRole(resolveRoleFromAuthUser(session.user));
         setStatus('signed-in');
         void loadCompanyName(nextVendorId);
       } else {

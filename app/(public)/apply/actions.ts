@@ -63,17 +63,14 @@ export async function submitVendorApplication(
 
     const authUserId = signUpResult.data.user?.id ?? null;
 
-    await createVendorApplication(
-      {
-        companyName,
-        contactName,
-        contactEmail,
-        contactPhone,
-        message,
-        authUserId
-      },
-      supabase
-    );
+    await createVendorApplication({
+      companyName,
+      contactName,
+      contactEmail,
+      contactPhone,
+      message,
+      authUserId
+    });
 
     revalidatePath('/admin/applications');
 

@@ -260,6 +260,8 @@ CREATE INDEX idx_shipment_adjustment_comments_request_id ON shipment_adjustment_
 CREATE INDEX idx_shipment_adjustment_comments_vendor_id ON shipment_adjustment_comments(vendor_id);
 
 -- RLS / Realtime settings
+ALTER TABLE vendors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vendor_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipments ENABLE ROW LEVEL SECURITY;
@@ -268,6 +270,43 @@ ALTER TABLE shipment_import_job_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_vendor_segments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shopify_connections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
+-- shopify_connections / import_logs are kept service-role-only by design.
+
+DROP POLICY IF EXISTS "VendorsReadable" ON vendors;
+CREATE POLICY "VendorsReadable" ON vendors
+  FOR SELECT USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    OR id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "VendorsVendorSelfUpdate" ON vendors;
+CREATE POLICY "VendorsVendorSelfUpdate" ON vendors
+  FOR UPDATE USING (
+    id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  )
+  WITH CHECK (
+    id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+  );
+
+DROP POLICY IF EXISTS "VendorsAdminAll" ON vendors;
+CREATE POLICY "VendorsAdminAll" ON vendors
+  FOR ALL USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  )
+  WITH CHECK (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  );
+
+DROP POLICY IF EXISTS "VendorApplicationsAdminAll" ON vendor_applications;
+CREATE POLICY "VendorApplicationsAdminAll" ON vendor_applications
+  FOR ALL USING (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  )
+  WITH CHECK (
+    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+  );
 
 DROP POLICY IF EXISTS "OrdersReadable" ON orders;
 CREATE POLICY "OrdersReadable" ON orders
@@ -535,6 +574,10 @@ CREATE INDEX idx_fulfillment_requests_vendor_id ON fulfillment_requests(vendor_i
 CREATE INDEX idx_fulfillment_request_line_items_request_id ON fulfillment_request_line_items(fulfillment_request_id);
 CREATE INDEX idx_fulfillment_request_line_items_line_item_id ON fulfillment_request_line_items(line_item_id);
 
+ALTER TABLE fulfillment_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fulfillment_request_line_items ENABLE ROW LEVEL SECURITY;
+-- fulfillment request tables are internal integration data (service-role-only).
+
 -- Webhook job queue
 CREATE TABLE webhook_jobs (
   id BIGSERIAL PRIMARY KEY,
@@ -554,6 +597,9 @@ CREATE TABLE webhook_jobs (
 CREATE INDEX idx_webhook_jobs_status ON webhook_jobs(status, created_at);
 CREATE INDEX idx_webhook_jobs_shop_domain ON webhook_jobs(shop_domain);
 CREATE INDEX idx_webhook_jobs_webhook_id ON webhook_jobs(webhook_id);
+
+ALTER TABLE webhook_jobs ENABLE ROW LEVEL SECURITY;
+-- webhook_jobs is an internal worker queue (service-role-only).
 
 -- Stored procedures
 CREATE OR REPLACE FUNCTION public.sync_order_line_items(

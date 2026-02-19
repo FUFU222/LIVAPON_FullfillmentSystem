@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
+import { normalizeShopDomain } from '@/lib/shopify/shop-domains';
 
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY ?? '';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET ?? '';
@@ -29,8 +30,56 @@ function assertServiceClient(): SupabaseClient<Database> {
   return serviceClient;
 }
 
+function normalizeAndValidateShopDomain(shop: string | null | undefined): string | null {
+  const normalized = normalizeShopDomain(shop);
+  if (!normalized) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(`https://${normalized}`);
+    const hasExtraPath = parsed.pathname !== '/';
+    const hasExtraState =
+      parsed.search.length > 0
+      || parsed.hash.length > 0
+      || parsed.username.length > 0
+      || parsed.password.length > 0
+      || parsed.port.length > 0;
+
+    if (parsed.hostname !== normalized || hasExtraPath || hasExtraState) {
+      return null;
+    }
+
+    return parsed.hostname;
+  } catch {
+    return null;
+  }
+}
+
+export function getConfiguredShopDomain(): string {
+  const configured = assertEnv(SHOPIFY_STORE_DOMAIN, 'SHOPIFY_STORE_DOMAIN');
+  const normalized = normalizeAndValidateShopDomain(configured);
+
+  if (!normalized) {
+    throw new Error('SHOPIFY_STORE_DOMAIN must be a bare host name');
+  }
+
+  return normalized;
+}
+
+export function assertPinnedShopDomain(shop: string): string {
+  const normalized = normalizeAndValidateShopDomain(shop);
+  const pinned = getConfiguredShopDomain();
+
+  if (!normalized || normalized !== pinned) {
+    throw new Error('Unexpected shop domain');
+  }
+
+  return normalized;
+}
+
 export function buildShopifyAuthUrl(origin: string, state: string): URL {
-  const shop = assertEnv(SHOPIFY_STORE_DOMAIN, 'SHOPIFY_STORE_DOMAIN');
+  const shop = getConfiguredShopDomain();
   const apiKey = assertEnv(SHOPIFY_API_KEY, 'SHOPIFY_API_KEY');
   const scopes = SHOPIFY_SCOPES;
   const redirect = new URL('/api/shopify/auth/callback', origin);
@@ -45,10 +94,11 @@ export function buildShopifyAuthUrl(origin: string, state: string): URL {
 }
 
 export async function exchangeAccessToken(shop: string, code: string) {
+  const normalizedShop = assertPinnedShopDomain(shop);
   const apiKey = assertEnv(SHOPIFY_API_KEY, 'SHOPIFY_API_KEY');
   const apiSecret = assertEnv(SHOPIFY_API_SECRET, 'SHOPIFY_API_SECRET');
 
-  const tokenUrl = `https://${shop}/admin/oauth/access_token`;
+  const tokenUrl = `https://${normalizedShop}/admin/oauth/access_token`;
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
@@ -75,7 +125,7 @@ export async function storeShopifyConnection(
   token: { access_token: string; scope: string }
 ) {
   const client = assertServiceClient();
-  const normalizedShop = shop.trim().toLowerCase();
+  const normalizedShop = assertPinnedShopDomain(shop);
 
   const payload: Database['public']['Tables']['shopify_connections']['Insert'] = {
     shop: normalizedShop,

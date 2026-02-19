@@ -30,7 +30,7 @@ export default async function ShipmentAdjustmentPage() {
   }
 
   if (auth.vendorId === null) {
-    redirect('/pending');
+    redirect(`/sign-in?redirectTo=${encodeURIComponent('/support/shipment-adjustment')}`);
   }
 
   assertAuthorizedVendor(auth.vendorId);

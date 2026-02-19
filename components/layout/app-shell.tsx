@@ -232,7 +232,7 @@ function AppShellContent({
       return navItems;
     }
 
-    return pendingNavItems;
+    return publicNavItems;
   })();
 
   const { beginNavigation } = useNavigationOverlay();
@@ -251,7 +251,7 @@ function AppShellContent({
     if (role === 'vendor' && vendorId) {
       return '/orders';
     }
-    return '/pending';
+    return '/';
   })();
 
   const clearNavigationFallback = useCallback(() => {

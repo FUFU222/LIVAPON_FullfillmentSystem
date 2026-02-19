@@ -43,6 +43,17 @@ describe('auth metadata resolution', () => {
     expect(resolveRoleFromAuthUser(user)).toBe('admin');
   });
 
+  it('normalizes administrator-style role names from app_metadata', () => {
+    const user = {
+      app_metadata: {
+        role: 'Administrator'
+      },
+      user_metadata: {}
+    } as MetadataUserInput;
+
+    expect(resolveRoleFromAuthUser(user)).toBe('admin');
+  });
+
   it('allows pending_vendor fallback from user_metadata', () => {
     const user = {
       app_metadata: {},

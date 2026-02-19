@@ -20,7 +20,7 @@ export default async function ImportPage() {
   }
 
   if (auth.vendorId === null) {
-    redirect('/pending');
+    redirect('/sign-in?redirectTo=/import');
   }
 
   return (

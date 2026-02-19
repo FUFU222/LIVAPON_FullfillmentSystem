@@ -23,7 +23,7 @@ export default async function VendorProfilePage() {
   }
 
   if (auth.vendorId === null) {
-    redirect('/pending');
+    redirect('/sign-in?redirectTo=/vendor/profile');
   }
 
   assertAuthorizedVendor(auth.vendorId);

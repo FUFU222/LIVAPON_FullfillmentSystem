@@ -33,7 +33,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
   }
 
   if (auth.vendorId === null) {
-    redirect('/pending');
+    redirect(`/sign-in?redirectTo=${encodeURIComponent(redirectTarget)}`);
   }
 
   const params = {

@@ -23,7 +23,7 @@ export default async function ShipmentsPage() {
   }
 
   if (auth.vendorId === null) {
-    redirect("/pending");
+    redirect(`/sign-in?redirectTo=${encodeURIComponent("/orders/shipments")}`);
   }
 
   const shipments = await getShipmentHistory(auth.vendorId);

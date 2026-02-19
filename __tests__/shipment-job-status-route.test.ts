@@ -12,7 +12,7 @@ jest.mock('next/server', () => ({
   }
 }));
 
-import { GET } from '@/app/api/shipment-jobs/[id]/route';
+import { GET, POST } from '@/app/api/shipment-jobs/[id]/route';
 
 jest.mock('@/lib/auth', () => ({
   requireAuthContext: jest.fn(),
@@ -56,7 +56,22 @@ function createSummary(status: string) {
   };
 }
 
-describe('GET /api/shipment-jobs/[id]', () => {
+function buildRequest(options?: { origin?: string | null; requestUrl?: string }) {
+  const requestUrl = options?.requestUrl ?? 'https://app.example.com/api/shipment-jobs/12';
+  const headers = new Headers();
+  const origin = options?.origin === undefined ? 'https://app.example.com' : options.origin;
+
+  if (origin !== null) {
+    headers.set('origin', origin);
+  }
+
+  return {
+    url: requestUrl,
+    headers
+  } as unknown as Request;
+}
+
+describe('/api/shipment-jobs/[id]', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     requireAuthContext.mockResolvedValue({ vendorId: 10, role: 'vendor' });
@@ -64,12 +79,37 @@ describe('GET /api/shipment-jobs/[id]', () => {
     processShipmentImportJobById.mockResolvedValue(undefined);
   });
 
-  it('advances non-terminal job state before returning summary', async () => {
+  it('GET returns current summary without advancing non-terminal jobs', async () => {
+    getShipmentImportJobSummary.mockResolvedValueOnce(createSummary('pending'));
+
+    const response = await GET(buildRequest(), {
+      params: Promise.resolve({ id: '12' })
+    });
+
+    expect(response.status).toBe(200);
+    expect(processShipmentImportJobById).not.toHaveBeenCalled();
+    expect(getShipmentImportJobSummary).toHaveBeenCalledTimes(1);
+
+    const body = await response.json();
+    expect(body.job.status).toBe('pending');
+  });
+
+  it('POST returns 403 when same-origin validation fails', async () => {
+    const response = await POST(buildRequest({ origin: null }), {
+      params: Promise.resolve({ id: '12' })
+    });
+
+    expect(response.status).toBe(403);
+    expect(requireAuthContext).not.toHaveBeenCalled();
+    expect(processShipmentImportJobById).not.toHaveBeenCalled();
+  });
+
+  it('POST advances non-terminal job state before returning summary', async () => {
     getShipmentImportJobSummary
       .mockResolvedValueOnce(createSummary('pending'))
       .mockResolvedValueOnce(createSummary('running'));
 
-    const response = await GET({} as Request, {
+    const response = await POST(buildRequest(), {
       params: Promise.resolve({ id: '12' })
     });
 
@@ -83,10 +123,10 @@ describe('GET /api/shipment-jobs/[id]', () => {
     expect(body.job.status).toBe('running');
   });
 
-  it('does not attempt processing for terminal jobs', async () => {
+  it('POST does not attempt processing for terminal jobs', async () => {
     getShipmentImportJobSummary.mockResolvedValueOnce(createSummary('succeeded'));
 
-    const response = await GET({} as Request, {
+    const response = await POST(buildRequest(), {
       params: Promise.resolve({ id: '12' })
     });
 

@@ -226,7 +226,7 @@ export function OrdersDispatchPanel({
 
   const refreshJobStatus = useCallback(async (jobId: number) => {
     const response = await fetch(`/api/shipment-jobs/${jobId}`, {
-      method: "GET",
+      method: "POST",
       cache: "no-store"
     });
 

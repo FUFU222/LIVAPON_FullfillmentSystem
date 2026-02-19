@@ -40,8 +40,21 @@ const { processShipmentImportJobById } = jest.requireMock<{
   processShipmentImportJobById: jest.Mock;
 }>('@/lib/jobs/shipment-import-runner');
 
-function buildRequest(body: unknown) {
+function buildRequest(
+  body: unknown,
+  options?: { origin?: string | null; requestUrl?: string }
+) {
+  const requestUrl = options?.requestUrl ?? 'https://app.example.com/api/shopify/orders/shipments';
+  const headers = new Headers();
+  const origin = options?.origin === undefined ? 'https://app.example.com' : options.origin;
+
+  if (origin !== null) {
+    headers.set('origin', origin);
+  }
+
   return {
+    url: requestUrl,
+    headers,
     async json() {
       return body;
     }
@@ -54,6 +67,23 @@ describe('POST /api/shopify/orders/shipments', () => {
     requireAuthContext.mockResolvedValue({ vendorId: 10 });
     assertAuthorizedVendor.mockImplementation(() => undefined);
     createShipmentImportJob.mockResolvedValue({ jobId: 55, totalCount: 2 });
+  });
+
+  it('returns 403 when same-origin validation fails', async () => {
+    const response = await POST(
+      buildRequest(
+        {
+          trackingNumber: 'TRK-123',
+          carrier: 'yamato',
+          items: [{ orderId: 1, lineItemId: 11, quantity: 1 }]
+        },
+        { origin: null }
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expect(requireAuthContext).not.toHaveBeenCalled();
+    expect(createShipmentImportJob).not.toHaveBeenCalled();
   });
 
   it('returns accepted response without waiting for job processing completion', async () => {

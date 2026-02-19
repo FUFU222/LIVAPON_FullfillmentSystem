@@ -3,6 +3,7 @@ import { requireAuthContext, assertAuthorizedVendor } from "@/lib/auth";
 import { type ShipmentSelection } from "@/lib/data/orders";
 import { createShipmentImportJob } from "@/lib/data/shipment-import-jobs";
 import { processShipmentImportJobById } from "@/lib/jobs/shipment-import-runner";
+import { isSameOriginRequest } from "@/lib/security/csrf";
 
 type ShipmentRequestItem = {
   orderId: number;
@@ -19,6 +20,10 @@ function isValidItem(value: unknown): value is ShipmentRequestItem {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+  }
+
   const auth = await requireAuthContext();
   assertAuthorizedVendor(auth.vendorId);
 

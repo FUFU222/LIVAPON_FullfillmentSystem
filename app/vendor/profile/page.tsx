@@ -5,7 +5,7 @@ import { VendorProfileForm } from '@/components/vendor/profile-form';
 import { OrdersRealtimeProvider } from '@/components/orders/orders-realtime-context';
 import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
 import { getAuthContext, assertAuthorizedVendor } from '@/lib/auth';
-import { getServerComponentClient } from '@/lib/supabase/server';
+import { getVendorProfile } from '@/lib/data/vendors';
 
 export default async function VendorProfilePage() {
   const auth = await getAuthContext();
@@ -28,25 +28,18 @@ export default async function VendorProfilePage() {
 
   assertAuthorizedVendor(auth.vendorId);
 
-  const supabase = await getServerComponentClient();
-  const { data: vendor, error } = await supabase
-    .from('vendors')
-    .select('name, code, contact_email, contact_name, contact_phone, notify_new_orders')
-    .eq('id', auth.vendorId)
-    .maybeSingle();
-
-  if (error) {
+  const vendor = await getVendorProfile(auth.vendorId).catch((error) => {
     console.error('Failed to load vendor profile', error);
-  }
+    return null;
+  });
 
   if (!vendor) {
     redirect('/orders');
   }
 
-  const contactName =
-    (vendor.contact_name ?? (auth.session.user.user_metadata?.contact_name ?? null)) as string | null;
-  const email = auth.session.user.email ?? vendor.contact_email ?? '';
-  const notifyNewOrders = vendor.notify_new_orders ?? true;
+  const contactName = (vendor.contactName ?? (auth.session.user.user_metadata?.contact_name ?? null)) as string | null;
+  const email = auth.session.user.email ?? vendor.contactEmail ?? '';
+  const notifyNewOrders = vendor.notifyNewOrders ?? true;
 
   return (
     <OrdersRealtimeProvider>
@@ -70,7 +63,7 @@ export default async function VendorProfilePage() {
                 contactName,
                 email,
                 vendorCode: vendor.code,
-                contactPhone: vendor.contact_phone ?? null,
+                contactPhone: vendor.contactPhone ?? null,
                 notifyNewOrders
               }}
             />

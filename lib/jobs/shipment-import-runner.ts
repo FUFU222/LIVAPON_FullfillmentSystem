@@ -122,6 +122,10 @@ export async function processShipmentImportJobById(
 
 async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderLimit?: number | null) {
   if (!Number.isInteger(job.vendor_id)) {
+    console.error('Shipment job failed due to missing vendor context', {
+      jobId: job.id,
+      status: job.status
+    });
     job = await updateShipmentJobProgress(job, {
       status: 'failed',
       lastError: 'Vendor context is missing for this shipment job'
@@ -165,6 +169,13 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderL
 
   const invalidItems = pendingItems.filter((item) => !Number.isInteger(item.order_id) || !Number.isInteger(item.line_item_id));
   if (invalidItems.length > 0) {
+    console.error('Shipment job contains invalid items', {
+      jobId: job.id,
+      vendorId: job.vendor_id,
+      invalidItemIds: invalidItems.map((item) => item.id),
+      invalidOrderIds: invalidItems.map((item) => item.order_id),
+      invalidLineItemIds: invalidItems.map((item) => item.line_item_id)
+    });
     failedCount += invalidItems.length;
     await markJobItemsResult(
       invalidItems.map((item) => item.id),
@@ -194,6 +205,12 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderL
 
       if (!plan) {
         failedCount += items.length;
+        console.error('Shipment job order has no shippable line items', {
+          jobId: job.id,
+          vendorId: job.vendor_id,
+          orderId,
+          jobItemIds: items.map((item) => item.id)
+        });
         await markJobItemsResult(
           items.map((item) => item.id),
           'failed',
@@ -220,6 +237,15 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderL
     } catch (error) {
       failedCount += items.length;
       const message = normalizeError(error);
+      console.error('Shipment job order processing failed', {
+        jobId: job.id,
+        vendorId: job.vendor_id,
+        orderId,
+        jobItemIds: items.map((item) => item.id),
+        lineItemIds: items.map((item) => item.line_item_id),
+        error: message,
+        cause: error
+      });
       await markJobItemsResult(
         items.map((item) => item.id),
         'failed',
@@ -244,6 +270,18 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderL
     lastError: failedCount > 0 ? lastError ?? '発送登録に失敗しました' : undefined,
     unlock: hasMore
   });
+
+  if (failedCount > 0 || nextStatus === 'failed') {
+    console.error('Shipment job completed with failures', {
+      jobId: job.id,
+      vendorId: job.vendor_id,
+      processedCount,
+      failedCount,
+      remainingPending: remainingAfterSlice,
+      status: job.status,
+      lastError: job.last_error
+    });
+  }
 
   return {
     jobId: job.id,

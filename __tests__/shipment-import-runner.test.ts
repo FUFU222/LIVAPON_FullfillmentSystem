@@ -17,6 +17,11 @@ jest.mock('@/lib/data/shipment-import-jobs', () => ({
 
 import { processShipmentImportJobs } from '@/lib/jobs/shipment-import-runner';
 
+const ordersData = jest.requireMock<{
+  upsertShipment: jest.Mock;
+  prepareShipmentBatch: jest.Mock;
+}>('@/lib/data/orders');
+
 const jobsData = jest.requireMock<{
   claimShipmentImportJobs: jest.Mock;
   listReclaimableShipmentImportJobIds: jest.Mock;
@@ -56,8 +61,15 @@ describe('processShipmentImportJobs', () => {
     jobsData.claimShipmentImportJobById.mockResolvedValue(null);
     jobsData.loadPendingJobItems.mockResolvedValue([]);
     jobsData.countPendingJobItems.mockResolvedValue(0);
+    ordersData.prepareShipmentBatch.mockResolvedValue({
+      orderId: 2001,
+      lineItemIds: [3001],
+      lineItemQuantities: { 3001: 1 }
+    });
+    ordersData.upsertShipment.mockResolvedValue(undefined);
     jobsData.updateShipmentJobProgress.mockImplementation(async (job: any, update: any) => ({
       ...job,
+      last_error: update.lastError ?? job.last_error ?? null,
       status: update.status ?? job.status
     }));
   });
@@ -84,5 +96,49 @@ describe('processShipmentImportJobs', () => {
     expect(jobsData.listReclaimableShipmentImportJobIds).not.toHaveBeenCalled();
     expect(jobsData.claimShipmentImportJobById).not.toHaveBeenCalled();
     expect(summary.claimed).toBe(1);
+  });
+
+  it('logs error details when shipment processing fails', async () => {
+    jobsData.claimShipmentImportJobs.mockResolvedValue([createJob(12, 'running')]);
+    jobsData.loadPendingJobItems.mockResolvedValue([
+      {
+        id: 9001,
+        job_id: 12,
+        vendor_id: 25,
+        order_id: 501,
+        line_item_id: 3001,
+        quantity: 1,
+        status: 'pending',
+        error_message: null,
+        attempts: 0,
+        last_attempt_at: null,
+        created_at: null,
+        updated_at: null
+      }
+    ]);
+    ordersData.upsertShipment.mockRejectedValue(new Error('Shopify API timeout'));
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const summary = await processShipmentImportJobs({ jobLimit: 1, itemLimit: 10 });
+
+    expect(summary.failed).toBe(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Shipment job order processing failed',
+      expect.objectContaining({
+        jobId: 12,
+        orderId: 501,
+        error: 'Shopify API timeout'
+      })
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Shipment job completed with failures',
+      expect.objectContaining({
+        jobId: 12,
+        failedCount: 1
+      })
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 });

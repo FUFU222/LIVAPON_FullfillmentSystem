@@ -209,7 +209,7 @@ export function OrdersDispatchPanel({
         showToast({
           variant: "error",
           title: "一部の発送が登録できませんでした",
-          description: job.lastError ?? "画面下の詳細をご確認ください。",
+          description: "時間を置いて再度お試しください。問題が続く場合は管理者へお問い合わせください。",
           duration: 4000
         });
       }

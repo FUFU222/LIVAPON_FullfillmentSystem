@@ -163,8 +163,7 @@ export function OrdersDispatchPanel({
       window.requestAnimationFrame(() => {
         showToast({
           variant: "info",
-          title: "発送情報を受け付けました（処理中）",
-          description: "反映後に「発送登録が完了しました」と表示されます。",
+          title: "発送情報を受け付けました",
           duration: 4000
         });
       });

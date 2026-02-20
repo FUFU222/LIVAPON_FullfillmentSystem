@@ -220,7 +220,7 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderL
         continue;
       }
 
-      await upsertShipment(
+      const shipmentResult = await upsertShipment(
         {
           lineItemIds: plan.lineItemIds,
           lineItemQuantities: plan.lineItemQuantities,
@@ -229,8 +229,22 @@ async function handleSingleJob(job: ShipmentImportJob, itemLimit: number, orderL
           status: 'shipped'
         },
         job.vendor_id as number,
-        { skipFulfillmentOrderSync: true }
+        {
+          skipFulfillmentOrderSync: true,
+          nonFatalSyncErrors: true
+        }
       );
+
+      if (shipmentResult.syncStatus !== 'synced') {
+        console.warn('Shipment accepted with deferred Shopify sync', {
+          jobId: job.id,
+          vendorId: job.vendor_id,
+          orderId,
+          shipmentId: shipmentResult.shipmentId,
+          syncStatus: shipmentResult.syncStatus,
+          syncError: shipmentResult.syncError
+        });
+      }
 
       processedCount += items.length;
       await markJobItemsResult(items.map((item) => item.id), 'succeeded');

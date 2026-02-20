@@ -66,7 +66,11 @@ describe('processShipmentImportJobs', () => {
       lineItemIds: [3001],
       lineItemQuantities: { 3001: 1 }
     });
-    ordersData.upsertShipment.mockResolvedValue(undefined);
+    ordersData.upsertShipment.mockResolvedValue({
+      shipmentId: 8001,
+      syncStatus: 'synced',
+      syncError: null
+    });
     jobsData.updateShipmentJobProgress.mockImplementation(async (job: any, update: any) => ({
       ...job,
       last_error: update.lastError ?? job.last_error ?? null,
@@ -140,5 +144,53 @@ describe('processShipmentImportJobs', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it('treats deferred Shopify sync as non-fatal and keeps job succeeded', async () => {
+    jobsData.claimShipmentImportJobs.mockResolvedValue([createJob(13, 'running')]);
+    jobsData.loadPendingJobItems.mockResolvedValue([
+      {
+        id: 9002,
+        job_id: 13,
+        vendor_id: 25,
+        order_id: 502,
+        line_item_id: 3002,
+        quantity: 1,
+        status: 'pending',
+        error_message: null,
+        attempts: 0,
+        last_attempt_at: null,
+        created_at: null,
+        updated_at: null
+      }
+    ]);
+    ordersData.upsertShipment.mockResolvedValue({
+      shipmentId: 8100,
+      syncStatus: 'pending',
+      syncError: 'No fulfillment order found for Shopify order'
+    });
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const summary = await processShipmentImportJobs({ jobLimit: 1, itemLimit: 10 });
+
+    expect(summary.succeeded).toBe(1);
+    expect(summary.failed).toBe(0);
+    expect(jobsData.markJobItemsResult).toHaveBeenCalledWith([9002], 'succeeded');
+    expect(jobsData.markJobItemsResult).not.toHaveBeenCalledWith(
+      [9002],
+      'failed',
+      expect.anything()
+    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Shipment accepted with deferred Shopify sync',
+      expect.objectContaining({
+        jobId: 13,
+        orderId: 502,
+        shipmentId: 8100,
+        syncStatus: 'pending'
+      })
+    );
+
+    consoleWarnSpy.mockRestore();
   });
 });

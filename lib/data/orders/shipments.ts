@@ -28,6 +28,12 @@ export type ShipmentResyncSummary = {
   errors: Array<{ shipmentId: number; message: string }>;
 };
 
+export type ShipmentUpsertResult = {
+  shipmentId: number;
+  syncStatus: 'synced' | 'pending' | 'error';
+  syncError: string | null;
+};
+
 const CLOSED_FO_STATUSES = new Set(['closed', 'canceled', 'cancelled']);
 
 export async function resyncPendingShipments(options?: { limit?: number }): Promise<ShipmentResyncSummary> {
@@ -248,8 +254,9 @@ export async function upsertShipment(
   vendorId: number,
   options?: {
     skipFulfillmentOrderSync?: boolean;
+    nonFatalSyncErrors?: boolean;
   }
-) {
+): Promise<ShipmentUpsertResult> {
   if (!Number.isInteger(vendorId)) {
     throw new Error('A valid vendorId is required to update shipments');
   }
@@ -381,6 +388,11 @@ export async function upsertShipment(
 
   try {
     await syncShipmentWithShopify(shipmentId as number);
+    return {
+      shipmentId: shipmentId as number,
+      syncStatus: 'synced',
+      syncError: null
+    };
   } catch (error) {
     const now = new Date();
     const nowIso = now.toISOString();
@@ -416,6 +428,26 @@ export async function upsertShipment(
       .from('shipments')
       .update(updatePayload)
       .eq('id', shipmentId as number);
+
+    const resultStatus = updatePayload.sync_status === 'pending' ? 'pending' : 'error';
+
+    console.error('Failed to sync shipment with Shopify', {
+      shipmentId,
+      vendorId,
+      orderId,
+      syncStatus: resultStatus,
+      isFoMissing,
+      nonFatalSyncErrors: Boolean(options?.nonFatalSyncErrors),
+      error: rawMessage
+    });
+
+    if (options?.nonFatalSyncErrors) {
+      return {
+        shipmentId: shipmentId as number,
+        syncStatus: resultStatus,
+        syncError: rawMessage
+      };
+    }
 
     if (isFoMissing) {
       throw new Error('Shopify 側の Fulfillment Order がまだ生成されていないため、追跡番号の同期を保留しました。数分後に自動で再試行します。');

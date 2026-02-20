@@ -105,4 +105,39 @@ describe('orders transformers', () => {
     expect(detail).not.toBeNull();
     expect(detail?.osNumber).toBe('OS-01115463');
   });
+
+  it('prioritizes local shipment progress when Shopify fulfillable quantity is stale', () => {
+    const detail = toOrderDetailFromRecord(
+      {
+        ...baseRecord,
+        line_items: [
+          {
+            ...baseRecord.line_items[0],
+            fulfilled_quantity: 0,
+            fulfillable_quantity: 5,
+            shipments: [
+              {
+                quantity: 2,
+                shipment: {
+                  id: 701,
+                  tracking_number: 'TRK999',
+                  carrier: 'yamato',
+                  status: 'shipped',
+                  shipped_at: '2026-02-20T01:00:00Z'
+                }
+              }
+            ]
+          }
+        ]
+      },
+      200
+    );
+
+    expect(detail).not.toBeNull();
+    expect(detail?.lineItems[0]?.shippedQuantity).toBe(2);
+    expect(detail?.lineItems[0]?.remainingQuantity).toBe(3);
+
+    const summary = mapDetailToSummary(detail!);
+    expect(summary.status).toBe('partially_fulfilled');
+  });
 });

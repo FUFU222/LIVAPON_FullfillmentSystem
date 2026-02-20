@@ -78,28 +78,24 @@ function calculateShipmentProgress(
       ? Math.max(0, lineItem.fulfillableQuantity)
       : null;
 
-  const shopifyFulfilled = (() => {
-    if (shopifyRemaining !== null) {
-      return Math.max(0, lineItem.quantity - shopifyRemaining);
-    }
-    if (typeof lineItem.fulfilledQuantity === 'number') {
-      return Math.max(0, lineItem.fulfilledQuantity);
-    }
-    return null;
-  })();
+  const shopifyFulfilledFromRemaining =
+    shopifyRemaining !== null ? Math.max(0, lineItem.quantity - shopifyRemaining) : 0;
+  const shopifyFulfilledFromField =
+    typeof lineItem.fulfilledQuantity === 'number'
+      ? Math.max(0, lineItem.fulfilledQuantity)
+      : 0;
+  const trustedShopifyFulfilled = Math.max(shopifyFulfilledFromRemaining, shopifyFulfilledFromField);
 
-  const shippedQuantity = (() => {
-    if (shopifyFulfilled !== null) {
-      return Math.min(lineItem.quantity, shopifyFulfilled);
-    }
-    if (activeShipments.length > 0) {
-      return Math.min(lineItem.quantity, shippedFromShipments);
-    }
-    return 0;
-  })();
+  // Prefer the most advanced progress signal to avoid UI lag after local shipment registration.
+  const shippedQuantity = Math.min(
+    lineItem.quantity,
+    Math.max(shippedFromShipments, trustedShopifyFulfilled)
+  );
 
-  const fallbackRemaining = Math.max(lineItem.quantity - shippedQuantity, 0);
-  const remainingQuantity = shopifyRemaining !== null ? shopifyRemaining : fallbackRemaining;
+  const remainingFromShipped = Math.max(lineItem.quantity - shippedQuantity, 0);
+  const remainingQuantity = shopifyRemaining !== null
+    ? Math.min(shopifyRemaining, remainingFromShipped)
+    : remainingFromShipped;
 
   return {
     shippedQuantity,

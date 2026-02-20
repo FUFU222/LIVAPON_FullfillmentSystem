@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/orders/status-badge';
 import { formatOrderDateTime } from '@/lib/orders/date-time';
 import type { OrderDetail } from '@/lib/data/orders';
 
@@ -40,7 +40,7 @@ export function AdminOrderDetail({ order }: Props) {
     <div className="flex flex-col gap-6">
       <section className="grid gap-2">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge intent={order.status}>{order.status ?? '未設定'}</Badge>
+          <StatusBadge status={order.status} />
         </div>
         <dl className="grid grid-cols-1 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3">
           <div className="flex flex-col gap-1">

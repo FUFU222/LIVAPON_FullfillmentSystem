@@ -9,7 +9,26 @@ export const statusLabel: Record<string, string> = {
   on_hold: '保留中'
 };
 
+const statusAliasMap: Record<string, string> = {
+  partial: 'partially_fulfilled',
+  partially: 'partially_fulfilled',
+  partially_fulfilled: 'partially_fulfilled',
+  partiallyfulfilled: 'partially_fulfilled',
+  cancelled: 'cancelled',
+  canceled: 'cancelled',
+  open: 'unfulfilled'
+};
+
+function normalizeStatus(status: string | null): string {
+  if (!status) {
+    return 'unfulfilled';
+  }
+
+  const normalized = status.toLowerCase().trim().replace(/[\s-]+/g, '_');
+  return statusAliasMap[normalized] ?? normalized;
+}
+
 export function StatusBadge({ status }: { status: string | null }) {
-  const normalized = status?.toLowerCase() ?? 'unfulfilled';
-  return <Badge intent={normalized}>{statusLabel[normalized] ?? normalized}</Badge>;
+  const normalized = normalizeStatus(status);
+  return <Badge intent={normalized}>{statusLabel[normalized] ?? (status ?? '未設定')}</Badge>;
 }

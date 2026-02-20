@@ -83,12 +83,6 @@ export function OrdersDispatchPanel({
     return new Map<number, OrderSummary>(orders.map((order) => [order.id, order]));
   }, [orders]);
 
-  const missingOsOrderNumbers = useMemo(() => {
-    return selectedByOrder
-      .filter(({ order }) => !order.osNumber)
-      .map(({ order }) => order.orderNumber);
-  }, [selectedByOrder]);
-
   const handleSubmit = () => {
     if (!trackingNumber.trim()) {
       showToast({
@@ -489,15 +483,8 @@ export function OrdersDispatchPanel({
             </p>
           </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            数量、追跡番号、およびOS番号をご確認のうえ、登録をお願いします。
+            数量と追跡番号をご確認のうえ、登録をお願いします。
           </div>
-          {missingOsOrderNumbers.length > 0 ? (
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-              OS番号未取得の注文: {missingOsOrderNumbers.join(', ')}
-              <br />
-              テスト注文などOS番号が無いケースは、そのまま登録して問題ありません。
-            </div>
-          ) : null}
           <div className="max-h-52 overflow-y-auto rounded-md border border-slate-200">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-500">

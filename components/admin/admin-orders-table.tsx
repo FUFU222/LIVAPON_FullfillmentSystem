@@ -9,20 +9,7 @@ import { StatusBadge } from '@/components/orders/status-badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { AdminOrderPreview, OrderDetail } from '@/lib/data/orders';
-
-function formatDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-
-  return new Date(value).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
+import { formatOrderDateTime } from '@/lib/orders/date-time';
 
 type Props = {
   orders: AdminOrderPreview[];
@@ -139,7 +126,7 @@ export function AdminOrdersTable({ orders }: Props) {
               <div className="grid gap-1 text-sm text-slate-600">
                 <p>顧客: {order.customerName ?? '-'}</p>
                 <p>ベンダー: {order.vendorName ?? '未割当'}</p>
-                <p className="text-xs text-slate-500">最終更新: {formatDate(order.updatedAt)}</p>
+                <p className="text-xs text-slate-500">最終更新: {formatOrderDateTime(order.updatedAt)}</p>
               </div>
             </button>
           </article>
@@ -187,7 +174,7 @@ export function AdminOrdersTable({ orders }: Props) {
                     <span className="text-slate-400">未割当</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-xs">{formatDate(order.updatedAt)}</td>
+                <td className="px-3 py-2 text-xs">{formatOrderDateTime(order.updatedAt)}</td>
               </tr>
             ))}
           </tbody>

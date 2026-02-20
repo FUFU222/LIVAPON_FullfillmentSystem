@@ -1,23 +1,10 @@
 import { Badge } from '@/components/ui/badge';
+import { formatOrderDateTime } from '@/lib/orders/date-time';
 import type { OrderDetail } from '@/lib/data/orders';
 
 type Props = {
   order: OrderDetail;
 };
-
-function formatDate(value: string | null) {
-  if (!value) {
-    return '-';
-  }
-
-  return new Date(value).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
 
 function formatShippingAddress(order: OrderDetail): string {
   const lines: string[] = [];
@@ -62,7 +49,7 @@ export function AdminOrderDetail({ order }: Props) {
           </div>
           <div className="flex flex-col gap-1">
             <dt className="text-xs uppercase tracking-wide text-slate-500">最終更新</dt>
-            <dd className="text-slate-700">{formatDate(order.updatedAt)}</dd>
+            <dd className="text-slate-700">{formatOrderDateTime(order.updatedAt)}</dd>
           </div>
           <div className="flex flex-col gap-1 sm:col-span-2">
             <dt className="text-xs uppercase tracking-wide text-slate-500">配送先住所</dt>
@@ -98,13 +85,7 @@ export function AdminOrderDetail({ order }: Props) {
                       <span className="text-slate-400">未割当</span>
                     )}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-col text-sm">
-                      <span>注文: {item.quantity}</span>
-                      <span>発送済: {item.shippedQuantity}</span>
-                      <span>残数: {item.remainingQuantity}</span>
-                    </div>
-                  </td>
+                  <td className="px-3 py-2">{item.quantity}</td>
                 </tr>
               ))}
             </tbody>
@@ -130,7 +111,7 @@ export function AdminOrderDetail({ order }: Props) {
                   <tr key={shipment.id} className="border-b border-slate-100 text-slate-700">
                     <td className="px-3 py-2">{shipment.trackingNumber ?? '追跡未登録'}</td>
                     <td className="px-3 py-2">{shipment.carrier ?? '-'}</td>
-                    <td className="px-3 py-2">{formatDate(shipment.shippedAt)}</td>
+                    <td className="px-3 py-2">{formatOrderDateTime(shipment.shippedAt)}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
                         {shipment.lineItemIds.map((lineItemId) => {

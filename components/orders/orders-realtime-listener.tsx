@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getBrowserClient } from "@/lib/supabase/client";
@@ -14,6 +14,7 @@ type OrdersRealtimeListenerProps = {
 
 export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { showToast, dismissToast } = useToast();
   const { pendingCount, registerPendingOrder, markOrdersAsRefreshed } = useOrdersRealtimeContext();
   const [isRefreshing, startTransition] = useTransition();
@@ -23,6 +24,14 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   const toastIdRef = useRef<string | null>(null);
   const refreshPendingRef = useRef(false);
   const pendingToastTimerRef = useRef<number | null>(null);
+  const navigationFallbackTimerRef = useRef<number | null>(null);
+
+  const clearNavigationFallback = useCallback(() => {
+    if (navigationFallbackTimerRef.current !== null) {
+      window.clearTimeout(navigationFallbackTimerRef.current);
+      navigationFallbackTimerRef.current = null;
+    }
+  }, []);
 
   const handleManualRefresh = useCallback(() => {
     if (isRefreshing) {
@@ -34,10 +43,21 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       toastIdRef.current = null;
     }
     markOrdersAsRefreshed();
+    const shouldNavigateToOrders = pathname !== "/orders";
     startTransition(() => {
+      if (shouldNavigateToOrders) {
+        router.push("/orders");
+        clearNavigationFallback();
+        navigationFallbackTimerRef.current = window.setTimeout(() => {
+          if (window.location.pathname !== "/orders") {
+            window.location.assign("/orders");
+          }
+        }, 5000);
+        return;
+      }
       router.refresh();
     });
-  }, [dismissToast, isRefreshing, markOrdersAsRefreshed, router, startTransition]);
+  }, [clearNavigationFallback, dismissToast, isRefreshing, markOrdersAsRefreshed, pathname, router, startTransition]);
 
   const showPendingToast = useCallback(() => {
     if (toastIdRef.current) {
@@ -47,17 +67,24 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
     toastIdRef.current = showToast({
       id: "orders-realtime-pending",
       title: "新しい注文が届きました",
-      description: `更新が必要な注文が ${pendingCount}件あります。`,
+      description: `未反映の注文が ${pendingCount}件あります。`,
       duration: Infinity,
       variant: "info",
       action: {
-        label: isRefreshing ? "更新中…" : "最新に更新",
+        label:
+          isRefreshing
+            ? pathname === "/orders"
+              ? "反映中…"
+              : "移動中…"
+            : pathname === "/orders"
+              ? "最新を反映"
+              : "注文一覧を開く",
         icon: RefreshCw,
         onClick: handleManualRefresh,
         disabled: isRefreshing
       }
     });
-  }, [dismissToast, handleManualRefresh, isRefreshing, pendingCount, showToast]);
+  }, [dismissToast, handleManualRefresh, isRefreshing, pathname, pendingCount, showToast]);
 
   useEffect(() => {
     const MIN_PENDING_DELAY_MS = 400;
@@ -88,7 +115,7 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
   }, [pendingCount, showPendingToast, dismissToast]);
 
   useEffect(() => {
-    if (!isRefreshing && refreshPendingRef.current) {
+    if (!isRefreshing && refreshPendingRef.current && pathname === "/orders") {
       refreshPendingRef.current = false;
       showToast({
         title: "注文一覧を最新の状態にしました",
@@ -96,7 +123,13 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
         duration: 2000
       });
     }
-  }, [isRefreshing, showToast]);
+  }, [isRefreshing, pathname, showToast]);
+
+  useEffect(() => {
+    if (pathname === "/orders") {
+      clearNavigationFallback();
+    }
+  }, [clearNavigationFallback, pathname]);
 
   useEffect(() => {
     registerPendingOrderRef.current = registerPendingOrder;
@@ -225,12 +258,13 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
 
     return () => {
       isMounted = false;
+      clearNavigationFallback();
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [vendorId]);
+  }, [clearNavigationFallback, vendorId]);
 
   return null;
 }

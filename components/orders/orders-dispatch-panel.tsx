@@ -402,7 +402,7 @@ export function OrdersDispatchPanel({
                     <span>送信中…</span>
                   </>
                 ) : (
-                  `${selectedLineItems.length}件を発送登録`
+                  '内容を確認'
                 )}
               </Button>
             </div>

@@ -74,4 +74,40 @@ describe('OrderTable / OrdersDispatchTable', () => {
     expect(detailCell).not.toBeNull();
     expect(within(detailCell!).getByText('× 3')).toBeInTheDocument();
   });
+
+  it('OrdersDispatchTable updates order row status from line item progress', () => {
+    const order = buildOrder({
+      status: 'unfulfilled',
+      localStatus: 'unfulfilled',
+      lineItems: [
+        buildLineItem({
+          id: 30,
+          vendorId: 55,
+          quantity: 2,
+          shippedQuantity: 2,
+          remainingQuantity: 0,
+          fulfilledQuantity: 0,
+          fulfillableQuantity: 2,
+          shipments: [
+            {
+              id: 9001,
+              trackingNumber: 'TRK-9001',
+              carrier: 'yamato',
+              status: 'shipped',
+              shippedAt: '2026-02-20T02:00:00Z',
+              lineItemIds: [30],
+              quantity: 2
+            }
+          ]
+        })
+      ]
+    });
+
+    render(<OrdersDispatchTable orders={[order]} vendorId={55} />);
+
+    const orderRow = screen.getByText(order.orderNumber).closest('tr');
+    expect(orderRow).not.toBeNull();
+    expect(within(orderRow!).getByText('発送済')).toBeInTheDocument();
+    expect(within(orderRow!).queryByText('未発送')).not.toBeInTheDocument();
+  });
 });

@@ -83,6 +83,41 @@ function getLineItemStatus(
   return 'unfulfilled';
 }
 
+function getOrderDisplayStatus(order: OrderSummary): string {
+  const normalized = (order.status ?? order.localStatus ?? 'unfulfilled').toLowerCase();
+
+  if (normalized === 'cancelled' || normalized === 'restocked') {
+    return normalized;
+  }
+
+  const relevantLineItems = order.lineItems;
+  if (relevantLineItems.length === 0) {
+    return normalized || 'unfulfilled';
+  }
+
+  const lineStatuses = relevantLineItems.map((lineItem) => {
+    const remaining = getRemainingQuantity(lineItem);
+    const shipped = getShippedQuantity(lineItem);
+    return { remaining, shipped };
+  });
+
+  const fullyShipped = lineStatuses.every((status) => status.remaining <= 0);
+  if (fullyShipped) {
+    return 'fulfilled';
+  }
+
+  const partiallyShipped = lineStatuses.some((status) => status.shipped > 0);
+  if (partiallyShipped) {
+    return 'partially_fulfilled';
+  }
+
+  if (normalized === 'on_hold') {
+    return 'on_hold';
+  }
+
+  return 'unfulfilled';
+}
+
 export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary[]; vendorId: number }) {
   const filteredOrders = useMemo(() =>
     orders.map((order) => ({
@@ -288,6 +323,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
         </TableHeader>
         <TableBody>
           {filteredOrders.map((order) => {
+            const displayOrderStatus = getOrderDisplayStatus(order);
             const isExpanded = expandedOrderId === order.id;
             const selectableItems = order.isArchived
               ? []
@@ -340,7 +376,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                   )}
                 </TableCell>
                 <TableCell className={ORDER_ROW_CELL}>
-                  <StatusBadge status={order.status ?? order.localStatus ?? 'unfulfilled'} />
+                  <StatusBadge status={displayOrderStatus} />
                 </TableCell>
                 <TableCell className={cn(ORDER_ROW_CELL, "hidden xl:table-cell")}>{formatDate(order.createdAt)}</TableCell>
               </TableRow>
@@ -375,7 +411,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                           <tbody>
                           {order.lineItems.map((lineItem) => {
                             const remaining = getRemainingQuantity(lineItem);
-                            const status = getLineItemStatus(lineItem, order.status);
+                            const status = getLineItemStatus(lineItem, displayOrderStatus);
                             const isSelected = selectedLineItems.has(lineItem.id);
                             return (
                               <tr

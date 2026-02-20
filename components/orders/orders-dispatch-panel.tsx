@@ -65,6 +65,7 @@ export function OrdersDispatchPanel({
   } | null>(null);
   const [activeJob, setActiveJob] = useState<ShipmentJobState | null>(null);
   const jobPollTimer = useRef<NodeJS.Timeout | null>(null);
+  const refreshRetryTimersRef = useRef<number[]>([]);
 
   const selectedByOrder = useMemo(() => {
     const map = new Map<number, { order: OrderSummary; items: SelectedLineItem[] }>();
@@ -193,6 +194,12 @@ export function OrdersDispatchPanel({
         startRefresh(() => {
           router.refresh();
         });
+        refreshRetryTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+        refreshRetryTimersRef.current = [1200, 3000].map((delayMs) =>
+          window.setTimeout(() => {
+            router.refresh();
+          }, delayMs)
+        );
       } else if (job.status === 'failed') {
         showToast({
           variant: "error",
@@ -268,6 +275,13 @@ export function OrdersDispatchPanel({
       }
     };
   }, [activeJob, refreshJobStatus, showToast]);
+
+  useEffect(() => {
+    return () => {
+      refreshRetryTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+      refreshRetryTimersRef.current = [];
+    };
+  }, []);
 
   const dismissJobStatus = () => {
     if (jobPollTimer.current) {

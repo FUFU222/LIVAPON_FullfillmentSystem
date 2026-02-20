@@ -75,8 +75,6 @@ export async function approveApplicationAction(
       }
     }
 
-    revalidatePath('/admin/applications');
-
     const message = (() => {
       if (notificationStatus === 'sent') {
         return '申請を承認し、利用開始メールを送信しました。';

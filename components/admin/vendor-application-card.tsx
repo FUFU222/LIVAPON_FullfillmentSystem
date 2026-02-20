@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFormState, useFormStatus } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { approveApplicationAction, rejectApplicationAction } from '@/app/admin/applications/actions';
 import { initialAdminActionState, type AdminActionState } from '@/app/admin/applications/state';
 import { Alert } from '@/components/ui/alert';
@@ -162,6 +163,7 @@ function ApprovalSuccessDialog({
 }
 
 export function VendorApplicationCard({ application }: { application: VendorApplication }) {
+  const router = useRouter();
   const [approveState, approveAction] = useFormState(approveApplicationAction, initialAdminActionState);
   const [rejectState, rejectAction] = useFormState(rejectApplicationAction, initialAdminActionState);
   const rejectFormRef = useRef<HTMLFormElement>(null);
@@ -349,7 +351,10 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
         approvedAt={latestApproval?.approvedAt ?? null}
         notificationStatus={latestApproval?.notificationStatus ?? 'skipped'}
         notificationError={latestApproval?.notificationError ?? null}
-        onClose={() => setShowApprovalDialog(false)}
+        onClose={() => {
+          setShowApprovalDialog(false);
+          router.refresh();
+        }}
       />
     </div>
   );

@@ -18,7 +18,7 @@ export default async function ShipmentsPage() {
     redirect("/admin");
   }
 
-  if (auth.role === "pending_vendor") {
+  if (auth.role === "pending_vendor" && auth.vendorId === null) {
     redirect("/pending");
   }
 

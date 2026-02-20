@@ -14,7 +14,7 @@ export default async function VendorProfilePage() {
     redirect('/sign-in?redirectTo=/vendor/profile');
   }
 
-  if (auth.role === 'pending_vendor') {
+  if (auth.role === 'pending_vendor' && auth.vendorId === null) {
     redirect('/pending');
   }
 

@@ -28,7 +28,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
     redirect('/admin');
   }
 
-  if (auth.role === 'pending_vendor') {
+  if (auth.role === 'pending_vendor' && auth.vendorId === null) {
     redirect('/pending');
   }
 

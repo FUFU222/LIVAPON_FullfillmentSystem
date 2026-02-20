@@ -41,7 +41,7 @@ export function PendingAccessStatus() {
         return;
       }
 
-      if (role === 'vendor' && vendorId !== null) {
+      if (vendorId !== null) {
         setAccessState('active');
         setIsChecking(false);
         return;

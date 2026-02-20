@@ -10,12 +10,12 @@ export default async function PendingStatusPage() {
     redirect('/sign-in?redirectTo=/pending');
   }
 
-  if (auth.role === 'vendor' && auth.vendorId) {
-    redirect('/orders');
-  }
-
   if (auth.role === 'admin') {
     redirect('/admin');
+  }
+
+  if (auth.vendorId) {
+    redirect('/orders');
   }
 
   return (

@@ -21,7 +21,7 @@ export default async function ShipmentAdjustmentPage() {
     redirect(`/sign-in?redirectTo=${encodeURIComponent('/support/shipment-adjustment')}`);
   }
 
-  if (auth.role === 'pending_vendor') {
+  if (auth.role === 'pending_vendor' && auth.vendorId === null) {
     redirect('/pending');
   }
 

@@ -224,12 +224,12 @@ function AppShellContent({
       return adminNavItems;
     }
 
-    if (role === 'pending_vendor') {
-      return pendingNavItems;
-    }
-
     if (vendorId) {
       return navItems;
+    }
+
+    if (role === 'pending_vendor') {
+      return pendingNavItems;
     }
 
     return publicNavItems;
@@ -245,11 +245,11 @@ function AppShellContent({
     if (role === 'admin') {
       return '/admin';
     }
+    if (vendorId) {
+      return '/orders';
+    }
     if (role === 'pending_vendor') {
       return '/pending';
-    }
-    if (role === 'vendor' && vendorId) {
-      return '/orders';
     }
     return '/';
   })();
@@ -478,7 +478,14 @@ function UserMenu({
   }, [open]);
 
   const displayName = companyName ?? email ?? 'アカウント';
-  const subLabel = companyName ? email : role === 'admin' ? '管理者' : role === 'pending_vendor' ? '審査中' : email;
+  const subLabel =
+    companyName
+      ? email
+      : role === 'admin'
+        ? '管理者'
+        : role === 'pending_vendor' && !vendorId
+          ? '審査中'
+          : email;
 
   return (
     <div ref={containerRef} className="relative">

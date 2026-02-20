@@ -11,7 +11,7 @@ export default async function ImportPage() {
     redirect('/sign-in?redirectTo=/import');
   }
 
-  if (auth.role === 'pending_vendor') {
+  if (auth.role === 'pending_vendor' && auth.vendorId === null) {
     redirect('/pending');
   }
 

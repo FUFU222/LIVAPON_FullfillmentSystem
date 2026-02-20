@@ -35,12 +35,12 @@ export default async function SignInPage({
       redirect('/admin');
     }
 
-    if (auth.role === 'pending_vendor') {
-      redirect('/pending');
+    if (auth.vendorId !== null) {
+      redirect(redirectTo);
     }
 
-    if (auth.role === 'vendor' && auth.vendorId !== null) {
-      redirect(redirectTo);
+    if (auth.role === 'pending_vendor') {
+      redirect('/pending');
     }
 
     redirect('/');

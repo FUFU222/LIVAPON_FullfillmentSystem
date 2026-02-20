@@ -60,10 +60,21 @@
 - **認証**: `Authorization: Bearer <CRON_SECRET>` を必須にし、未設定時は dev でのみフリーにする。
 - ロジック:
   1. `shipment_import_jobs` から `status='pending'` を `FOR UPDATE SKIP LOCKED` で取得。
-  2. `status='running'` に更新後、`job_items` を順次処理。
-  3. Shopify API → Supabase RPC で発送登録。
-  4. 成功/失敗ごとに `processed_count` / `error_count` を更新。
-  5. 全件成功で `status='succeeded'`。失敗が残れば `status='failed'`。
+  2. `status='running'` で `locked_at` が古いジョブ（stale lock）も再取得候補に含める。
+  3. claim したジョブを `status='running'` に更新後、`job_items` を順次処理。
+  4. Shopify API → Supabase RPC で発送登録。
+  5. 成功/失敗ごとに `processed_count` / `error_count` を更新。
+  6. 全件成功で `status='succeeded'`。失敗が残れば `status='failed'`。
+  7. 失敗時は `last_error` を更新し、監視ログから追跡できる状態を保つ。
+
+## 8. 運用ガードレール（再発防止）
+- `Process Shipment Jobs` のワークフローは API のクエリパラメータ仕様（`jobs` / `items`）と常に整合させる。
+- 変更時は PR テンプレの「出荷ジョブ系の変更時のみ（必須）」を全項目チェックする。
+- CI（lint/test/build）を必須化し、未通過の PR は `main` にマージしない。
+- 障害調査時は以下を最低確認:
+  - `shipment_import_jobs.status` と `locked_at`
+  - `shipment_import_job_items.status` 集計
+  - `Process Shipment Jobs` の `summary.claimed/succeeded/failed`
 
 ## 5. フロント側の変更
 1. **ディスパッチパネル**

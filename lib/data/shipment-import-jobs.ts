@@ -48,6 +48,13 @@ type ClaimJobOptions = {
   staleAfterSeconds?: number;
 };
 
+function resolveStaleAfterSeconds(overrideSeconds?: number) {
+  const rawValue = typeof overrideSeconds === 'number'
+    ? overrideSeconds
+    : Number(process.env.SHIPMENT_JOB_LOCK_STALE_SECONDS ?? '90');
+  return Math.max(30, Math.min(rawValue, 3600));
+}
+
 function assertServiceClient(): SupabaseClient<Database> {
   return getShopifyServiceClient();
 }
@@ -229,6 +236,61 @@ export async function claimShipmentImportJobs(limit: number): Promise<ShipmentIm
   return data ?? [];
 }
 
+export async function listReclaimableShipmentImportJobIds(
+  limit: number,
+  options?: ClaimJobOptions
+): Promise<number[]> {
+  const client = assertServiceClient();
+  const batchLimit = Math.max(1, Math.min(limit, 5));
+  const staleAfterSeconds = resolveStaleAfterSeconds(options?.staleAfterSeconds);
+  const staleBeforeIso = new Date(Date.now() - staleAfterSeconds * 1000).toISOString();
+
+  const claimedIds: number[] = [];
+  const { data: unlockedRows, error: unlockedError } = await client
+    .from('shipment_import_jobs')
+    .select('id')
+    .eq('status', 'running')
+    .is('locked_at', null)
+    .order('updated_at', { ascending: true })
+    .limit(batchLimit);
+
+  if (unlockedError) {
+    throw unlockedError;
+  }
+
+  unlockedRows?.forEach((row) => {
+    if (Number.isInteger(row.id)) {
+      claimedIds.push(row.id);
+    }
+  });
+
+  const remaining = batchLimit - claimedIds.length;
+  if (remaining <= 0) {
+    return claimedIds;
+  }
+
+  const { data: staleRows, error: staleError } = await client
+    .from('shipment_import_jobs')
+    .select('id')
+    .eq('status', 'running')
+    .not('locked_at', 'is', null)
+    .lte('locked_at', staleBeforeIso)
+    .order('locked_at', { ascending: true, nullsFirst: true })
+    .limit(remaining);
+
+  if (staleError) {
+    throw staleError;
+  }
+
+  staleRows?.forEach((row) => {
+    if (Number.isInteger(row.id) && !claimedIds.includes(row.id)) {
+      claimedIds.push(row.id);
+    }
+  });
+
+  return claimedIds;
+}
+
 export async function claimShipmentImportJobById(
   jobId: number,
   options?: ClaimJobOptions
@@ -240,10 +302,7 @@ export async function claimShipmentImportJobById(
   const client = assertServiceClient();
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
-  const staleAfterSeconds = Math.max(
-    30,
-    Math.min(options?.staleAfterSeconds ?? Number(process.env.SHIPMENT_JOB_LOCK_STALE_SECONDS ?? '90'), 3600)
-  );
+  const staleAfterSeconds = resolveStaleAfterSeconds(options?.staleAfterSeconds);
   const staleBeforeIso = new Date(now - staleAfterSeconds * 1000).toISOString();
 
   const { data: current, error: currentError } = await client

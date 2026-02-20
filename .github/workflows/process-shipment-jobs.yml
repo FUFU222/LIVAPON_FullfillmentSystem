@@ -45,7 +45,7 @@ jobs:
             -w "%{http_code}" -o "${RESPONSE_FILE}" \
             -X POST \
             -H "Authorization: Bearer ${CRON_SECRET}" \
-            "${APP_BASE_URL}/api/internal/shipment-jobs/process?limit=${JOB_LIMIT}")
+            "${APP_BASE_URL}/api/internal/shipment-jobs/process?jobs=${JOB_LIMIT}")
 
           BODY=$(cat "${RESPONSE_FILE}")
           echo "Shipment job worker response (${HTTP_STATUS}): ${BODY}"

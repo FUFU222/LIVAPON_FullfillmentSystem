@@ -34,7 +34,12 @@ async function handle(request: Request) {
   }
 
   const url = new URL(request.url);
-  const jobLimit = parseLimit(url.searchParams.get('jobs'), Number(process.env.SHIPMENT_JOB_LIMIT ?? '1'), 1, 5);
+  const jobLimit = parseLimit(
+    url.searchParams.get('jobs') ?? url.searchParams.get('limit'),
+    Number(process.env.SHIPMENT_JOB_LIMIT ?? '1'),
+    1,
+    5
+  );
   const itemLimit = parseLimit(url.searchParams.get('items'), Number(process.env.SHIPMENT_JOB_ITEM_LIMIT ?? '50'), 1, 100);
 
   try {

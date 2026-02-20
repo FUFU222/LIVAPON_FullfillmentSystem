@@ -2,6 +2,7 @@ import { upsertShipment, prepareShipmentBatch, type ShipmentSelection } from '@/
 import {
   claimShipmentImportJobs,
   claimShipmentImportJobById,
+  listReclaimableShipmentImportJobIds,
   loadPendingJobItems,
   incrementJobItemAttempts,
   markJobItemsResult,
@@ -33,6 +34,26 @@ export async function processShipmentImportJobs(options?: { jobLimit?: number; i
   const jobLimit = clamp(options?.jobLimit ?? DEFAULT_JOB_LIMIT, 1, 5);
   const itemLimit = clamp(options?.itemLimit ?? DEFAULT_ITEM_LIMIT, 1, 100);
   const jobs = await claimShipmentImportJobs(jobLimit);
+  const claimedIds = new Set(jobs.map((job) => job.id));
+
+  if (jobs.length < jobLimit) {
+    const reclaimableIds = await listReclaimableShipmentImportJobIds(jobLimit - jobs.length);
+    for (const staleJobId of reclaimableIds) {
+      if (claimedIds.has(staleJobId)) {
+        continue;
+      }
+      const reclaimed = await claimShipmentImportJobById(staleJobId);
+      if (!reclaimed) {
+        continue;
+      }
+      jobs.push(reclaimed);
+      claimedIds.add(reclaimed.id);
+      if (jobs.length >= jobLimit) {
+        break;
+      }
+    }
+  }
+
   const summary: ShipmentJobProcessSummary = {
     claimed: jobs.length,
     succeeded: 0,

@@ -9,7 +9,7 @@
 - `orders` — Shopify `order_id`, `shopify_fulfillment_order_id`, `shop_domain`。
 
 ## フロー概要
-1. ベンダーが UI / CSV / API で発送登録。
+1. セラーが UI / CSV / API で発送登録。
 2. `upsertShipment`
    - Line Item 権限を検証。
    - Shipment と pivot を作成・更新。
@@ -24,7 +24,7 @@
    - `sync_error` にメッセージ、`sync_retry_count += 1`。
    - `sync_pending_until` を指数バックオフで未来に設定（5, 10, 20, ... 最大 60 分）。
 5. Shopify から FO 関連 Webhook を受信すると `triggerShipmentResyncForShopifyOrder` が対象注文の `sync_status='pending'` を再実行。
-6. ベンダーが発送取消すると `cancelShipment` が Shopify Fulfillment をキャンセルし、Supabase レコードを削除。注文の残件が無ければ `orders.status` を `unfulfilled` に戻す。
+6. セラーが発送取消すると `cancelShipment` が Shopify Fulfillment をキャンセルし、Supabase レコードを削除。注文の残件が無ければ `orders.status` を `unfulfilled` に戻す。
 
 ## エラーパターン & 対応
 | 種類 | 想定原因 | 対応 |

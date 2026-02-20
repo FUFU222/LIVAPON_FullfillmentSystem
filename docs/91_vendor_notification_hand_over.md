@@ -1,8 +1,8 @@
-# 次セッションへの申し送り – ベンダー通知メール対応（2025-12-04）
+# 次セッションへの申し送り – セラー通知メール対応（2025-12-04）
 
 ## 1. 現在の状態
-- Shopify `orders/create` Webhook → `upsertShopifyOrder` の段階でベンダーごとにメール通知を行う仕組みが実装済み。`orders/updated` などは通知スキップとして重複送信を防止。
-- ベンダープロフィールに「新規注文メール通知」のトグルがあり、`vendors.notify_new_orders` で制御。
+- Shopify `orders/create` Webhook → `upsertShopifyOrder` の段階でセラーごとにメール通知を行う仕組みが実装済み。`orders/updated` などは通知スキップとして重複送信を防止。
+- セラープロフィールに「新規注文メール通知」のトグルがあり、`vendors.notify_new_orders` で制御。
 - 送信処理を Gmail API（`lib/notifications/email.ts`）経由へ切り替え済み。サービスアカウント + ドメインワイドデリゲーションで `information@chairman.jp` を `sub`/`sender` に設定する。
 - `vendor_order_notifications` テーブルで送信結果を記録済み（`sent / skipped / error`）。
 
@@ -10,7 +10,7 @@
 **フェーズ1（継続対応）**
 - Gmail（Google Workspace）API を利用し、送信元を `information@chairman.jp` に統一する。（送信ヘルパー実装済み、Secrets 設定＋本番検証が今後の ToDo）
 - Next.js の Route Handler / Server Action から Gmail API を直接呼び出す構成に差し替える。（`lib/notifications/email.ts` をベースに追加テンプレートへ展開）
-- ベンダー通知 / 管理者通知ともに同じ送信ヘルパーで一元管理。（管理者通知の移行は未着手）
+- セラー通知 / 管理者通知ともに同じ送信ヘルパーで一元管理。（管理者通知の移行は未着手）
 
 **フェーズ2**
 - メール送信レイヤーのみ Resend / SES などに切り替える。同じ `sendVendorNewOrderEmail(payload)` インターフェースを維持し、実装を差し替えるだけで移行可能にする。

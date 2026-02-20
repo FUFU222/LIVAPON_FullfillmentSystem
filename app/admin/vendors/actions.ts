@@ -12,7 +12,7 @@ export async function deleteVendorAction(formData: FormData) {
   const vendorId = Number(formData.get('vendorId'));
 
   if (!Number.isInteger(vendorId) || vendorId <= 0) {
-    redirect(`${BASE_PATH}?error=${encodeURIComponent('ベンダーIDが不正です。')}`);
+    redirect(`${BASE_PATH}?error=${encodeURIComponent('セラーIDが不正です。')}`);
   }
 
   const auth = await requireAuthContext();
@@ -24,7 +24,7 @@ export async function deleteVendorAction(formData: FormData) {
     const message =
       error instanceof Error
         ? error.message
-        : 'ベンダーの削除に失敗しました。時間を空けて再度お試しください。';
+        : 'セラーの削除に失敗しました。時間を空けて再度お試しください。';
 
     revalidatePath(BASE_PATH);
     redirect(`${BASE_PATH}?error=${encodeURIComponent(message)}`);
@@ -39,7 +39,7 @@ export async function bulkDeleteVendorsAction(formData: FormData) {
   const ids = formData.getAll('vendorIds').map((value) => Number(value));
 
   if (ids.length === 0) {
-    redirect(`${BASE_PATH}?error=${encodeURIComponent('削除するベンダーを選択してください。')}`);
+    redirect(`${BASE_PATH}?error=${encodeURIComponent('削除するセラーを選択してください。')}`);
   }
 
   const auth = await requireAuthContext();
@@ -50,7 +50,7 @@ export async function bulkDeleteVendorsAction(formData: FormData) {
 
   for (const id of ids) {
     if (!Number.isInteger(id) || id <= 0) {
-      failures.push({ id, message: 'ベンダーIDが不正です' });
+      failures.push({ id, message: 'セラーIDが不正です' });
       continue;
     }
     try {
@@ -91,7 +91,7 @@ export type LoadAdminVendorDetailResult =
 
 export async function loadAdminVendorDetailAction(vendorId: number): Promise<LoadAdminVendorDetailResult> {
   if (!Number.isInteger(vendorId) || vendorId <= 0) {
-    return { status: 'error', message: '有効なベンダーIDではありません。' };
+    return { status: 'error', message: '有効なセラーIDではありません。' };
   }
 
   const auth = await getAuthContext();
@@ -110,6 +110,6 @@ export async function loadAdminVendorDetailAction(vendorId: number): Promise<Loa
     return { status: 'success', detail };
   } catch (error) {
     console.error('Failed to load vendor detail for admin', error);
-    return { status: 'error', message: 'ベンダー詳細の取得に失敗しました。' };
+    return { status: 'error', message: 'セラー詳細の取得に失敗しました。' };
   }
 }

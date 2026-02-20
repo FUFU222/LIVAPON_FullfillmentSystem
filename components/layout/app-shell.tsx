@@ -33,7 +33,7 @@ const adminNavItems = [
   { href: '/admin', label: 'ダッシュボード' },
   { href: '/admin/applications', label: '申請審査' },
   { href: '/admin/orders', label: '注文' },
-  { href: '/admin/vendors', label: 'ベンダー' }
+  { href: '/admin/vendors', label: 'セラー' }
 ];
 
 const publicNavItems = [{ href: '/apply', label: '利用申請' }];
@@ -367,7 +367,7 @@ function AppShellContent({
               priority
               className="h-12 w-auto sm:h-14 md:h-[4.5rem]"
             />
-            <span className="hidden text-base font-semibold text-slate-500 sm:inline">配送管理コンソール</span>
+            <span className="hidden text-base font-semibold text-slate-500 sm:inline">配送管理システム</span>
           </Link>
           <div className="flex w-full items-center justify-between gap-3 text-sm md:w-auto md:justify-end md:gap-4">
             <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pb-1 md:flex-none md:overflow-visible md:pb-0">

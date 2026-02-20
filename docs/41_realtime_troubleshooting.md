@@ -17,7 +17,7 @@
 | `/orders` | Server + Client 構成 | × Listener は SUBSCRIBED まで。UI に変化なし |
 
 ## 3. 仮説と対策状況
-1. **ベンダー区分テーブル `order_vendor_segments` を経由する**  
+1. **セラー区分テーブル `order_vendor_segments` を経由する**  
    - line_items の挿入/削除で order_id × vendor_id の行を自動生成し、`orders` 更新時は `updated_at` をタッチしてイベントを出す。  
    - Listener は `order_vendor_segments` を vendor フィルタ付きで購読し、注文全体の変更通知をここから受け取る。  
 2. **Supabase ブラウザクライアントのセッション取得が遅延**  

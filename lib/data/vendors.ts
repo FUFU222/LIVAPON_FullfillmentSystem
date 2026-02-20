@@ -196,7 +196,7 @@ async function countRelatedRows(
 
 export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorDetail | null> {
   if (!Number.isInteger(vendorId) || vendorId <= 0) {
-    throw new Error('有効なベンダーIDが必要です');
+    throw new Error('有効なセラーIDが必要です');
   }
 
   const client = serviceClient;
@@ -315,10 +315,10 @@ async function ensureVendor(
 
     if (existingVendor) {
       if (params.vendorId && existingVendor.id !== params.vendorId) {
-        throw new Error('指定したベンダーコードは既に別のベンダーで使用されています');
+        throw new Error('指定したセラーコードは既に別のセラーで使用されています');
       }
       if (!params.vendorId) {
-        throw new Error('指定したベンダーコードは既に使用されています');
+        throw new Error('指定したセラーコードは既に使用されています');
       }
       return existingVendor;
     }
@@ -751,7 +751,7 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
 
 export async function deleteVendor(vendorId: number): Promise<void> {
   if (!Number.isInteger(vendorId) || vendorId <= 0) {
-    throw new Error('有効なベンダーIDが必要です');
+    throw new Error('有効なセラーIDが必要です');
   }
 
   const client = assertServiceClient();
@@ -767,7 +767,7 @@ export async function deleteVendor(vendorId: number): Promise<void> {
   }
 
   if (!vendorRecord) {
-    throw new Error('指定したベンダーが見つかりません。');
+    throw new Error('指定したセラーが見つかりません。');
   }
 
   const applicationRows: Array<{ id: number; auth_user_id: string | null }> = [];
@@ -870,6 +870,6 @@ export async function deleteVendor(vendorId: number): Promise<void> {
   }
 
   if (!data) {
-    throw new Error('指定したベンダーが見つかりません。');
+    throw new Error('指定したセラーが見つかりません。');
   }
 }

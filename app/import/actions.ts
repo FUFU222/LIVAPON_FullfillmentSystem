@@ -49,7 +49,7 @@ function parseCsv(text: string, expectedVendorCode: string | null) {
     }
 
     if (expectedVendorCode && normalizedSku && !normalizedSku.startsWith(`${expectedVendorCode}-`)) {
-      errors.push(`${index + 2}行目: SKU のベンダーコードがログイン中のベンダーと一致しません`);
+      errors.push(`${index + 2}行目: SKU のセラーコードがログイン中のセラーと一致しません`);
     }
 
     return {
@@ -90,7 +90,7 @@ export async function processCsvUpload(
     return {
       ok: false,
       preview: [],
-      errors: ['ベンダーコードが未設定のため、CSVを処理できません。管理者にお問い合わせください。']
+      errors: ['セラーコードが未設定のため、CSVを処理できません。管理者にお問い合わせください。']
     };
   }
 

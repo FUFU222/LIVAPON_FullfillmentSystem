@@ -3,7 +3,7 @@
 最終更新: 2025-11-18
 
 ## 1. 目的
-- Supabase Realtime（Postgres Changes）で注文/ラインアイテム/出荷の更新をベンダー UI に即時反映させる。
+- Supabase Realtime（Postgres Changes）で注文/ラインアイテム/出荷の更新をセラー UI に即時反映させる。
 - RLS・JWT・Channel 設定の組み合わせを明示し、バグ切り分けを高速化する。
 - Serena コードサーチや /dev ページ群を併用し、回帰テストを自動化しやすい構造に整える。
 

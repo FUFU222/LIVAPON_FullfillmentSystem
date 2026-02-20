@@ -5,20 +5,20 @@
 - Shopify Webhook は即時キュー投入 (`webhook_jobs`) → GitHub Actions（10 分間隔 or 手動）から `/api/internal/webhook-jobs/process` を叩き、`processShopifyWebhook` → `upsertShopifyOrder` で整合性を確保。
 - 発送登録は UI でラインアイテム選択 → `/api/shopify/orders/shipments` が `shipment_import_jobs` / `job_items` を作成 → 即時処理を試み、GitHub Actions (`process-shipment-jobs`) と `/api/internal/shipment-jobs/process` がフォールバックで処理。
 - Cron 系は Vercel Cron を廃止し、`process-webhook-jobs` / `process-shipment-jobs` / `resync-pending-shipments` の3本を GitHub Actions + `APP_BASE_URL` + `JOB_WORKER_SECRET` / `CRON_SECRET` で統一。
-- Shopify 連携後は `vendor_order_notifications` を参照し、`orders/create` 完了時にベンダーへメール通知（プロフィール設定で ON/OFF）。
+- Shopify 連携後は `vendor_order_notifications` を参照し、`orders/create` 完了時にセラーへメール通知（プロフィール設定で ON/OFF）。
 - ロールは `admin` / `vendor` / `pending_vendor`。申請〜承認〜利用開始のフローに加え、発送修正申請フォームと管理ボードで運用チームの対応を可視化。
 - デモモード（Supabase Service Role 未設定時）はモック注文で UI 検証のみ可能。
 
 ## 機能ブロック
 - **パブリック / オンボーディング**: ランディング (`/`)、申請フォーム (`/(public)/apply`)、サインイン (`/(auth)/sign-in`)、審査待ち (`/pending`)。
-- **ベンダーコンソール**:
+- **セラーコンソール**:
 -  - `/orders` 検索・ステータスフィルタ・ラインアイテム展開表示、リアルタイム購読バナー、即時再読込ボタン。発送登録パネルは選択済みラインと数量調整、追跡番号・配送会社入力、`shipment_import_jobs` の進捗トラッキングまで担う。
 -  - `/orders/shipments` は発送履歴と `sync_status/sync_error` 表示、再読込ボタン。
 -  - `/import` で CSV プレビュー + バリデーション付き一括登録（ベータ停止中で UI からのリンク非表示）。
 -  - `/vendor/profile` で会社/担当者/連絡先/通知設定/任意パスワード変更。新規注文メール通知トグルが `vendor_order_notifications` と連動。
 -  - `/support/shipment-adjustment` で発送後修正申請フォームを提供し、`shipment_adjustment_requests` を作成。
 - **管理者コンソール**:
-  - `/admin` ダッシュボード：審査待ち申請・最新注文・最新ベンダーのカード表示。
+  - `/admin` ダッシュボード：審査待ち申請・最新注文・最新セラーのカード表示。
   - `/admin/applications` で審査（承認時 `approveVendorApplication` がコード採番）。
   - `/admin/vendors` 一覧 + 詳細モーダル + 一括削除 + CSV エクスポート。
   - `/admin/orders` で全注文の最新 50 件を参照。
@@ -66,26 +66,26 @@ app/
   layout.tsx             グローバルレイアウト + ToastProvider
   page.tsx               ランディングページ
   (auth)/sign-in/        認証フロー
-  (public)/apply/        ベンダー申請フォーム
+  (public)/apply/        セラー申請フォーム
   pending/               審査待ち表示
-  orders/                ベンダー向け注文 UI 一式
+  orders/                セラー向け注文 UI 一式
   import/                CSV インポート UI + サーバーアクション
   support/               発送修正申請フォーム
-  vendor/profile/        ベンダープロフィール編集
-  admin/                 管理者ダッシュボード / 審査 / ベンダー管理
+  vendor/profile/        セラープロフィール編集
+  admin/                 管理者ダッシュボード / 審査 / セラー管理
   dev/                   メールプレビュー等の開発用ページ
   api/                   Shopify / internal / shipment job API 群
 components/
   orders/*               発送登録・履歴 UI コンポーネント
-  admin/*                審査・ベンダー管理 UI
+  admin/*                審査・セラー管理 UI
   vendor/*               プロフィールフォーム
   ui/*                   再利用 UI（Button, Alert, Toast など）
 lib/
   auth.ts                Supabase Auth コンテキストとロール判定
   data/orders.ts         注文・発送処理（サービスロール）
-  data/vendors.ts        申請・ベンダー管理ロジック
+  data/vendors.ts        申請・セラー管理ロジック
   jobs/*                 webhook / shipment / resync ワーカー共通処理
-  notifications/*        ベンダー通知メールのテンプレ・送信ヘルパー
+  notifications/*        セラー通知メールのテンプレ・送信ヘルパー
   shopify/*              OAuth / Fulfillment / HMAC
   supabase/*             クライアント生成と型
 supabase/

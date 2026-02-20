@@ -14,7 +14,7 @@
 | ------ | ---- | -------- |
 | 自動再同期ワーカー | `sync_pending_until` <= NOW() の Shipment を順次処理。Supabase スケジューラ or Edge Functions で実装。 | 手動操作なしで FO 遅延を吸収 |
 | 同期ログ保存 | Shopify API のレスポンスを JSON で履歴化 (`shipments_sync_logs` テーブル新設)。 | 障害解析を迅速化 |
-| エラー再送 UI | `/orders/shipments` に「再同期」ボタンを追加し、`sync_status='error'` を解消。 | ベンダーセルフサービス |
+| エラー再送 UI | `/orders/shipments` に「再同期」ボタンを追加し、`sync_status='error'` を解消。 | セラーセルフサービス |
 | キャリアマッピング管理 | キャリアコード ⇔ Shopify 表記表を Supabase 管理に移行。 | 新キャリア追加を容易に |
 
 ## Mid-Term Ideas

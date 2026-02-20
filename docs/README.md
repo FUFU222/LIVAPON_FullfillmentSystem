@@ -12,7 +12,7 @@
 - `docs/11_requirements_console.md` — Console 要件
 - `docs/12_requirements_bridge_app.md` — Bridge App 要件
 - `docs/13_sku_vendor_spec.md` — SKU & Vendor 仕様
-- `docs/14_vendor_console_roadmap.md` — ベンダー UI ロードマップ
+- `docs/14_vendor_console_roadmap.md` — セラー UI ロードマップ
 
 ## 2x — UI / UX
 - `docs/20_ui_wireframes.md`

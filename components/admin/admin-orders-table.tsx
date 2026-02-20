@@ -125,7 +125,7 @@ export function AdminOrdersTable({ orders }: Props) {
               </div>
               <div className="grid gap-1 text-sm text-slate-600">
                 <p>顧客: {order.customerName ?? '-'}</p>
-                <p>ベンダー: {order.vendorName ?? '未割当'}</p>
+                <p>セラー: {order.vendorName ?? '未割当'}</p>
                 <p className="text-xs text-slate-500">最終更新: {formatOrderDateTime(order.updatedAt)}</p>
               </div>
             </button>
@@ -140,7 +140,7 @@ export function AdminOrdersTable({ orders }: Props) {
               <th className="px-3 py-2">注文番号</th>
               <th className="px-3 py-2">ステータス</th>
               <th className="px-3 py-2">顧客名</th>
-              <th className="px-3 py-2">ベンダー</th>
+              <th className="px-3 py-2">セラー</th>
               <th className="px-3 py-2">最終更新</th>
             </tr>
           </thead>

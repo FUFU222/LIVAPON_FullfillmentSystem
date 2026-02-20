@@ -30,7 +30,7 @@ async function main() {
     process.exit(1);
   }
 
-  const vendorName = parseArg('--vendor-name') ?? 'テストベンダー株式会社';
+  const vendorName = parseArg('--vendor-name') ?? 'テストセラー株式会社';
   const orderNumber = parseArg('--order-number') ?? 'TEST-ORDER-001';
   const orderCreatedAt = new Date().toISOString();
 

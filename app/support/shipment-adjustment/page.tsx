@@ -10,7 +10,7 @@ import { Alert } from '@/components/ui/alert';
 import { getServerComponentClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: '発送修正申請 | LIVAPON 配送管理コンソール',
+  title: '発送修正申請 | LIVAPON 配送管理システム',
   description: '発送済みの内容を修正する際の管理者申請フォーム'
 };
 

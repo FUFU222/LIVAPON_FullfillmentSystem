@@ -77,7 +77,7 @@ export async function requireAuthContext(): Promise<AuthContext> {
 
 export function assertAuthorizedVendor(vendorId: number | null): asserts vendorId is number {
   if (!Number.isInteger(vendorId)) {
-    throw new UnauthenticatedError('ベンダー情報が紐づいていないため操作できません。');
+    throw new UnauthenticatedError('セラー情報が紐づいていないため操作できません。');
   }
 }
 

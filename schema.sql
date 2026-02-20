@@ -2,7 +2,7 @@
 -- schema.sql : Shopify配送管理アプリ (MVP)
 -- =========================================
 
--- ベンダー（メーカー）情報
+-- セラー（メーカー）情報
 CREATE TABLE vendors (
   id SERIAL PRIMARY KEY,
   code CHAR(4) UNIQUE,
@@ -14,7 +14,7 @@ CREATE TABLE vendors (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- ベンダー利用申請
+-- セラー利用申請
 CREATE TABLE vendor_applications (
   id SERIAL PRIMARY KEY,
   auth_user_id UUID,
@@ -57,7 +57,7 @@ CREATE TABLE orders (
   , last_updated_by UUID
 );
 
--- ベンダーごとのSKU管理
+-- セラーごとのSKU管理
 CREATE TABLE vendor_skus (
   id SERIAL PRIMARY KEY,
   vendor_id INT REFERENCES vendors(id) ON DELETE CASCADE,

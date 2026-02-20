@@ -101,7 +101,7 @@ export function PendingAccessStatus() {
   return (
     <div className="space-y-3">
       <Alert>
-        お申し込みありがとうございます。現在、運営チームが内容を確認しています。承認が完了するとベンダー向け機能が利用可能になります。利用開始まで今しばらくお待ちください。
+        お申し込みありがとうございます。現在、運営チームが内容を確認しています。承認が完了するとセラー向け機能が利用可能になります。利用開始まで今しばらくお待ちください。
       </Alert>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">この画面は20秒ごとに利用状態を確認します。</p>

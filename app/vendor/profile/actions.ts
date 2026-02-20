@@ -104,7 +104,7 @@ export async function updateVendorProfileAction(
     console.error('Failed to update vendor profile', vendorUpdateError);
     return {
       status: 'error',
-      message: 'ベンダー情報の更新に失敗しました。時間を置いて再度お試しください。'
+      message: 'セラー情報の更新に失敗しました。時間を置いて再度お試しください。'
     };
   }
 

@@ -2,14 +2,14 @@
 
 ## 1. 目的
 - Shopify (OMモデル) と LIVAPON 配送管理コンソール間のデータ同期／UI を実運用に近い形で検証する。
-- 複数ベンダー・在庫不足・キャンセル・アーカイブなど、主要な業務シナリオで問題がないか確認する。
+- 複数セラー・在庫不足・キャンセル・アーカイブなど、主要な業務シナリオで問題がないか確認する。
 - 重要操作（未発送に戻す、再入荷 等）のログ／通知が期待通り残るかをチェックする。
 
 ## 2. テストケース
-### A. 複数ベンダー
-1. **ベンダーA/B の混載注文**: FO がベンダー別に分割され、Console の表示も正しいか。
-2. **ベンダーBのみ発送／取消**: 権限チェック（A の注文は B から操作不可）。
-3. **ベンダー別ステータス**: 片方が発送しても、他方に不要な影響が出ないこと。
+### A. 複数セラー
+1. **セラーA/B の混載注文**: FO がセラー別に分割され、Console の表示も正しいか。
+2. **セラーBのみ発送／取消**: 権限チェック（A の注文は B から操作不可）。
+3. **セラー別ステータス**: 片方が発送しても、他方に不要な影響が出ないこと。
 
 ### B. 在庫・数量
 1. **在庫どおりの発送**: Shopify GUIの在庫数と Console の発送結果が一致するか。
@@ -20,7 +20,7 @@
 1. **Shopifyで注文キャンセル**: Webhook→Supabase更新→Consoleに手動リロード通知。
 2. **Shopifyで注文アーカイブ**: `archived_at` 同期、Consoleで操作不可＆バッジ表示。
 3. **発送後の修正申請**: `/support/shipment-adjustment` フォームから依頼→管理者が Shopify で未発送に戻し、Console で再同期するとステータスが変わることを確認（`shipment_adjustment_requests` にレコードが作成されていることも合わせて確認）。
-   - `/admin/shipment-requests` で申請にコメント・ステータス更新ができ、ベンダー履歴に反映されること。
+   - `/admin/shipment-requests` で申請にコメント・ステータス更新ができ、セラー履歴に反映されること。
 4. **再入荷**: Shopifyで在庫戻しした時に Console の表示（「在庫戻し済み」）が正しいか。
 
 ### D. SKU不整合／422エラー
@@ -38,12 +38,12 @@
 ### G. Realtime Sync（Postgres Changes）
 1. **Publication 検証**: `supabase_realtime` publication に `orders/line_items/shipments` が登録されていることを `pg_publication_tables` で確認。
 2. **Replica Identity**: `orders` など UPDATE/DELETE 対象テーブルに `REPLICA IDENTITY FULL` を設定し、更新イベントが届くかテスト。
-3. **RLS フロー**: `NEXT_PUBLIC_DEBUG_REALTIME=true` でブラウザの `[realtime] ...` ログを確認しつつ、(a) RLS OFF で購読 → (b) RLS ON + ベンダーフィルタ → (c) Supabase Auth の `vendor_id` が JWT に含まれるケースでイベントが届くかを記録。
+3. **RLS フロー**: `NEXT_PUBLIC_DEBUG_REALTIME=true` でブラウザの `[realtime] ...` ログを確認しつつ、(a) RLS OFF で購読 → (b) RLS ON + セラーフィルタ → (c) Supabase Auth の `vendor_id` が JWT に含まれるケースでイベントが届くかを記録。
 4. **UI 冪等性**: 通知トースト表示と `router.refresh()` の再フェッチが両方機能し、イベント取りこぼし時でも最終的に整合が取れるかをスクリーンキャプチャ付きで証明する。
 
 ## 3. 実施タイミング
 - 本番リリース前：上記主要シナリオをすべて実施。
-- リリース後：月次または四半期ごとに要点チェック（複数ベンダー・キャンセル・アーカイブ・在庫不足など）。
+- リリース後：月次または四半期ごとに要点チェック（複数セラー・キャンセル・アーカイブ・在庫不足など）。
 - Shopify APIバージョン切替／アプリ設定変更時に再検証。
 
 ## 4. 引き継ぎのヒント

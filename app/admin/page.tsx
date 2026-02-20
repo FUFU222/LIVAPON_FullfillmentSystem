@@ -60,7 +60,7 @@ export default async function AdminDashboardPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
               <CardTitle className="text-xl">審査待ち申請</CardTitle>
-              <p className="text-sm text-slate-500">ベンダー申請の最新状況</p>
+              <p className="text-sm text-slate-500">セラー申請の最新状況</p>
             </div>
             <Badge className="border-slate-200 text-slate-600">{pendingApplications.length} 件</Badge>
           </CardHeader>
@@ -110,7 +110,7 @@ export default async function AdminDashboardPage() {
                         <span>{order.orderNumber}</span>
                         <StatusBadge status={order.status ?? 'unfulfilled'} />
                       </div>
-                      <p className="text-xs text-slate-500">ベンダー: {order.vendorName ?? '未割当'}</p>
+                      <p className="text-xs text-slate-500">セラー: {order.vendorName ?? '未割当'}</p>
                       <p className="text-xs text-slate-400">更新日時: {toDisplayDate(order.updatedAt)}</p>
                     </div>
                   </li>
@@ -128,16 +128,16 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
-              <CardTitle className="text-xl">最新のベンダー</CardTitle>
-              <p className="text-sm text-slate-500">最近登録されたベンダー</p>
+              <CardTitle className="text-xl">最新のセラー</CardTitle>
+              <p className="text-sm text-slate-500">最近登録されたセラー</p>
             </div>
             <Badge className="border-slate-200 text-slate-600">{recentVendors.length} 件</Badge>
           </CardHeader>
           <CardContent className="grid gap-3">
             {vendorsError ? (
-              <Alert variant="destructive">ベンダー情報を取得できませんでした。</Alert>
+              <Alert variant="destructive">セラー情報を取得できませんでした。</Alert>
             ) : recentVendors.length === 0 ? (
-              <p className="text-sm text-slate-500">表示できるベンダーがありません。</p>
+              <p className="text-sm text-slate-500">表示できるセラーがありません。</p>
             ) : (
               <ul className="grid gap-2">
                 {recentVendors.map((vendor) => (
@@ -155,7 +155,7 @@ export default async function AdminDashboardPage() {
           </CardContent>
           <CardFooter>
             <Link href="/admin/vendors" className={buttonClasses('outline', 'text-sm')}>
-              ベンダー一覧へ
+              セラー一覧へ
             </Link>
           </CardFooter>
         </Card>

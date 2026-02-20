@@ -66,7 +66,7 @@ export function AdminOrderDetail({ order }: Props) {
               <tr>
                 <th className="px-3 py-2">商品名</th>
                 <th className="px-3 py-2">SKU</th>
-                <th className="px-3 py-2">ベンダー</th>
+                <th className="px-3 py-2">セラー</th>
                 <th className="px-3 py-2">数量</th>
               </tr>
             </thead>

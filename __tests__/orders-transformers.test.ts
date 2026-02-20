@@ -40,7 +40,7 @@ const baseRecord: RawOrderRecord = {
       id: 11,
       vendor_id: 201,
       sku: 'LIVA-0002',
-      product_name: '別ベンダー商品',
+      product_name: '別セラー商品',
       variant_title: null,
       quantity: 1,
       fulfilled_quantity: 0,

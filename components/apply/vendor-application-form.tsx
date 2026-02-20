@@ -37,7 +37,7 @@ export function VendorApplicationForm() {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
       <div className="flex flex-col gap-2 text-center px-2">
-        <h1 className="text-2xl font-semibold text-foreground">ベンダー利用申請</h1>
+        <h1 className="text-2xl font-semibold text-foreground">利用申請</h1>
         <p className="text-sm leading-relaxed text-slate-500">
           アカウント情報と会社情報を入力し、利用申請をしてください。
         </p>
@@ -238,7 +238,7 @@ function SuccessModal({
             閉じる
           </Button>
           <Button type="button" onClick={onGoPending}>
-            ベンダー画面に進む
+            セラー画面に進む
           </Button>
         </div>
       </div>

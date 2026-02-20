@@ -1,8 +1,8 @@
 # LIVAPON配送管理システムにおけるリアルタイム同期の実装手順
 
 ## 背景と課題
-LIVAPONのフルフィルメントシステムでは、Shopify → Supabase → Next.js コンソールの流れで注文データを処理し、複数ベンダーが各自の注文を扱います。  
-管理者は全ベンダーの動きを監視・審査する必要があるため、**orders / line_items / shipments 各テーブルに対するリアルタイム同期**が必須です。  
+LIVAPONのフルフィルメントシステムでは、Shopify → Supabase → Next.js コンソールの流れで注文データを処理し、複数セラーが各自の注文を扱います。  
+管理者は全セラーの動きを監視・審査する必要があるため、**orders / line_items / shipments 各テーブルに対するリアルタイム同期**が必須です。  
 しかし現状、同期の実装に不備がありスタックしているため、再構成が必要です。
 
 ---
@@ -10,9 +10,9 @@ LIVAPONのフルフィルメントシステムでは、Shopify → Supabase → 
 ## 環境と要件
 - **Supabaseクライアント**: `@supabase/supabase-js@^2.58.0` + `@supabase/ssr@^0.7.0`
 - **フロントエンド**: Next.js 14 (App Router + SSR + Server Actions)
-- **データモデル**: 各テーブルに `vendor_id` カラムあり。JOIN不要でベンダーごとに絞り込み可能。
+- **データモデル**: 各テーブルに `vendor_id` カラムあり。JOIN不要でセラーごとに絞り込み可能。
 - **JWTクレーム**: `vendor_id` が `app_metadata` および `user_metadata` に保存。
-- **ユースケース**: 1分あたり数件〜数十件のWebhook更新。複数ベンダーが同一注文を扱う。
+- **ユースケース**: 1分あたり数件〜数十件のWebhook更新。複数セラーが同一注文を扱う。
 
 ---
 
@@ -30,10 +30,10 @@ Dashboard → Database → Replication で **supabase_realtime** のトグルを
 - JWT の `vendor_id` と行の `vendor_id` が一致する場合のみ SELECT を許可。
 - 管理者 (`role=admin`) は全件閲覧可。
 
-### ベンダー区分テーブル `order_vendor_segments`
+### セラー区分テーブル `order_vendor_segments`
 - `line_items` から `order_id × vendor_id` の組み合わせを正規化して保持する補助テーブル。
 - Line item の挿入/更新/削除で自動的に同期され、`orders` 更新時には `updated_at` をタッチして Realtime イベントを発火。
-- Realtime はこのテーブルを `vendor_id=eq.{vendorId}` で購読し、複数ベンダー混在注文でも確実に通知できる。
+- Realtime はこのテーブルを `vendor_id=eq.{vendorId}` で購読し、複数セラー混在注文でも確実に通知できる。
 
 ### REPLICA IDENTITY
 削除イベントで `payload.old` を取得したい場合：
@@ -154,7 +154,7 @@ USING (
 
 ## 要点まとめ
 ✅ `supabase_realtime` パブリケーションにテーブル登録  
-✅ RLSでベンダー分離（JWT.vendor_idを参照）  
+✅ RLSでセラー分離（JWT.vendor_idを参照）  
 ✅ `supabase.realtime.setAuth()` を購読前に実行  
 ✅ `filter: vendor_id=eq.${vendorId}` を指定  
 ✅ `.removeChannel()` で購読解除  
@@ -184,7 +184,7 @@ Shopify からの Webhook/Realtime イベントを Console UI に即時反映さ
 
 ### 基本方針
 1. **Webhook → Supabase 更新 → Realtime 通知 → UI** を標準フローとする。UI は常に Supabase を真実のソースとし、Shopify へ直接依存しない。
-2. **ベンダー単位**で Realtime 購読する。複数ベンダーが同じ注文に混在するケースでも、それぞれの UI には自分に関連するイベントのみ届く構成を徹底する。
+2. **セラー単位**で Realtime 購読する。複数セラーが同じ注文に混在するケースでも、それぞれの UI には自分に関連するイベントのみ届く構成を徹底する。
 3. **更新対象の明示**
    - 新規注文: `orders` INSERT を vendor_id フィルタで購読
    - 既存注文更新: `orders` UPDATE（ステータス/archived_at など）
@@ -209,9 +209,9 @@ Shopify からの Webhook/Realtime イベントを Console UI に即時反映さ
 3. **RLS と JWT** — RLS は Realtime にも適用されるため、疎通確認は「RLS OFF → 無フィルタ購読 → RLS ON → vendor フィルタ適用」の順で行う。Supabase Auth のユーザー `user_metadata/app_metadata` に `vendor_id` を必ずセットし、`auth.jwt()->>'vendor_id'` で参照できるようにしておく。
 
 ### 想定ケース（抜け漏れ防止チェック）
-- [ ] 同一注文に複数ベンダーがいる場合
+- [ ] 同一注文に複数セラーがいる場合
 - [ ] Shopify 側で注文を未発送に戻した直後（FO が差し替わるケース）
-- [ ] 同じベンダーが複数タブを開いている場合（通知が重複しないか）
+- [ ] 同じセラーが複数タブを開いている場合（通知が重複しないか）
 - [ ] リロードせずに連続で更新が入る場合（通知バッジや件数が正しく累積されるか）
 - [ ] ログイン直後/初回ロード時に Realtime チャンネルが正しく購読されるか
 
@@ -242,12 +242,12 @@ supabase
 
 ### 今後の拡張
 - ヘッダーバッジや通知センターとの統合
-- ベンダーごとの「未読通知」カウンタを Supabase 側で管理
+- セラーごとの「未読通知」カウンタを Supabase 側で管理
 - 新規注文の楽観的挿入（WS 受信直後に一覧へ追加 → バックグラウンドで確定）
 ### 更新ソースメタデータ（Self-update と外部更新の判別）
 
 1. **目的**
-   - ベンダー自身の操作による更新と、Webhook など外部起因の更新を区別し、通知トーストは後者（受動的な更新）に限定する。
+   - セラー自身の操作による更新と、Webhook など外部起因の更新を区別し、通知トーストは後者（受動的な更新）に限定する。
 
 2. **DB 変更案**
    - `orders` / `line_items` / `shipments` に `last_updated_source`（TEXT）と `last_updated_by`（UUID など）を追加。

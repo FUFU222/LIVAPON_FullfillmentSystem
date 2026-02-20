@@ -2,7 +2,7 @@
 
 ## 目的
 - Supabase に保存された配送情報と Shopify の Fulfillment 状態を双方向で同期させる仲介役。
-- Shopify で発生した注文・Fulfillment Order（FO）イベントを受け取り、ベンダー UI での処理結果を Shopify へ確実に反映する。
+- Shopify で発生した注文・Fulfillment Order（FO）イベントを受け取り、セラー UI での処理結果を Shopify へ確実に反映する。
 
 ## 実装済みの役割（2025-11-02）
 - **OAuth**: `/api/shopify/auth/start|callback` がオンラインストア単位でアクセストークンを取得し `shopify_connections` に保存。
@@ -10,7 +10,7 @@
   - `orders/create`, `orders/updated` → `upsertShopifyOrder` が `orders` / `line_items` / `vendor_skus` を整合。
   - `fulfillment_orders/order_routing_complete`, `fulfillment_orders/hold_released` → `triggerShipmentResyncForShopifyOrder` が保留中 Shipment の再同期を実行。
 - **Fulfillment Order Callback (任意)**: `/api/shopify/fulfillment/callback` は Shopify が返す FO 依頼情報を記録する補助ルート。OM モデルでは在庫・割当は Shopify 管理ロケーションで完結するため、PULL 処理の補助として利用する。
-- **Bulk Shipment API**: `/api/shopify/orders/shipments` がベンダーの一括発送登録を受け付け、Supabase サーバーアクションと同等の検証を実施。
+- **Bulk Shipment API**: `/api/shopify/orders/shipments` がセラーの一括発送登録を受け付け、Supabase サーバーアクションと同等の検証を実施。
 - **Fulfillment 同期**: `syncShipmentWithShopify` が FO 情報を自動取得し、REST Admin API で Fulfillment 作成/追跡更新。未生成 FO は指数バックオフでリトライ予定時刻を保存。
 
 ## データフロー概要
@@ -18,10 +18,10 @@
 
 1. Shopify → Supabase
    - Webhook が HMAC 署名検証を通過（`SHOPIFY_WEBHOOK_SECRET` と `_APP` / `_STORE` の複数設定に対応）。
-   - `order_id` / `line_item_id` / FO 情報を解析し、`vendor_id` 解決（`vendor_skus`・ベンダーコード・ベンダー名の優先順）。
+   - `order_id` / `line_item_id` / FO 情報を解析し、`vendor_id` 解決（`vendor_skus`・セラーコード・セラー名の優先順）。
    - 顧客名・配送先住所・ステータスを `orders` に保存、ラインアイテム詳細を `line_items` に保存。
 2. Supabase → Shopify
-   - ベンダー UI / CSV / API で `shipments` が作成されると `sync_status=pending`。
+   - セラー UI / CSV / API で `shipments` が作成されると `sync_status=pending`。
    - サービス層が FO を取得し Fulfillment API を呼び出し、成功した追跡番号を Shopify に反映。
    - `sync_status` は `pending` → `processing` → `synced` / `error`。
    - キャンセル時は `cancelShopifyFulfillment` を呼び出して Shopify 側の発送を取り消す。

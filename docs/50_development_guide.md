@@ -60,7 +60,7 @@
 - TypeScript/React Hooks。ビジネスロジックは server action / `lib/data/*` へ寄せ、コンポーネントはプレゼンテーション重視。
 - Tailwind ユーティリティは再利用し、複雑なスタイルは `components/ui/*` へ抽象化。
 - 文字列は `t()` などの抽象化はまだ導入していないため、日本語ハードコードに統一。
-- ベンダー / 注文 ID のチェックは server side で必須。UI 側では信頼しない。
+- セラー / 注文 ID のチェックは server side で必須。UI 側では信頼しない。
 
 ---
 

@@ -238,7 +238,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
       <div className="grid gap-1">
         <h3 className="text-lg font-semibold text-foreground">{application.companyName}</h3>
         <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-          <span>ベンダーコード: {application.vendorCode ?? '承認時に自動割り当て'}</span>
+          <span>セラーコード: {application.vendorCode ?? '承認時に自動割り当て'}</span>
           <span>担当者: {application.contactName ?? '-'}</span>
           <span>メール: {application.contactEmail}</span>
           <span>電話: {application.contactPhone ?? '-'}</span>
@@ -260,7 +260,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <input type="hidden" name="applicationId" value={application.id} />
           <div className="grid gap-1 text-xs text-slate-600">
             <label htmlFor={`vendor-code-${application.id}`} className="font-medium text-foreground">
-              ベンダーコード (要確認)
+              セラーコード (要確認)
             </label>
             <Input
               id={`vendor-code-${application.id}`}
@@ -313,7 +313,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
         open={showApprovalConfirm}
         onClose={closeApprovalConfirm}
         title="承認内容を確認してください"
-        description="入力したベンダーコードと申請情報を確認のうえ、確定ボタンを押してください。"
+        description="入力したセラーコードと申請情報を確認のうえ、確定ボタンを押してください。"
         footer={
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={closeApprovalConfirm}>
@@ -331,7 +331,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
             <span className="text-base font-semibold text-foreground">{application.companyName}</span>
           </div>
           <div className="grid gap-1">
-            <span className="text-xs text-slate-500">付与予定のベンダーコード</span>
+            <span className="text-xs text-slate-500">付与予定のセラーコード</span>
             <span className="text-lg font-mono">
               {pendingApproval?.vendorCode || application.vendorCode || '（未入力）→ 承認時に自動採番'}
             </span>

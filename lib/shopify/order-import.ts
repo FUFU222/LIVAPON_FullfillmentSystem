@@ -383,7 +383,7 @@ async function notifyVendorsOfNewOrder(
 
     const emailPayload = {
       to: vendor.contact_email,
-      vendorName: vendor.name ?? 'ベンダー各位',
+      vendorName: vendor.name ?? 'セラー各位',
       orderNumber: payload.name || payload.order_number,
       orderCreatedAt: payload.created_at,
       customerName,

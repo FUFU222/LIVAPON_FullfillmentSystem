@@ -21,7 +21,7 @@ describe('VendorDeleteButton', () => {
       .spyOn(HTMLFormElement.prototype, 'requestSubmit')
       .mockImplementation(() => undefined);
 
-    render(<VendorDeleteButton vendorId={12} vendorName="テストベンダー" />);
+    render(<VendorDeleteButton vendorId={12} vendorName="テストセラー" />);
 
     fireEvent.click(screen.getByRole('button', { name: '削除' }));
     fireEvent.click(screen.getByRole('button', { name: '削除する' }));

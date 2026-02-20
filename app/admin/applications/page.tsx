@@ -52,7 +52,7 @@ export default async function AdminApplicationsPage() {
                   <tr>
                     <th className="px-3 py-2">申請ID</th>
                     <th className="px-3 py-2">会社名</th>
-                    <th className="px-3 py-2">ベンダーコード</th>
+                    <th className="px-3 py-2">セラーコード</th>
                     <th className="px-3 py-2">担当者</th>
                     <th className="px-3 py-2">メール</th>
                     <th className="px-3 py-2">電話</th>

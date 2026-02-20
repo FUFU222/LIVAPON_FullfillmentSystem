@@ -11,7 +11,7 @@
 - **サービス層**: `lib/data/orders.ts` が作成・キャンセル・再同期を担い、`lib/shopify/fulfillment.ts` が Shopify Admin API との通信を抽象化。
 - **同期トリガー**:
   - 注文 Webhook (`orders/create`, `orders/updated`) で `upsertShopifyOrder` が注文保存 → `syncFulfillmentOrderMetadata` で FO を即時取得・保存（未生成なら pending）。
-  - ベンダー UI / CSV / API で `upsertShipment` → `sync_status = 'pending'`。`syncShipmentWithShopify` が FO メタデータを再利用・更新。
+  - セラー UI / CSV / API で `upsertShipment` → `sync_status = 'pending'`。`syncShipmentWithShopify` が FO メタデータを再利用・更新。
   - Shopify Webhook (`fulfillment_orders/*`) 受信時に `triggerShipmentResyncForShopifyOrder` が FO メタ同期＋保留 Shipment の再同期を行う。
   - バックフィルスクリプト `scripts/backfill-fulfillment-orders.ts` が定期的に NULL 行を再取得し、再試行ログを残す。
 - **再試行**: FO 未生成エラー時は指数バックオフで数分待機。ワーカー未実装のため、現状は次のユーザー操作 or Webhook で再実行。

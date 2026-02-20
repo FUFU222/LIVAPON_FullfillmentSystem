@@ -28,7 +28,7 @@ export async function approveApplicationAction(
   if (vendorCodeRaw && !/^\d{4}$/.test(vendorCodeRaw)) {
     return {
       status: 'error',
-      message: 'ベンダーコードは4桁の数字で入力してください',
+      message: 'セラーコードは4桁の数字で入力してください',
       details: null
     };
   }

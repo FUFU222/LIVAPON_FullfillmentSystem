@@ -81,7 +81,7 @@ export function ShipmentAdjustmentRequestCard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-lg font-semibold text-foreground">
-              {request.vendorName ?? `ベンダー #${request.vendorId}`}
+              {request.vendorName ?? `セラー #${request.vendorId}`}
             </span>
             <span className="text-sm text-slate-500">
               コード: {request.vendorCode ?? '----'} / 注文: {request.orderNumber}
@@ -134,13 +134,13 @@ export function ShipmentAdjustmentRequestCard({
           <input type="hidden" name="requestId" value={request.id} />
           <Textarea
             name="commentBody"
-            placeholder="ベンダーへの返信内容や処置メモを入力"
+            placeholder="セラーへの返信内容や処置メモを入力"
             rows={3}
           />
           <div className="grid gap-2 text-sm text-slate-600">
             <label className="font-medium">コメント表示範囲</label>
             <select name="visibility" className="rounded-md border border-slate-200 px-3 py-2 text-sm">
-              <option value="vendor">ベンダーに共有</option>
+              <option value="vendor">セラーに共有</option>
               <option value="internal">内部メモ</option>
             </select>
           </div>

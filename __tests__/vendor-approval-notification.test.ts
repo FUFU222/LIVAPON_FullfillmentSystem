@@ -31,8 +31,8 @@ describe('vendor approval notification', () => {
     expect(payload.subject).toBe('【LIVAPON】ご利用開始のご案内');
     expect(payload.text).toContain('本日より管理画面をご利用いただけます。');
     expect(payload.text).toContain('https://example.com/orders');
-    expect(payload.text).not.toContain('ベンダーコード');
-    expect(payload.text).not.toContain('ベンダー名');
+    expect(payload.text).not.toContain('セラーコード');
+    expect(payload.text).not.toContain('セラー名');
   });
 });
 

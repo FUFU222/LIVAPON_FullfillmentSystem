@@ -33,23 +33,23 @@ export default async function AdminVendorsPage({
     hasError = true;
   }
 
-  const statusMessage = resolvedParams.status === 'deleted' ? 'ベンダーを削除しました。' : null;
+  const statusMessage = resolvedParams.status === 'deleted' ? 'セラーを削除しました。' : null;
   const errorMessage = typeof resolvedParams.error === 'string' ? resolvedParams.error : null;
 
   return (
     <Card>
       <CardHeader className="flex flex-col gap-1">
-        <CardTitle className="text-2xl font-semibold">ベンダー一覧</CardTitle>
-        <p className="text-sm text-slate-500">最新 100 件のベンダーを表示しています。</p>
+        <CardTitle className="text-2xl font-semibold">セラー一覧</CardTitle>
+        <p className="text-sm text-slate-500">最新 100 件のセラーを表示しています。</p>
       </CardHeader>
       <CardContent className="grid gap-4">
         {statusMessage ? <Alert variant="success">{statusMessage}</Alert> : null}
         {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
         {hasError ? (
-          <Alert variant="destructive">ベンダー情報の取得に失敗しました。</Alert>
+          <Alert variant="destructive">セラー情報の取得に失敗しました。</Alert>
         ) : vendors.length === 0 ? (
-          <Alert variant="success">表示できるベンダーがありません。</Alert>
+          <Alert variant="success">表示できるセラーがありません。</Alert>
         ) : (
           <VendorBulkDeleteForm vendors={vendors} />
         )}

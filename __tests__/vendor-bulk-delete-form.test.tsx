@@ -28,7 +28,7 @@ describe('VendorBulkDeleteForm', () => {
         vendors={[
           {
             id: 1,
-            name: 'テストベンダー',
+            name: 'テストセラー',
             code: '0001',
             contactName: '担当者',
             contactEmail: 'vendor@example.com',
@@ -41,10 +41,10 @@ describe('VendorBulkDeleteForm', () => {
       />
     );
 
-    const bulkButton = screen.getByRole('button', { name: '選択したベンダーを削除' });
+    const bulkButton = screen.getByRole('button', { name: '選択したセラーを削除' });
     expect(bulkButton).toBeDisabled();
 
-    fireEvent.click(screen.getByLabelText('テストベンダー を削除対象として選択'));
+    fireEvent.click(screen.getByLabelText('テストセラー を削除対象として選択'));
     expect(bulkButton).toBeEnabled();
 
     fireEvent.click(bulkButton);

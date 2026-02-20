@@ -1,21 +1,21 @@
-# SKU / ベンダーコード仕様
+# SKU / セラーコード仕様
 
-## ベンダーコード
+## セラーコード
 - 4 桁ゼロ埋め（例: `0001`）。`vendors.code` に保存しユニーク制約。
 - `approveVendorApplication` 実行時に `generateNextVendorCode` が最大値+1 を採番。欠番は許容だが再利用しない。
 - Supabase Auth ユーザーの `user_metadata.vendor_id` に `vendors.id` を書き込み、アプリ側でロール判定に使用。
 
-## ベンダー情報
+## セラー情報
 - `vendors` テーブル: `name`, `contact_name`, `contact_email`, `code`。拡張フィールドは `vendor_profile` テーブル追加で対応予定。
 - 管理者 UI (`VendorBulkDeleteForm`) では `lastApplication` 情報を付与し、承認ステータスを Badge 表示。
 
 ## SKU 設計
 - 形式: `CCCC-NNN-VV`
-  - `CCCC`: ベンダーコード。
-  - `NNN`: ベンダー内部プロダクト番号（0 埋め）。
+  - `CCCC`: セラーコード。
+  - `NNN`: セラー内部プロダクト番号（0 埋め）。
   - `VV`: バリエーション番号。
 - `vendor_skus` に SKU を登録。`attributes` JSONB で色・サイズ等を保持。
-- Shopify 連携時は、優先順でベンダーを解決:
+- Shopify 連携時は、優先順でセラーを解決:
   1. `vendor_skus` で SKU 一致。
   2. SKU 先頭 4 桁と `vendors.code`。
   3. Shopify `line_item.vendor` 名の部分一致。
@@ -36,8 +36,8 @@
 
 ## 運用ルール
 - SKU は一度登録したら意味を変えない。変更が必要な場合は新 SKU を採番。
-- ベンダー削除時は `ON DELETE CASCADE` により `vendor_skus` / `line_items` / `shipments` が自動削除されるため、過去レポートには注意。
-- ベンダーコードと SKU プレフィックスに矛盾がある場合、Shopify 連携ログに WARN を記録し手動修正する。
+- セラー削除時は `ON DELETE CASCADE` により `vendor_skus` / `line_items` / `shipments` が自動削除されるため、過去レポートには注意。
+- セラーコードと SKU プレフィックスに矛盾がある場合、Shopify 連携ログに WARN を記録し手動修正する。
 
 ## 今後の追加仕様
 - `vendor_skus` に GTIN / JAN 等の識別子を追加予定。

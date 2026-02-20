@@ -1,7 +1,7 @@
-# ベンダー向け注文通知メール計画
+# セラー向け注文通知メール計画
 
 ## 1. 目的
-- Shopify から新規注文が取り込まれた際に、該当ベンダーへメールで即座に通知する。
+- Shopify から新規注文が取り込まれた際に、該当セラーへメールで即座に通知する。
 - Console を開いていなくても発送準備が始められるようにし、SLA を短縮する。
 - 既存の Webhook / Supabase ジョブフローと整合する安心設計を明文化する。
 
@@ -9,8 +9,8 @@
 | フェーズ | トリガー条件 | 備考 |
 | --- | --- | --- |
 | 新規注文 | `orders` レコード新規作成（`insert`）かつ `vendor_id` が設定済み | Shopify Webhook → `processShopifyWebhook` で確定する段階。|
-| 既存注文のベンダー割当 | `orders.vendor_id` が `NULL`→値ありに更新されたタイミング | SKU 解決後にベンダーが決まるケースを想定。|
-| 再通知 | デフォルトでは **なし**。メール未達やベンダー設定変更時は手動で再送できるよう CLI/管理画面に余地を残す。|
+| 既存注文のセラー割当 | `orders.vendor_id` が `NULL`→値ありに更新されたタイミング | SKU 解決後にセラーが決まるケースを想定。|
+| 再通知 | デフォルトでは **なし**。メール未達やセラー設定変更時は手動で再送できるよう CLI/管理画面に余地を残す。|
 
 実装備考（2025-12-04）:
 - Gmail API 版では Shopify Webhook のうち `orders/create` のみ自動送信対象とし、`orders/updated` / 再割当は今後の再送フロー整備後に対応予定。
@@ -49,7 +49,7 @@
   {{/each}}
   ────────────────────
 
-  発送準備につきましては、ベンダー様用コンソールよりご対応をお願いいたします。
+  発送準備につきましては、セラー様用コンソールよりご対応をお願いいたします。
   ▼管理画面はこちら
   https://livapon-fullfillment-system.vercel.app/orders
 
@@ -57,7 +57,7 @@
   運用担当またはLIVAPON事務局までご連絡ください。
   本メールは送信専用です。
 
-  ※本メールの受信有無は、ベンダープロフィール画面の通知設定から
+  ※本メールの受信有無は、セラープロフィール画面の通知設定から
     いつでもオン／オフを切り替えていただけます。
 
   よろしくお願いいたします。
@@ -74,13 +74,13 @@
   | `shipping_postal_code` / `shipping_state` / `shipping_city` / `shipping_address1` / `shipping_address2` | `orders` の同名カラム |
   | `line_items` | `line_items` テーブル（`product_name`, `quantity`, 任意で `sku`） |
 
-  すべての line_items をベンダー単位でフィルタし、メールには自社分のみを列挙する。
+  すべての line_items をセラー単位でフィルタし、メールには自社分のみを列挙する。
 
 ## 4. 技術アプローチ
 1. **送信者ライブラリ**
    - **フェーズ1（現行〜当面）**: Gmail（Google Workspace）API を利用。Next.js の Route Handler / Server Action から Gmail API を叩き、プロジェクトのポリシーで定められている `information@chairman.jp` を送信元として扱う。
      - OAuth クライアントまたはサービスアカウントで認証し、Console のサーバーサイドでアクセストークンを保持。
-     - ベンダー通知・管理者通知ともに同じ送信ヘルパーで一元管理する。
+     - セラー通知・管理者通知ともに同じ送信ヘルパーで一元管理する。
    - **フェーズ2（本格スケール後）**: メール送信部分だけ Resend / SES などへ差し替え。`sendVendorNewOrderEmail(payload)` のインターフェースは維持し、実装を差し替えるだけで移行できる構成にする。
    - `.env` に `RESEND_API_KEY`。
    - `lib/notifications/email.ts` に送信ヘルパーを作成し、テンプレート別に型安全な呼び出しにする。
@@ -92,11 +92,11 @@
    - 送信前に `UPSERT` し、既に `status='sent'` の同キーが存在する場合はスキップ。
 4. **エラー処理**:
    - Resend エラーは `status='error'` と `error_message` を保存。GitHub Actions のジョブ Summary で件数を報告。
-   - ベンダーのメール未登録の場合はログ警告＋後続の Slack 通知候補。
+   - セラーのメール未登録の場合はログ警告＋後続の Slack 通知候補。
 5. **将来拡張 / 通知設定**:
    - `order_status` 変化（例: `fulfilled`）時に発送完了通知、`shipment_adjustment_requests` 更新時通知なども同インフラで拡張できる。
-   - ベンダープロフィール画面に「新規注文メール通知」のトグルを追加し、`vendors.notify_new_orders boolean default true` で制御する案を採用。より細かい粒度が必要になった場合は `vendor_notification_preferences(vendor_id, notification_type, enabled)` へ移行する。
-   - OFF のベンダーには送信処理をスキップしつつ、`vendor_order_notifications` に `status='skipped'` を記録して監査できるようにする。
+   - セラープロフィール画面に「新規注文メール通知」のトグルを追加し、`vendors.notify_new_orders boolean default true` で制御する案を採用。より細かい粒度が必要になった場合は `vendor_notification_preferences(vendor_id, notification_type, enabled)` へ移行する。
+   - OFF のセラーには送信処理をスキップしつつ、`vendor_order_notifications` に `status='skipped'` を記録して監査できるようにする。
 
 ## 5. 開発ステップ案
 1. **スキーマ**: `20251204090000_create_vendor_notification_logs.sql`（仮）で `vendor_order_notifications` 作成・インデックス追加。
@@ -110,8 +110,8 @@
 - 再通知ポリシー（未読/未発送が一定時間続いた場合のリマインド）。
 - 複数メールアドレス（例: CC: ロジ担当）への配信。プロフィールに複数入力欄を追加する必要があるか検討。
 - 国際化（英語版メール）のタイミング。
-- 通知設定が OFF のベンダーがいる場合、誰がその変更を行ったか追跡できる仕組み（監査ログ）が必要か。`vendor_notification_settings_audit` のような履歴テーブルが候補。
-- ベンダー側のメールサーバーでフィルタされた際のリカバリ手順（bounce 処理や自動再送ポリシー）を決める。
+- 通知設定が OFF のセラーがいる場合、誰がその変更を行ったか追跡できる仕組み（監査ログ）が必要か。`vendor_notification_settings_audit` のような履歴テーブルが候補。
+- セラー側のメールサーバーでフィルタされた際のリカバリ手順（bounce 処理や自動再送ポリシー）を決める。
 
 ## 7. 参照
 - 既存ジョブ: `docs/60_development_status.md`（Webhook Jobs 概要）。

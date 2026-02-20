@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## プロジェクト構成
-- `app/` — Next.js App Router。`(public)` が未認証フロー、`(auth)` がサインイン、`orders` / `import` / `vendor` がベンダー機能、`admin` が管理コンソール、`api/shopify` が OAuth / Webhook / Vendor API。
+- `app/` — Next.js App Router。`(public)` が未認証フロー、`(auth)` がサインイン、`orders` / `import` / `vendor` がセラー機能、`admin` が管理コンソール、`api/shopify` が OAuth / Webhook / Vendor API。
 - `components/` — UI コンポーネント。`orders/*`・`admin/*` など機能単位、`ui/*` に共通パーツ、`toast-provider.tsx` で通知を集中管理。
 - `lib/` — 認証 (`auth.ts`)、Supabase サービス層 (`data/*`)、Shopify 連携 (`shopify/*`)、共有ユーティリティ。
 - `supabase/` — CLI 設定とマイグレーション。`schema.sql` を正とし、差分は `supabase/migrations/` に追加する。
@@ -19,7 +19,7 @@
 - TypeScript + React Hooks。Async ロジックは `lib/data/*` やサーバーアクションに寄せ、コンポーネントは表示と UX 専任にする。
 - Tailwind でスタイル統一。重複するクラスは `components/ui/*` へ切り出し、`buttonClasses` などユーティリティを再利用。
 - 命名規則は `docs/00_language.md` に従い、日本語 UI / コメント前提。API との契約値は英語で揃える。
-- ベンダーコードは 4 桁 zero-pad (`0001`)。SKU は `CCCC-NNN-VV` パターン、`vendor_skus` で冪等採番。
+- セラーコードは 4 桁 zero-pad (`0001`)。SKU は `CCCC-NNN-VV` パターン、`vendor_skus` で冪等採番。
 
 ## テスト & 品質
 - 変更後は最低限 `npm run lint` / `npm run test` / `npx tsc --noEmit` をローカルで実行。

@@ -14,7 +14,7 @@
 | FO 取得 | `GET` | `/admin/api/{ver}/orders/{order_id}/fulfillment_orders.json` | 最初の FO を使用。未生成の場合はリトライ対象。|
 | Fulfillment 作成 | `POST` | `/admin/api/{ver}/fulfillments.json` | `line_items_by_fulfillment_order` と `tracking_info` を指定。|
 | 追跡情報更新 | `POST` | `/admin/api/{ver}/fulfillments/{fulfillment_id}/update_tracking.json` | 追跡番号変更に利用。|
-| Fulfillment 取消 | `POST` | `/admin/api/{ver}/fulfillments/{fulfillment_id}/cancel.json` | ベンダーが発送取消した場合に使用。|
+| Fulfillment 取消 | `POST` | `/admin/api/{ver}/fulfillments/{fulfillment_id}/cancel.json` | セラーが発送取消した場合に使用。|
 | FO 単体取得 | `GET` | `/admin/api/{ver}/fulfillment_orders/{id}.json` | Webhook から渡される FO ID から order_id を逆引き。|
 
 > API バージョンは `SHOPIFY_ADMIN_API_VERSION`（デフォルト `2025-10`）。
@@ -57,7 +57,7 @@ POST /admin/api/2025-10/fulfillments.json
 ## エラーハンドリング
 - 401/403: トークン失効またはスコープ不足。`shopify_connections` のトークンを再取得。
 - 404: FO / Fulfillment ID が存在しない。多数発生する場合は店舗設定を確認。
-- 422: 数量超過・キャリア名称不整合。`sync_error` に詳細を残し、ベンダー UI で Alert。
+- 422: 数量超過・キャリア名称不整合。`sync_error` に詳細を残し、セラー UI で Alert。
 - 429: レート制限。指数バックオフを掛け、`sync_pending_until` を未来時刻に設定。
 
 ## GraphQL 検討事項

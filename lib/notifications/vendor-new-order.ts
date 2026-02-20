@@ -176,7 +176,7 @@ function buildHtmlEmailBody(payload: VendorNewOrderEmailPayload): string {
               <tr>
                 <td style="border-top:1px solid #E4E7EC; padding-top:24px;">
                   <p style="margin:0; font-size:12px; color:#98A2B3; line-height:1.6;">
-                    本メールは送信専用です。通知設定はベンダープロフィールから変更できます。<br />
+                    本メールは送信専用です。通知設定はセラープロフィールから変更できます。<br />
                     ご不明点がございましたら LIVAPON 事務局までお問い合わせください。
                   </p>
                 </td>

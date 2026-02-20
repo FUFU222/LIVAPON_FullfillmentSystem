@@ -35,7 +35,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
     if (state.status === 'success' && state.message) {
       showToast({
         variant: 'success',
-        title: 'ベンダー情報を保存しました。最新の内容が反映されています。'
+        title: 'セラー情報を保存しました。最新の内容が反映されています。'
       });
       formRef.current?.reset();
       router.refresh();

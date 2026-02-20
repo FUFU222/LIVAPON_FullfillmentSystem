@@ -61,8 +61,8 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
           if (!result || result.status !== 'success') {
             const message =
               result?.status === 'not_found'
-                ? 'ベンダー詳細が見つかりませんでした。'
-                : result?.message ?? 'ベンダー詳細の取得に失敗しました。';
+                ? 'セラー詳細が見つかりませんでした。'
+                : result?.message ?? 'セラー詳細の取得に失敗しました。';
             setErrorMessage(message);
             setLoadState('error');
             return;
@@ -74,7 +74,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
         })
         .catch((error) => {
           console.error('Failed to load vendor detail', error);
-          setErrorMessage('ベンダー詳細の取得に失敗しました。');
+          setErrorMessage('セラー詳細の取得に失敗しました。');
           setLoadState('error');
         });
     });
@@ -104,13 +104,13 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
     const detail = activeDetail ?? cachedDetail;
 
     if (!detail) {
-      return <Alert variant="default">ベンダー詳細が見つかりませんでした。</Alert>;
+      return <Alert variant="default">セラー詳細が見つかりませんでした。</Alert>;
     }
 
     return <AdminVendorDetail vendor={detail} />;
   };
 
-  const modalTitle = activeDetail?.name ?? cachedDetail?.name ?? 'ベンダー詳細';
+  const modalTitle = activeDetail?.name ?? cachedDetail?.name ?? 'セラー詳細';
 
   useEffect(() => {
     if (!bulkDeleteQueued || isBulkConfirmOpen) {
@@ -136,7 +136,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
           disabled={selectedIds.length === 0}
           onClick={() => setBulkConfirmOpen(true)}
         >
-          選択したベンダーを削除
+          選択したセラーを削除
         </button>
       </div>
       <div className="grid gap-3 md:hidden">
@@ -189,7 +189,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-3 py-2">選択</th>
-              <th className="px-3 py-2">ベンダー名</th>
+              <th className="px-3 py-2">セラー名</th>
               <th className="px-3 py-2">コード</th>
               <th className="px-3 py-2">ステータス</th>
               <th className="px-3 py-2">メール</th>
@@ -291,7 +291,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
       <Modal
         open={isBulkConfirmOpen}
         onClose={() => setBulkConfirmOpen(false)}
-        title="選択したベンダーを削除します"
+        title="選択したセラーを削除します"
         description="この操作は元に戻せません。関連する情報も削除対象となります。"
         footer={
           <div className="flex justify-end gap-3">
@@ -314,7 +314,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
         }
       >
         <p className="text-sm text-slate-600">
-          選択したベンダーが完全に削除されます。必要に応じてバックアップを取得してから実行してください。
+          選択したセラーが完全に削除されます。必要に応じてバックアップを取得してから実行してください。
         </p>
       </Modal>
     </div>

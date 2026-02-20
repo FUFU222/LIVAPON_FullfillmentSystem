@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserClient } from '@/lib/supabase/client';
+import { translateSupabaseAuthError } from '@/lib/supabase-auth-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
@@ -31,7 +32,12 @@ export function SignInForm({ redirectTo }: Props) {
     });
 
     if (signInError) {
-      setError(signInError.message ?? 'サインインに失敗しました');
+      setError(
+        translateSupabaseAuthError(signInError, {
+          context: 'sign-in',
+          fallback: 'サインインに失敗しました。時間をおいて再度お試しください。'
+        })
+      );
       setIsSubmitting(false);
       return;
     }

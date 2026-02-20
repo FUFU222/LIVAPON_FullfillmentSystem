@@ -4,7 +4,37 @@ import { revalidatePath } from 'next/cache';
 import { createVendorApplication } from '@/lib/data/vendors';
 import { getServerActionClient } from '@/lib/supabase/server';
 import { validateVendorApplicationInput } from '@/lib/apply/validation';
+import { translateSupabaseAuthError } from '@/lib/supabase-auth-error';
 import type { ApplyFormState } from './state';
+
+const APPLY_GENERIC_ERROR_MESSAGE =
+  '申請の送信中にエラーが発生しました。時間をおいて再度お試しください。';
+
+function resolveApplySubmissionErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return APPLY_GENERIC_ERROR_MESSAGE;
+  }
+
+  const rawMessage = error.message.trim();
+  if (rawMessage.length === 0) {
+    return APPLY_GENERIC_ERROR_MESSAGE;
+  }
+
+  if (rawMessage.includes('このメールアドレスで審査中の利用申請が既にあります。')) {
+    return rawMessage;
+  }
+
+  const normalized = rawMessage.toLowerCase();
+  if (
+    normalized.includes('duplicate key value') ||
+    normalized.includes('unique constraint') ||
+    normalized.includes('already exists')
+  ) {
+    return 'このメールアドレスは既に登録されています。サインインしてご利用ください。';
+  }
+
+  return APPLY_GENERIC_ERROR_MESSAGE;
+}
 
 export async function submitVendorApplication(
   _prevState: ApplyFormState,
@@ -55,8 +85,10 @@ export async function submitVendorApplication(
     if (signUpResult.error) {
       return {
         status: 'error',
-        message:
-          signUpResult.error.message ?? 'アカウントの作成に失敗しました。時間をおいて再度お試しください。',
+        message: translateSupabaseAuthError(signUpResult.error, {
+          context: 'sign-up',
+          fallback: 'アカウントの作成に失敗しました。時間をおいて再度お試しください。'
+        }),
         errors: {}
       };
     }
@@ -84,10 +116,7 @@ export async function submitVendorApplication(
     console.error('Failed to submit vendor application', error);
     return {
       status: 'error',
-      message:
-        error instanceof Error
-          ? error.message
-          : '申請の送信中にエラーが発生しました。時間をおいて再度お試しください。',
+      message: resolveApplySubmissionErrorMessage(error),
       errors: {}
     };
   }

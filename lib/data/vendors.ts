@@ -393,7 +393,7 @@ export async function createVendorApplication(
   }
 
   if (existingPending) {
-    throw new Error('既に審査中の申請が存在します');
+    throw new Error('このメールアドレスで審査中の利用申請が既にあります。');
   }
 
   const insertPayload: Database['public']['Tables']['vendor_applications']['Insert'] = {

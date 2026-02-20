@@ -13,14 +13,14 @@ export type AuthContext = {
 };
 
 export class UnauthenticatedError extends Error {
-  constructor(message = 'Authentication required') {
+  constructor(message = '認証が必要です') {
     super(message);
     this.name = 'UnauthenticatedError';
   }
 }
 
 export class ForbiddenError extends Error {
-  constructor(message = 'Access denied') {
+  constructor(message = 'アクセス権限がありません') {
     super(message);
     this.name = 'ForbiddenError';
   }
@@ -77,13 +77,13 @@ export async function requireAuthContext(): Promise<AuthContext> {
 
 export function assertAuthorizedVendor(vendorId: number | null): asserts vendorId is number {
   if (!Number.isInteger(vendorId)) {
-    throw new UnauthenticatedError('Vendor context is missing on the authenticated user');
+    throw new UnauthenticatedError('ベンダー情報が紐づいていないため操作できません。');
   }
 }
 
 export function assertAdmin(context: AuthContext) {
   if (context.role !== 'admin') {
-    throw new ForbiddenError('Administrator privileges required');
+    throw new ForbiddenError('管理者権限が必要です');
   }
 }
 

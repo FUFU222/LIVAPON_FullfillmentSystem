@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { resolveRoleFromAuthUser, resolveVendorIdFromAuthUser } from '@/lib/auth-metadata';
@@ -120,25 +120,50 @@ function AppShellContent({
       setCompanyName(data?.name ?? null);
     }
 
-    function syncSession(session: Session | null) {
+    function syncSignedOutState() {
       if (!isMounted) {
         return;
       }
 
-      if (session?.user) {
-        setEmail(session.user.email ?? null);
-        const nextVendorId = resolveVendorIdFromAuthUser(session.user);
-        setVendorId(nextVendorId);
-        setRole(resolveRoleFromAuthUser(session.user));
-        setStatus('signed-in');
-        void loadCompanyName(nextVendorId);
-      } else {
-        setEmail(null);
-        setVendorId(null);
-        setRole(null);
-        setStatus('signed-out');
-        setCompanyName(null);
+      setEmail(null);
+      setVendorId(null);
+      setRole(null);
+      setStatus('signed-out');
+      setCompanyName(null);
+    }
+
+    async function syncSession(session: Session | null) {
+      if (!isMounted) {
+        return;
       }
+
+      if (!session?.user) {
+        syncSignedOutState();
+        return;
+      }
+
+      let resolvedUser: User = session.user;
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          console.warn('Failed to refresh auth user metadata in app shell', userError);
+        } else if (userData.user) {
+          resolvedUser = userData.user;
+        }
+      } catch (error) {
+        console.warn('Unexpected error while refreshing auth user metadata in app shell', error);
+      }
+
+      if (!isMounted) {
+        return;
+      }
+
+      setEmail(resolvedUser.email ?? null);
+      const nextVendorId = resolveVendorIdFromAuthUser(resolvedUser);
+      setVendorId(nextVendorId);
+      setRole(resolveRoleFromAuthUser(resolvedUser));
+      setStatus('signed-in');
+      void loadCompanyName(nextVendorId);
     }
 
     void supabase.auth.getSession().then(({ data, error }) => {
@@ -151,11 +176,11 @@ function AppShellContent({
         return;
       }
 
-      syncSession(data.session);
+      void syncSession(data.session);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncSession(session);
+      void syncSession(session);
     });
 
     return () => {

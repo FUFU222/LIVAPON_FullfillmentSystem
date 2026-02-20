@@ -57,6 +57,7 @@ export function OrdersDispatchPanel({
   const trackingInputRef = useRef<HTMLInputElement | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
   const [pendingShipment, setPendingShipment] = useState<{
     trackingNumber: string;
     carrier: string;
@@ -116,10 +117,9 @@ export function OrdersDispatchPanel({
         quantity: item.quantity
       }))
     });
+    setSubmitErrorMessage(null);
     setConfirmOpen(true);
   };
-
-  const sendingToastRef = useRef<string | null>(null);
 
   const submitShipment = async () => {
     if (!pendingShipment) {
@@ -127,13 +127,8 @@ export function OrdersDispatchPanel({
     }
 
     setSubmitting(true);
-    const infoToastId = showToast({
-      variant: "info",
-      title: "発送情報を登録しています",
-      description: "完了までお待ちください。",
-      duration: Infinity
-    });
-    sendingToastRef.current = infoToastId;
+    setSubmitErrorMessage(null);
+    const fallbackTotalCount = pendingShipment.items.length;
 
     try {
       const response = await fetch("/api/shopify/orders/shipments", {
@@ -151,43 +146,35 @@ export function OrdersDispatchPanel({
         );
       }
 
-      if (sendingToastRef.current) {
-        dismissToast(sendingToastRef.current);
-        sendingToastRef.current = null;
-      }
-
       const result = (await response.json().catch(() => null)) as
         | { jobId?: number; totalCount?: number }
         | null;
 
-      showToast({
-        variant: "info",
-        title: "発送情報を受け付けました",
-        duration: 4000
-      });
+      setConfirmOpen(false);
+      setPendingShipment(null);
+      setSubmitErrorMessage(null);
 
       onClearSelection();
       setTrackingNumber("");
       setCarrier(carrierOptions[0]?.value ?? "");
-      setPendingShipment(null);
-      setConfirmOpen(false);
       markOrdersAsRefreshed();
 
+      window.requestAnimationFrame(() => {
+        showToast({
+          variant: "info",
+          title: "発送情報を受け付けました",
+          duration: 4000
+        });
+      });
+
       if (result?.jobId) {
-        beginJobTracking(result.jobId, result.totalCount ?? pendingShipment.items.length);
+        beginJobTracking(result.jobId, result.totalCount ?? fallbackTotalCount);
       }
     } catch (error) {
       console.error("Failed to submit shipment", error);
-      if (sendingToastRef.current) {
-        dismissToast(sendingToastRef.current);
-        sendingToastRef.current = null;
-      }
-      showToast({
-        variant: "error",
-        title: "発送登録に失敗しました",
-        description: error instanceof Error ? error.message : "サーバーエラーが発生しました。",
-        duration: 3000
-      });
+      setSubmitErrorMessage(
+        error instanceof Error ? error.message : "サーバーエラーが発生しました。時間を置いて再度お試しください。"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -447,12 +434,23 @@ export function OrdersDispatchPanel({
         onClose={() => {
           if (!isSubmitting) {
             setConfirmOpen(false);
+            setPendingShipment(null);
+            setSubmitErrorMessage(null);
           }
         }}
         title="発送登録の最終確認"
         footer={
           <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setConfirmOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSubmitting}
+              onClick={() => {
+                setConfirmOpen(false);
+                setPendingShipment(null);
+                setSubmitErrorMessage(null);
+              }}
+            >
               戻る
             </Button>
             <Button type="button" disabled={isSubmitting} onClick={submitShipment} className="gap-2">
@@ -484,6 +482,17 @@ export function OrdersDispatchPanel({
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             数量と追跡番号をご確認のうえ、登録をお願いします。
           </div>
+          {isSubmitting ? (
+            <div className="flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              受付処理中です。画面を閉じずにお待ちください。
+            </div>
+          ) : null}
+          {submitErrorMessage ? (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              {submitErrorMessage}
+            </div>
+          ) : null}
           <div className="max-h-52 overflow-y-auto rounded-md border border-slate-200">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-500">

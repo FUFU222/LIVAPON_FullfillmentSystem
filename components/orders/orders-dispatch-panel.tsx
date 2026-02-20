@@ -163,7 +163,6 @@ export function OrdersDispatchPanel({
       showToast({
         variant: "info",
         title: "発送情報を受け付けました",
-        description: "続きの処理を行っています。",
         duration: 4000
       });
 

@@ -18,7 +18,7 @@ export function Badge({ className, intent, ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-wide',
+        'inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-wide',
         intentStyles[intent ?? 'default'] ?? intentStyles.default,
         className
       )}

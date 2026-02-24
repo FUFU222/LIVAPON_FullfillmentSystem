@@ -80,39 +80,17 @@ describe('auth metadata resolution', () => {
     expect(resolveRoleFromAuthUser(user)).toBeNull();
   });
 
-  it('allows trusted admin domain fallback from user_metadata', () => {
-    const user = {
-      email: 'ops@chairman.jp',
-      app_metadata: {},
-      user_metadata: {
-        role: 'admin'
-      }
-    } as MetadataUserInput;
-
-    expect(resolveRoleFromAuthUser(user)).toBe('admin');
-  });
-
-  it('keeps allowlisted admin domain as admin even if app_metadata is pending', () => {
+  it('prioritizes app_metadata pending role over user_metadata admin', () => {
     const user = {
       email: 'support@chairman.jp',
       app_metadata: {
         role: 'pending_vendor'
       },
-      user_metadata: {}
-    } as MetadataUserInput;
-
-    expect(resolveRoleFromAuthUser(user)).toBe('admin');
-  });
-
-  it('does not allow privileged fallback for non-trusted domains', () => {
-    const user = {
-      email: 'admin@example.com',
-      app_metadata: {},
       user_metadata: {
         role: 'admin'
       }
     } as MetadataUserInput;
 
-    expect(resolveRoleFromAuthUser(user)).toBeNull();
+    expect(resolveRoleFromAuthUser(user)).toBe('pending_vendor');
   });
 });

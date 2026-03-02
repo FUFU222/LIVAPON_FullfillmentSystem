@@ -193,6 +193,22 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
       registerPendingOrderRef.current(orderId);
     };
 
+    const handleOrderVendorSegmentEvent = (payload: any) => {
+      const orderId = extractOrderId(payload as any);
+      if (typeof orderId !== 'number') {
+        return;
+      }
+      registerPendingOrderRef.current(orderId);
+    };
+
+    const handleShipmentEvent = (payload: any) => {
+      const orderId = extractOrderId(payload as any);
+      if (typeof orderId !== 'number') {
+        return;
+      }
+      registerPendingOrderRef.current(orderId);
+    };
+
     async function subscribeWithSession() {
       const { data, error } = await supabase.auth.getSession();
       if (!isMounted) {
@@ -239,11 +255,35 @@ export function OrdersRealtimeListener({ vendorId }: OrdersRealtimeListenerProps
           {
             event: "*",
             schema: "public",
+            table: "order_vendor_segments",
+            filter: `vendor_id=eq.${vendorId}`
+          },
+          (payload) => {
+            handleOrderVendorSegmentEvent(payload);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
             table: "line_items",
             filter: `vendor_id=eq.${vendorId}`
           },
           (payload) => {
             handleLineItemEvent(payload);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "shipments",
+            filter: `vendor_id=eq.${vendorId}`
+          },
+          (payload) => {
+            handleShipmentEvent(payload);
           }
         );
 

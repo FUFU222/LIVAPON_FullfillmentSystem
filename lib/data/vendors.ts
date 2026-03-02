@@ -504,9 +504,6 @@ export async function approveVendorApplication(params: {
         app_metadata: {
           role: 'vendor',
           vendor_id: vendor.id
-        },
-        user_metadata: {
-          vendor_id: vendor.id
         }
       });
     } catch (updateAuthError) {

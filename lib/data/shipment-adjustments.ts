@@ -1,4 +1,5 @@
 import { assertServiceClient } from '@/lib/data/orders/clients';
+import { ACTIVE_SHIPMENT_ADJUSTMENT_STATUSES } from '@/lib/shipment-adjustment/constants';
 import type { Database } from '@/lib/supabase/types';
 
 export const SHIPMENT_ADJUSTMENT_STATUSES = ['pending', 'in_review', 'needs_info', 'resolved'] as const;
@@ -119,6 +120,20 @@ export async function listShipmentAdjustmentRequestsForAdmin(options?: {
   }
 
   return (data ?? []).map(mapAdminRequest);
+}
+
+export async function countActiveShipmentAdjustmentRequestsForAdmin(): Promise<number> {
+  const client = assertServiceClient();
+  const { count, error } = await client
+    .from('shipment_adjustment_requests')
+    .select('id', { head: true, count: 'exact' })
+    .in('status', [...ACTIVE_SHIPMENT_ADJUSTMENT_STATUSES]);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
 }
 
 export async function updateShipmentAdjustmentRequestByAdmin(input: {

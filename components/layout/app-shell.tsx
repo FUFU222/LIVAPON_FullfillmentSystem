@@ -6,6 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
+import {
+  ACTIVE_SHIPMENT_ADJUSTMENT_STATUSES,
+  SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT
+} from '@/lib/shipment-adjustment/constants';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { resolveRoleFromAuthUser, resolveVendorIdFromAuthUser } from '@/lib/auth-metadata';
 import { SignOutButton } from '@/components/auth/sign-out-button';
@@ -22,6 +26,7 @@ export type AppShellInitialAuth = {
   vendorId: number | null;
   role: string | null;
   companyName: string | null;
+  adminActiveShipmentRequestCount: number;
 };
 
 const navItems = [
@@ -90,6 +95,9 @@ function AppShellContent({
   const [vendorId, setVendorId] = useState<number | null>(initialAuth.vendorId);
   const [role, setRole] = useState<string | null>(initialAuth.role);
   const [companyName, setCompanyName] = useState<string | null>(initialAuth.companyName);
+  const [adminActiveShipmentRequestCount, setAdminActiveShipmentRequestCount] = useState(
+    initialAuth.adminActiveShipmentRequestCount
+  );
 
   useEffect(() => {
     const supabase = getBrowserClient();
@@ -131,6 +139,7 @@ function AppShellContent({
       setRole(null);
       setStatus('signed-out');
       setCompanyName(null);
+      setAdminActiveShipmentRequestCount(0);
     }
 
     async function syncSession(session: Session | null) {
@@ -196,7 +205,9 @@ function AppShellContent({
     setVendorId(initialAuth.vendorId);
     setRole(initialAuth.role);
     setCompanyName(initialAuth.companyName);
+    setAdminActiveShipmentRequestCount(initialAuth.adminActiveShipmentRequestCount);
   }, [
+    initialAuth.adminActiveShipmentRequestCount,
     initialAuth.companyName,
     initialAuth.email,
     initialAuth.role,
@@ -240,6 +251,62 @@ function AppShellContent({
       isCancelled = true;
     };
   }, [companyName, status, vendorId]);
+
+  useEffect(() => {
+    if (status !== 'signed-in' || role !== 'admin') {
+      setAdminActiveShipmentRequestCount(0);
+      return;
+    }
+
+    let isCancelled = false;
+    const supabase = getBrowserClient();
+
+    async function refreshAdminShipmentRequestCount() {
+      const { count, error } = await supabase
+        .from('shipment_adjustment_requests')
+        .select('id', { head: true, count: 'exact' })
+        .in('status', [...ACTIVE_SHIPMENT_ADJUSTMENT_STATUSES]);
+
+      if (isCancelled) {
+        return;
+      }
+
+      if (error) {
+        console.warn('Failed to refresh active shipment adjustment request count', error);
+        return;
+      }
+
+      setAdminActiveShipmentRequestCount(count ?? 0);
+    }
+
+    void refreshAdminShipmentRequestCount();
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshAdminShipmentRequestCount();
+      }
+    }, 30000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        void refreshAdminShipmentRequestCount();
+      }
+    }
+
+    function handleShipmentAdjustmentUpdate() {
+      void refreshAdminShipmentRequestCount();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener(SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT, handleShipmentAdjustmentUpdate);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener(SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT, handleShipmentAdjustmentUpdate);
+    };
+  }, [pathname, role, status]);
 
   const links = (() => {
     if (status !== 'signed-in') {
@@ -379,14 +446,23 @@ function AppShellContent({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98] sm:px-3 sm:py-2 sm:text-sm',
+                      'inline-flex items-center whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98] sm:px-3 sm:py-2 sm:text-sm',
                       isNavActive(pathname ?? null, item.href)
                         ? 'bg-foreground text-white shadow-sm'
                       : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
                     onClick={(event) => handleNavigation(event, item.href)}
                   >
-                    {item.label}
+                    <span>{item.label}</span>
+                    {role === 'admin' &&
+                    item.href === '/admin/shipment-requests' &&
+                    adminActiveShipmentRequestCount > 0 ? (
+                      <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                        {adminActiveShipmentRequestCount > 99
+                          ? '99+'
+                          : adminActiveShipmentRequestCount}
+                      </span>
+                    ) : null}
                   </Link>
                 ))}
             </nav>

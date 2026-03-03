@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { AppShell, type AppShellInitialAuth } from '@/components/layout/app-shell';
 import { ToastProvider } from '@/components/ui/toast-provider';
 import { getAuthContext } from '@/lib/auth';
+import { countActiveShipmentAdjustmentRequestsForAdmin } from '@/lib/data/shipment-adjustments';
 import { getVendorProfile } from '@/lib/data/vendors';
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const auth = await getAuthContext().catch(() => null);
 
   let companyName: string | null = null;
+  let adminActiveShipmentRequestCount = 0;
 
   if (auth && typeof auth.vendorId === 'number') {
     try {
@@ -26,20 +28,30 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     }
   }
 
+  if (auth?.role === 'admin') {
+    try {
+      adminActiveShipmentRequestCount = await countActiveShipmentAdjustmentRequestsForAdmin();
+    } catch (error) {
+      console.error('Failed to load active shipment adjustment request count for layout', error);
+    }
+  }
+
   const initialAuth: AppShellInitialAuth = auth
     ? {
         status: 'signed-in',
         email: auth.user.email ?? null,
         vendorId: auth.vendorId,
         role: auth.role,
-        companyName
+        companyName,
+        adminActiveShipmentRequestCount
       }
     : {
         status: 'signed-out',
         email: null,
         vendorId: null,
         role: null,
-        companyName: null
+        companyName: null,
+        adminActiveShipmentRequestCount: 0
       };
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormState } from 'react-dom';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
+import { SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT } from '@/lib/shipment-adjustment/constants';
 import type { AdminShipmentAdjustmentRequest, ShipmentAdjustmentComment } from '@/lib/data/shipment-adjustments';
 import {
   handleShipmentAdjustmentAdminAction,
@@ -88,6 +89,12 @@ export function ShipmentAdjustmentRequestCard({
       : nextStatus === 'needs_info'
         ? 'セラーへ確認したい内容を入力'
         : 'セラーへ共有する内容を入力';
+
+  useEffect(() => {
+    if (state.status === 'success') {
+      window.dispatchEvent(new Event(SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT));
+    }
+  }, [state.status]);
 
   return (
     <Card className="grid gap-4 border border-slate-200 p-4 shadow-sm">

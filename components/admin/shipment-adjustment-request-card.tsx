@@ -4,11 +4,11 @@ import { useFormState } from 'react-dom';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
+import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
 import type { AdminShipmentAdjustmentRequest, ShipmentAdjustmentComment } from '@/lib/data/shipment-adjustments';
 import { SHIPMENT_ADJUSTMENT_STATUSES } from '@/lib/data/shipment-adjustments';
 import {
@@ -31,13 +31,6 @@ const statusLabels: Record<string, string> = {
   in_review: '対応中',
   needs_info: '要追加情報',
   resolved: '完了'
-};
-
-const statusBadgeClasses: Record<string, string> = {
-  pending: 'border-slate-200 bg-slate-50 text-slate-600',
-  in_review: 'border-amber-200 bg-amber-50 text-amber-700',
-  needs_info: 'border-red-200 bg-red-50 text-red-600',
-  resolved: 'border-emerald-200 bg-emerald-50 text-emerald-700'
 };
 
 function CommentsTimeline({ comments }: { comments: ShipmentAdjustmentComment[] }) {
@@ -87,9 +80,7 @@ export function ShipmentAdjustmentRequestCard({
               コード: {request.vendorCode ?? '----'} / 注文: {request.orderNumber}
             </span>
           </div>
-          <Badge className={statusBadgeClasses[currentStatus] ?? statusBadgeClasses.pending}>
-            {statusLabels[currentStatus] ?? currentStatus}
-          </Badge>
+          <ShipmentAdjustmentStatusBadge status={currentStatus} />
         </div>
         <div className="grid gap-1 text-sm text-slate-600 sm:grid-cols-2">
           <span>連絡先: {request.contactName ?? '-'} / {request.contactEmail ?? '-'}</span>

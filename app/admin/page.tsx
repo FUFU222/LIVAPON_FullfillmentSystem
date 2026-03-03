@@ -5,14 +5,27 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/orders/status-badge';
+import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getRecentOrdersForAdmin } from '@/lib/data/orders';
+import {
+  listShipmentAdjustmentRequestsForAdmin,
+  type AdminShipmentAdjustmentRequest,
+  type ShipmentAdjustmentStatus
+} from '@/lib/data/shipment-adjustments';
 import {
   getPendingVendorApplications,
   getRecentVendors,
   type VendorListEntry,
   type VendorApplication
 } from '@/lib/data/vendors';
+
+const ACTIVE_SHIPMENT_REQUEST_STATUSES: ShipmentAdjustmentStatus[] = [
+  'pending',
+  'in_review',
+  'needs_info'
+];
+const RESOLVED_SHIPMENT_REQUEST_STATUSES: ShipmentAdjustmentStatus[] = ['resolved'];
 
 function toDisplayDate(value: string | null): string {
   if (!value) {
@@ -42,20 +55,37 @@ export default async function AdminDashboardPage() {
     getRecentOrdersForAdmin(5),
     getRecentVendors(5)
   ]);
+  const [shipmentRequestsResult, resolvedShipmentRequestsResult] = await Promise.allSettled([
+    listShipmentAdjustmentRequestsForAdmin({
+      statuses: ACTIVE_SHIPMENT_REQUEST_STATUSES,
+      limit: 3
+    }),
+    listShipmentAdjustmentRequestsForAdmin({
+      statuses: RESOLVED_SHIPMENT_REQUEST_STATUSES,
+      limit: 3
+    })
+  ]);
 
   const pendingApplications: VendorApplication[] =
     pendingResult.status === 'fulfilled' ? pendingResult.value : [];
   const recentOrders = ordersResult.status === 'fulfilled' ? ordersResult.value : [];
   const recentVendors: VendorListEntry[] =
     vendorsResult.status === 'fulfilled' ? vendorsResult.value : [];
+  const activeShipmentRequests: AdminShipmentAdjustmentRequest[] =
+    shipmentRequestsResult.status === 'fulfilled' ? shipmentRequestsResult.value : [];
+  const recentResolvedShipmentRequests: AdminShipmentAdjustmentRequest[] =
+    resolvedShipmentRequestsResult.status === 'fulfilled' ? resolvedShipmentRequestsResult.value : [];
 
   const pendingError = pendingResult.status === 'rejected';
   const ordersError = ordersResult.status === 'rejected';
   const vendorsError = vendorsResult.status === 'rejected';
+  const shipmentRequestsError =
+    shipmentRequestsResult.status === 'rejected' ||
+    resolvedShipmentRequestsResult.status === 'rejected';
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
@@ -155,6 +185,74 @@ export default async function AdminDashboardPage() {
           <CardFooter>
             <Link href="/admin/vendors" className={buttonClasses('outline', 'text-sm')}>
               セラー一覧へ
+            </Link>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-xl">発送修正申請</CardTitle>
+              <p className="text-sm text-slate-500">対応中と最近完了した申請</p>
+            </div>
+            <Badge className="border-slate-200 text-slate-600">履歴</Badge>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {shipmentRequestsError ? (
+              <Alert variant="destructive">発送修正申請を取得できませんでした。</Alert>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">対応中</p>
+                  </div>
+                  {activeShipmentRequests.length === 0 ? (
+                    <p className="text-sm text-slate-500">対応中の申請はありません。</p>
+                  ) : (
+                    <ul className="grid gap-2">
+                      {activeShipmentRequests.map((request) => (
+                        <li key={request.id} className="rounded-md border border-slate-200 px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium text-foreground">{request.orderNumber}</span>
+                            <ShipmentAdjustmentStatusBadge status={request.status} />
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {request.vendorName ?? `セラー #${request.vendorId}`}
+                          </p>
+                          <p className="text-xs text-slate-400">更新日時: {toDisplayDate(request.updatedAt)}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="grid gap-2 border-t border-slate-100 pt-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">最近完了</p>
+                  {recentResolvedShipmentRequests.length === 0 ? (
+                    <p className="text-sm text-slate-500">完了済みの履歴はまだありません。</p>
+                  ) : (
+                    <ul className="grid gap-2">
+                      {recentResolvedShipmentRequests.map((request) => (
+                        <li key={request.id} className="rounded-md border border-slate-200 px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium text-foreground">{request.orderNumber}</span>
+                            <ShipmentAdjustmentStatusBadge status={request.status} />
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {request.vendorName ?? `セラー #${request.vendorId}`}
+                          </p>
+                          <p className="text-xs text-slate-400">更新日時: {toDisplayDate(request.updatedAt)}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Link href="/admin/shipment-requests" className={buttonClasses('outline', 'text-sm')}>
+              申請履歴と更新へ
             </Link>
           </CardFooter>
         </Card>

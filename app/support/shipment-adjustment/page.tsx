@@ -5,6 +5,7 @@ import { ja } from 'date-fns/locale';
 import { getAuthContext, assertAuthorizedVendor } from '@/lib/auth';
 import { getVendorProfile } from '@/lib/data/vendors';
 import { ShipmentAdjustmentForm } from '@/components/support/shipment-adjustment-form';
+import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
 import { getServerComponentClient } from '@/lib/supabase/server';
@@ -74,20 +75,6 @@ export default async function ShipmentAdjustmentPage() {
     }
   };
 
-  const statusLabels: Record<string, string> = {
-    pending: '受付済み',
-    in_review: '確認中',
-    needs_info: '追加情報が必要',
-    resolved: '対応完了'
-  };
-
-  const statusClasses: Record<string, string> = {
-    pending: 'border-sky-200 bg-sky-50 text-sky-700',
-    in_review: 'border-amber-200 bg-amber-50 text-amber-700',
-    needs_info: 'border-rose-200 bg-rose-50 text-rose-700',
-    resolved: 'border-emerald-200 bg-emerald-50 text-emerald-700'
-  };
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
       <div className="space-y-2">
@@ -121,13 +108,7 @@ export default async function ShipmentAdjustmentPage() {
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-slate-500">対応状況</span>
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${
-                        statusClasses[request.status] ?? statusClasses.pending
-                      }`}
-                    >
-                      {statusLabels[request.status] ?? '受付済み'}
-                    </span>
+                    <ShipmentAdjustmentStatusBadge status={request.status} />
                   </div>
                   <div className="mt-3 space-y-2 text-sm text-slate-700">
                     <div>

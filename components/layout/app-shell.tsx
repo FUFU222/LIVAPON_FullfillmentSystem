@@ -32,6 +32,7 @@ const navItems = [
 const adminNavItems = [
   { href: '/admin', label: 'ダッシュボード' },
   { href: '/admin/applications', label: '申請審査' },
+  { href: '/admin/shipment-requests', label: '発送修正申請' },
   { href: '/admin/orders', label: '注文' },
   { href: '/admin/vendors', label: 'セラー' }
 ];

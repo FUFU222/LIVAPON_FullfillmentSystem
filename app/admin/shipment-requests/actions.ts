@@ -79,16 +79,15 @@ export async function handleShipmentAdjustmentAdminAction(
       return { status: 'error', message: '申請IDが不正です。' };
     }
 
-    const commentBody = (formData.get('commentBody') as string | null)?.trim() ?? '';
-    const visibilityInput = (formData.get('visibility') as string | null) ?? 'vendor';
+    const responseNote = (formData.get('responseNote') as string | null)?.trim() ?? '';
     const nextStatus = parseStatus((formData.get('nextStatus') as string | null) ?? null);
-    const resolutionSummary = (formData.get('resolutionSummary') as string | null)?.trim();
+    const resolutionSummary = nextStatus === 'resolved' ? responseNote : undefined;
 
-    if (!commentBody && !nextStatus && !resolutionSummary) {
-      return { status: 'error', message: 'コメントまたは更新内容を入力してください。' };
+    if (!responseNote && !nextStatus && !resolutionSummary) {
+      return { status: 'error', message: '対応内容またはステータスを入力してください。' };
     }
 
-    if (nextStatus === 'resolved' && !(resolutionSummary && resolutionSummary.length > 0)) {
+    if (nextStatus === 'resolved' && !(responseNote && responseNote.length > 0)) {
       return { status: 'error', message: '解決済みにする場合は処置内容を入力してください。' };
     }
 
@@ -98,10 +97,10 @@ export async function handleShipmentAdjustmentAdminAction(
       resolutionSummary,
       assignedAdminId: auth.user.id,
       assignedAdminEmail: auth.user.email ?? null,
-      comment: commentBody
+      comment: responseNote && nextStatus !== 'resolved'
         ? {
-            body: commentBody,
-            visibility: visibilityInput === 'internal' ? 'internal' : 'vendor',
+            body: responseNote,
+            visibility: 'vendor',
             authorId: auth.user.id,
             authorName: auth.user.email ?? auth.user.user_metadata?.name ?? 'Admin',
             authorRole: 'admin'

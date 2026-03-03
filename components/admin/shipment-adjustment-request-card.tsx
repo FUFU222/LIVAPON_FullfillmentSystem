@@ -1,16 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useFormState } from 'react-dom';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
 import type { AdminShipmentAdjustmentRequest, ShipmentAdjustmentComment } from '@/lib/data/shipment-adjustments';
-import { SHIPMENT_ADJUSTMENT_STATUSES } from '@/lib/data/shipment-adjustments';
 import {
   handleShipmentAdjustmentAdminAction,
   type ShipmentAdjustmentAdminActionState
@@ -37,6 +36,13 @@ const statusLabels: Record<string, string> = {
   needs_info: '要追加情報',
   resolved: '完了'
 };
+
+const updateStatusOptions: Array<{ value: '' | 'in_review' | 'needs_info' | 'resolved'; label: string }> = [
+  { value: '', label: '変更しない' },
+  { value: 'in_review', label: '対応中' },
+  { value: 'needs_info', label: '要追加情報' },
+  { value: 'resolved', label: '完了' }
+];
 
 function CommentsTimeline({ comments }: { comments: ShipmentAdjustmentComment[] }) {
   if (comments.length === 0) {
@@ -72,6 +78,16 @@ export function ShipmentAdjustmentRequestCard({
   );
 
   const currentStatus = request.status ?? 'pending';
+  const [nextStatus, setNextStatus] = useState<'' | 'in_review' | 'needs_info' | 'resolved'>('');
+
+  const responseNoteLabel =
+    nextStatus === 'resolved' ? '処置内容' : '返信ノート';
+  const responseNotePlaceholder =
+    nextStatus === 'resolved'
+      ? '完了時の処置内容を入力'
+      : nextStatus === 'needs_info'
+        ? 'セラーへ確認したい内容を入力'
+        : 'セラーへ共有する内容を入力';
 
   return (
     <Card className="grid gap-4 border border-slate-200 p-4 shadow-sm">
@@ -119,7 +135,7 @@ export function ShipmentAdjustmentRequestCard({
       </div>
 
       <div className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-        <h4 className="text-sm font-semibold text-foreground">更新 / 返信</h4>
+        <h4 className="text-sm font-semibold text-foreground">対応を更新</h4>
         {state.status === 'error' && state.message ? (
           <Alert variant="destructive">{state.message}</Alert>
         ) : null}
@@ -128,39 +144,29 @@ export function ShipmentAdjustmentRequestCard({
         ) : null}
         <form action={formAction} className="grid gap-3">
           <input type="hidden" name="requestId" value={request.id} />
-          <Textarea
-            name="commentBody"
-            placeholder="セラーへの返信内容や処置メモを入力"
-            rows={3}
-          />
           <div className="grid gap-2 text-sm text-slate-600">
-            <label className="font-medium">コメント表示範囲</label>
-            <select name="visibility" className="rounded-md border border-slate-200 px-3 py-2 text-sm">
-              <option value="vendor">セラーに共有</option>
-              <option value="internal">内部メモ</option>
-            </select>
-          </div>
-          <div className="grid gap-2 text-sm text-slate-600">
-            <label className="font-medium">ステータス</label>
+            <label className="font-medium">ステータス更新</label>
             <select
               name="nextStatus"
-              defaultValue={currentStatus}
+              value={nextStatus}
+              onChange={(event) =>
+                setNextStatus(event.target.value as '' | 'in_review' | 'needs_info' | 'resolved')
+              }
               className="rounded-md border border-slate-200 px-3 py-2 text-sm"
             >
-              {SHIPMENT_ADJUSTMENT_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {statusLabels[status] ?? status}
+              {updateStatusOptions.map((option) => (
+                <option key={option.value || 'unchanged'} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
           </div>
           <div className="grid gap-2 text-sm text-slate-600">
-            <label className="font-medium">処置内容 (完了時)</label>
+            <label className="font-medium">{responseNoteLabel}</label>
             <Textarea
-              name="resolutionSummary"
+              name="responseNote"
               rows={2}
-              placeholder="完了時の処置や連絡事項を記載"
-              defaultValue={request.resolutionSummary ?? ''}
+              placeholder={responseNotePlaceholder}
             />
           </div>
           <div className="flex justify-end">

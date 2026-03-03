@@ -22,7 +22,8 @@ export type VendorProfileInitialValues = {
 
 const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
   status: 'idle',
-  message: null
+  message: null,
+  submissionId: null
 };
 
 export function VendorProfileForm({ initial }: { initial: VendorProfileInitialValues }) {
@@ -41,13 +42,13 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
       router.refresh();
     }
 
-    if (state.status === 'error' && state.message) {
+    if (state.status === 'error' && state.message && !state.fieldErrors) {
       showToast({
         variant: 'error',
         title: '保存に失敗しました。時間を置いて再度お試しください。'
       });
     }
-  }, [router, showToast, state.message, state.status]);
+  }, [router, showToast, state.fieldErrors, state.message, state.status, state.submissionId]);
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-6">

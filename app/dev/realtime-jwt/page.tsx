@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { resolveVendorIdFromAuthUser } from "@/lib/auth-metadata";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { OrdersRealtimeListener } from "@/components/orders/orders-realtime-listener";
 import { OrdersRealtimeProvider } from "@/components/orders/orders-realtime-context";
@@ -14,11 +15,16 @@ export default function RealtimeJwtProbePage() {
     const supabase = getBrowserClient();
 
     supabase.auth.getSession().then((result) => {
-      const rawVendor = result.data.session?.user?.user_metadata?.vendor_id;
-      const normalizedVendorId = typeof rawVendor === 'number' ? rawVendor : Number(rawVendor);
+      const sessionUser = result.data.session?.user ?? null;
+      const rawVendor =
+        sessionUser?.app_metadata?.vendor_id ??
+        sessionUser?.app_metadata?.vendorId ??
+        sessionUser?.user_metadata?.vendor_id ??
+        null;
+      const normalizedVendorId = resolveVendorIdFromAuthUser(sessionUser);
 
       setSessionInfo({
-        vendorId: Number.isFinite(normalizedVendorId) ? normalizedVendorId : null,
+        vendorId: normalizedVendorId,
         rawVendor
       });
 

@@ -7,6 +7,7 @@ import { assertAuthorizedVendor, requireAuthContext } from '@/lib/auth';
 export type VendorProfileActionState = {
   status: 'idle' | 'success' | 'error';
   message: string | null;
+  submissionId?: string | null;
   fieldErrors?: Partial<
     Record<'companyName' | 'email' | 'password' | 'currentPassword' | 'contactPhone', string>
   >;
@@ -14,7 +15,8 @@ export type VendorProfileActionState = {
 
 const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
   status: 'idle',
-  message: null
+  message: null,
+  submissionId: null
 };
 
 function validateEmail(email: string) {
@@ -78,6 +80,7 @@ export async function updateVendorProfileAction(
     return {
       status: 'error',
       message: '入力内容を確認してください。',
+      submissionId: Date.now().toString(),
       fieldErrors
     };
   }
@@ -104,7 +107,8 @@ export async function updateVendorProfileAction(
     console.error('Failed to update vendor profile', vendorUpdateError);
     return {
       status: 'error',
-      message: 'セラー情報の更新に失敗しました。時間を置いて再度お試しください。'
+      message: 'セラー情報の更新に失敗しました。時間を置いて再度お試しください。',
+      submissionId: Date.now().toString()
     };
   }
 
@@ -140,7 +144,8 @@ export async function updateVendorProfileAction(
     return {
       status: 'error',
       message:
-        '認証情報の更新に失敗しました。時間を置いて再度お試しください。メールアドレス変更の場合は再度サインインをお試しください。'
+        '認証情報の更新に失敗しました。時間を置いて再度お試しください。メールアドレス変更の場合は再度サインインをお試しください。',
+      submissionId: Date.now().toString()
     };
   }
 
@@ -149,6 +154,7 @@ export async function updateVendorProfileAction(
 
   return {
     status: 'success',
-    message: 'プロフィールを更新しました。'
+    message: 'プロフィールを更新しました。',
+    submissionId: Date.now().toString()
   };
 }

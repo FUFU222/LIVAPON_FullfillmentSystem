@@ -219,6 +219,16 @@ CREATE TABLE shipment_adjustment_comments (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE shipment_cancellation_logs (
+  id BIGSERIAL PRIMARY KEY,
+  shipment_id INT REFERENCES shipments(id) ON DELETE SET NULL,
+  order_id INT REFERENCES orders(id) ON DELETE SET NULL,
+  vendor_id INT REFERENCES vendors(id) ON DELETE SET NULL,
+  reason_type TEXT NOT NULL,
+  reason_detail TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- CSVインポートログ（アップロード履歴管理用）
 CREATE TABLE import_logs (
   id SERIAL PRIMARY KEY,
@@ -258,172 +268,230 @@ CREATE INDEX idx_shipment_adjustment_requests_status ON shipment_adjustment_requ
 CREATE INDEX idx_shipment_adjustment_requests_assigned_admin_id ON shipment_adjustment_requests(assigned_admin_id);
 CREATE INDEX idx_shipment_adjustment_comments_request_id ON shipment_adjustment_comments(request_id);
 CREATE INDEX idx_shipment_adjustment_comments_vendor_id ON shipment_adjustment_comments(vendor_id);
+CREATE INDEX idx_shipment_cancellation_logs_vendor_id ON shipment_cancellation_logs(vendor_id);
+CREATE INDEX idx_shipment_cancellation_logs_order_id ON shipment_cancellation_logs(order_id);
 
 -- RLS / Realtime settings
 ALTER TABLE vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendor_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vendor_skus ENABLE ROW LEVEL SECURITY;
 ALTER TABLE line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipment_line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_import_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_import_job_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_vendor_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vendor_order_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipment_cancellation_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopify_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
--- shopify_connections / import_logs are kept service-role-only by design.
+-- vendor_skus / shipment_line_items / vendor_order_notifications /
+-- shipment_cancellation_logs / shopify_connections / import_logs are kept
+-- service-role-only by design.
+
+CREATE OR REPLACE FUNCTION public.requesting_app_role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+  WITH raw_role AS (
+    SELECT LOWER(COALESCE(
+      NULLIF(auth.jwt() -> 'app_metadata' ->> 'role', ''),
+      NULLIF(auth.jwt() -> 'app_metadata' ->> 'user_role', ''),
+      NULLIF(auth.jwt() -> 'app_metadata' ->> 'app_role', ''),
+      NULLIF(auth.jwt() ->> 'role', '')
+    )) AS role_value
+  )
+  SELECT CASE
+    WHEN role_value IN ('administrator', 'admin_user', 'super_admin', 'superadmin') THEN 'admin'
+    WHEN role_value IN ('pending', 'pending-vendor') THEN 'pending_vendor'
+    WHEN role_value IN ('vendor_user', 'merchant') THEN 'vendor'
+    ELSE NULLIF(role_value, '')
+  END
+  FROM raw_role;
+$$;
+
+CREATE OR REPLACE FUNCTION public.requesting_vendor_id()
+RETURNS INT
+LANGUAGE sql
+STABLE
+AS $$
+  WITH raw_vendor AS (
+    SELECT COALESCE(
+      NULLIF(auth.jwt() -> 'app_metadata' ->> 'vendor_id', ''),
+      NULLIF(auth.jwt() -> 'app_metadata' ->> 'vendorId', ''),
+      NULLIF(auth.jwt() ->> 'vendor_id', ''),
+      NULLIF(auth.jwt() ->> 'vendorId', '')
+    ) AS vendor_value
+  )
+  SELECT CASE
+    WHEN vendor_value ~ '^[0-9]+$' THEN vendor_value::INT
+    ELSE NULL
+  END
+  FROM raw_vendor;
+$$;
+
+CREATE OR REPLACE FUNCTION public.requesting_is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(public.requesting_app_role() = 'admin', FALSE);
+$$;
 
 DROP POLICY IF EXISTS "VendorsReadable" ON vendors;
 CREATE POLICY "VendorsReadable" ON vendors
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    public.requesting_is_admin()
+    OR id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "VendorsVendorSelfUpdate" ON vendors;
 CREATE POLICY "VendorsVendorSelfUpdate" ON vendors
   FOR UPDATE USING (
-    id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    id = public.requesting_vendor_id()
   )
   WITH CHECK (
-    id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "VendorsAdminAll" ON vendors;
 CREATE POLICY "VendorsAdminAll" ON vendors
   FOR ALL USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   )
   WITH CHECK (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   );
 
 DROP POLICY IF EXISTS "VendorApplicationsAdminAll" ON vendor_applications;
 CREATE POLICY "VendorApplicationsAdminAll" ON vendor_applications
   FOR ALL USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   )
   WITH CHECK (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   );
 
 DROP POLICY IF EXISTS "OrdersReadable" ON orders;
 CREATE POLICY "OrdersReadable" ON orders
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR (vendor_id = COALESCE(NULLIF((auth.jwt()->>'vendor_id'),'')::INT, -1))
+    public.requesting_is_admin()
+    OR (vendor_id = public.requesting_vendor_id())
     OR EXISTS (
       SELECT 1 FROM line_items li
       WHERE li.order_id = orders.id
-        AND li.vendor_id = COALESCE(NULLIF((auth.jwt()->>'vendor_id'),'')::INT, -1)
+        AND li.vendor_id = public.requesting_vendor_id()
     )
   );
 
 DROP POLICY IF EXISTS "OrdersAdminWrite" ON orders;
 CREATE POLICY "OrdersAdminWrite" ON orders
   FOR ALL USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   )
   WITH CHECK (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   );
 
 DROP POLICY IF EXISTS "LineItemsReadable" ON line_items;
 CREATE POLICY "LineItemsReadable" ON line_items
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    public.requesting_is_admin()
+    OR vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "ShipmentsReadable" ON shipments;
 CREATE POLICY "ShipmentsReadable" ON shipments
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    public.requesting_is_admin()
+    OR vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "OrderVendorSegmentsReadable" ON order_vendor_segments;
 CREATE POLICY "OrderVendorSegmentsReadable" ON order_vendor_segments
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    public.requesting_is_admin()
+    OR vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "ShipmentAdjustmentRequestsVendorReadable" ON shipment_adjustment_requests;
 CREATE POLICY "ShipmentAdjustmentRequestsVendorReadable" ON shipment_adjustment_requests
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    public.requesting_is_admin()
+    OR vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "ShipmentAdjustmentRequestsVendorInsert" ON shipment_adjustment_requests;
 CREATE POLICY "ShipmentAdjustmentRequestsVendorInsert" ON shipment_adjustment_requests
   FOR INSERT WITH CHECK (
-    vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "ShipmentAdjustmentRequestsAdminAll" ON shipment_adjustment_requests;
 CREATE POLICY "ShipmentAdjustmentRequestsAdminAll" ON shipment_adjustment_requests
   FOR ALL USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   )
   WITH CHECK (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   );
 
 DROP POLICY IF EXISTS "ShipmentAdjustmentCommentsAdminAll" ON shipment_adjustment_comments;
 CREATE POLICY "ShipmentAdjustmentCommentsAdminAll" ON shipment_adjustment_comments
   FOR ALL USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   )
   WITH CHECK (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   );
 
 DROP POLICY IF EXISTS "ShipmentAdjustmentCommentsVendorReadable" ON shipment_adjustment_comments;
 CREATE POLICY "ShipmentAdjustmentCommentsVendorReadable" ON shipment_adjustment_comments
   FOR SELECT USING (
-    vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    vendor_id = public.requesting_vendor_id()
     AND LOWER(COALESCE(NULLIF(visibility, ''), 'vendor')) <> 'internal'
   );
 
 DROP POLICY IF EXISTS "ShipmentImportJobsVendorReadable" ON shipment_import_jobs;
 CREATE POLICY "ShipmentImportJobsVendorReadable" ON shipment_import_jobs
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    public.requesting_is_admin()
+    OR vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "ShipmentImportJobsVendorModify" ON shipment_import_jobs;
 CREATE POLICY "ShipmentImportJobsVendorModify" ON shipment_import_jobs
   FOR INSERT WITH CHECK (
-    vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "ShipmentImportJobsAdminAll" ON shipment_import_jobs;
 CREATE POLICY "ShipmentImportJobsAdminAll" ON shipment_import_jobs
   FOR ALL USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   )
   WITH CHECK (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   );
 
 DROP POLICY IF EXISTS "ShipmentImportJobItemsVendorReadable" ON shipment_import_job_items;
 CREATE POLICY "ShipmentImportJobItemsVendorReadable" ON shipment_import_job_items
   FOR SELECT USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
-    OR vendor_id = COALESCE(NULLIF(auth.jwt()->>'vendor_id', '')::INT, -1)
+    public.requesting_is_admin()
+    OR vendor_id = public.requesting_vendor_id()
   );
 
 DROP POLICY IF EXISTS "ShipmentImportJobItemsAdminAll" ON shipment_import_job_items;
 CREATE POLICY "ShipmentImportJobItemsAdminAll" ON shipment_import_job_items
   FOR ALL USING (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   )
   WITH CHECK (
-    LOWER(COALESCE(NULLIF(auth.jwt()->>'role', ''), '')) = 'admin'
+    public.requesting_is_admin()
   );
 
 ALTER TABLE orders REPLICA IDENTITY FULL;

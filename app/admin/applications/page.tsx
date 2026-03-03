@@ -29,7 +29,7 @@ export default async function AdminApplicationsPage() {
         </CardHeader>
         <CardContent className="grid gap-6">
           {pending.length === 0 ? (
-            <Alert variant="success">現在、審査待ちの申請はありません。</Alert>
+            <Alert variant="success">現在、対応待ちの依頼はありません。</Alert>
           ) : (
             pending.map((application) => (
               <VendorApplicationCard key={application.id} application={application} />
@@ -50,13 +50,13 @@ export default async function AdminApplicationsPage() {
               <table className="w-full table-auto text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-3 py-2">申請ID</th>
+                    <th className="px-3 py-2">依頼ID</th>
                     <th className="px-3 py-2">会社名</th>
                     <th className="px-3 py-2">セラーコード</th>
                     <th className="px-3 py-2">担当者</th>
                     <th className="px-3 py-2">メール</th>
                     <th className="px-3 py-2">電話</th>
-                    <th className="px-3 py-2">審査日時</th>
+                    <th className="px-3 py-2">対応日時</th>
                   </tr>
                 </thead>
                 <tbody>

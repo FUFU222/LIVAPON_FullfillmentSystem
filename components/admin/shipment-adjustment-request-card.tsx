@@ -114,7 +114,7 @@ export function ShipmentAdjustmentRequestCard({
           <span>連絡先: {request.contactName ?? '-'} / {request.contactEmail ?? '-'}</span>
           <span>電話: {request.contactPhone ?? request.vendorPhone ?? '-'}</span>
           <span>トラッキング: {request.trackingNumber ?? '-'}</span>
-          <span>申請日時: {formatDate(request.createdAt)}</span>
+          <span>依頼日時: {formatDate(request.createdAt)}</span>
         </div>
       </div>
 

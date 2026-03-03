@@ -22,7 +22,7 @@ export async function approveApplicationAction(
   const notes = (formData.get('notes') as string | null)?.trim() ?? null;
 
   if (!Number.isFinite(applicationId) || applicationId <= 0) {
-    return { status: 'error', message: '申請IDが無効です', details: null };
+    return { status: 'error', message: '依頼IDが無効です', details: null };
   }
 
   if (vendorCodeRaw && !/^\d{4}$/.test(vendorCodeRaw)) {
@@ -77,12 +77,12 @@ export async function approveApplicationAction(
 
     const message = (() => {
       if (notificationStatus === 'sent') {
-        return '申請を承認し、利用開始メールを送信しました。';
+        return '依頼を承認し、利用開始メールを送信しました。';
       }
       if (notificationStatus === 'failed') {
-        return '申請を承認しましたが、利用開始メールの送信に失敗しました。';
+        return '依頼を承認しましたが、利用開始メールの送信に失敗しました。';
       }
-      return '申請を承認しました。';
+      return '依頼を承認しました。';
     })();
 
     return {
@@ -104,7 +104,7 @@ export async function approveApplicationAction(
       message:
         error instanceof Error
           ? error.message
-          : '申請の承認中にエラーが発生しました',
+          : '依頼の承認中にエラーが発生しました',
       details: null
     };
   }
@@ -118,7 +118,7 @@ export async function rejectApplicationAction(
   const reason = (formData.get('reason') as string | null)?.trim() ?? null;
 
   if (!Number.isFinite(applicationId) || applicationId <= 0) {
-    return { status: 'error', message: '申請IDが無効です', details: null };
+    return { status: 'error', message: '依頼IDが無効です', details: null };
   }
 
   const auth = await requireAuthContext();
@@ -136,7 +136,7 @@ export async function rejectApplicationAction(
 
     return {
       status: 'success',
-      message: '申請を却下しました',
+      message: '依頼を却下しました',
       details: null
     };
   } catch (error) {
@@ -145,7 +145,7 @@ export async function rejectApplicationAction(
       message:
         error instanceof Error
           ? error.message
-          : '申請の却下中にエラーが発生しました',
+          : '依頼の却下中にエラーが発生しました',
       details: null
     };
   }

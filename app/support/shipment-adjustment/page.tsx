@@ -11,8 +11,8 @@ import { Alert } from '@/components/ui/alert';
 import { getServerComponentClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: '発送修正申請 | LIVAPON 配送管理システム',
-  description: '発送済みの内容を修正する際の管理者申請フォーム'
+  title: '発送修正依頼 | LIVAPON 配送管理システム',
+  description: '発送済みの内容を修正する際の管理者依頼フォーム'
 };
 
 export default async function ShipmentAdjustmentPage() {
@@ -78,7 +78,7 @@ export default async function ShipmentAdjustmentPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
       <div className="space-y-2">
-        <p className="text-base font-semibold text-foreground sm:text-lg">発送修正申請</p>
+        <p className="text-base font-semibold text-foreground sm:text-lg">発送修正依頼</p>
         <p className="text-sm text-slate-500">
           発送済みの注文内容を変更する際は下記フォームから管理者に依頼してください。Console 上での直接取消はできません。
         </p>
@@ -91,11 +91,11 @@ export default async function ShipmentAdjustmentPage() {
       />
       <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">申請履歴</CardTitle>
+          <CardTitle className="text-lg font-semibold">依頼履歴</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           {history.length === 0 ? (
-            <Alert variant="default">まだ申請履歴はありません。</Alert>
+            <Alert variant="default">まだ依頼履歴はありません。</Alert>
           ) : (
             <div className="grid gap-4">
               {history.map((request) => (
@@ -112,7 +112,7 @@ export default async function ShipmentAdjustmentPage() {
                   </div>
                   <div className="mt-3 space-y-2 text-sm text-slate-700">
                     <div>
-                      <p className="font-medium">申請内容</p>
+                      <p className="font-medium">依頼内容</p>
                       <p className="whitespace-pre-wrap text-slate-600">{request.issueSummary}</p>
                     </div>
                     <div>

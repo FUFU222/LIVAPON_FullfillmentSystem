@@ -558,11 +558,11 @@ export async function approveVendorApplication(params: {
   }
 
   if (!application) {
-    throw new Error('申請が見つかりません');
+    throw new Error('依頼が見つかりません');
   }
 
   if (application.status !== 'pending') {
-    throw new Error('この申請は既に処理済みです');
+    throw new Error('この依頼は既に処理済みです');
   }
 
   const vendorCodeInput = sanitizeVendorCode(params.vendorCode ?? application.vendor_code);
@@ -652,11 +652,11 @@ export async function rejectVendorApplication(params: {
   }
 
   if (!application) {
-    throw new Error('申請が見つかりません');
+    throw new Error('依頼が見つかりません');
   }
 
   if (application.status !== 'pending') {
-    throw new Error('この申請は既に処理済みです');
+    throw new Error('この依頼は既に処理済みです');
   }
 
   const { error: updateError } = await client

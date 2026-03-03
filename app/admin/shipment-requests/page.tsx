@@ -35,7 +35,7 @@ export default async function AdminShipmentRequestsPage() {
         </CardHeader>
         <CardContent className="grid gap-4">
           {activeRequests.length === 0 ? (
-            <Alert variant="success">未対応の申請はありません。</Alert>
+            <Alert variant="success">未対応の依頼はありません。</Alert>
           ) : (
             activeRequests.map((request) => (
               <ShipmentAdjustmentRequestCard key={request.id} request={request} />
@@ -50,7 +50,7 @@ export default async function AdminShipmentRequestsPage() {
         </CardHeader>
         <CardContent className="grid gap-4">
           {resolvedRequests.length === 0 ? (
-            <p className="text-sm text-slate-500">完了済みの申請はまだありません。</p>
+            <p className="text-sm text-slate-500">完了済みの依頼はまだありません。</p>
           ) : (
             resolvedRequests.map((request) => (
               <ShipmentAdjustmentRequestCard key={request.id} request={request} />

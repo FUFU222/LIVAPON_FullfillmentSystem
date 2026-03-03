@@ -48,12 +48,12 @@ export default async function ShipmentsPage() {
             <OrdersRefreshButton />
           </div>
           <div className="text-sm text-slate-500 max-w-md sm:ml-auto sm:text-right">
-            <span className="block">発送済みの内容を修正する場合は管理者への申請が必要です。</span>
+            <span className="block">発送済みの内容を修正する場合は管理者への依頼が必要です。</span>
             <Link
               href="/support/shipment-adjustment"
               className="mt-1 inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
             >
-              申請フォームを開く
+              依頼フォームを開く
             </Link>
           </div>
         </div>

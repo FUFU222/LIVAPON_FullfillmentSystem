@@ -26,12 +26,12 @@ export function ShipmentHistoryTable({
       <Alert variant="default" className="grid gap-2 text-sm">
         <span>登録済みの発送はまだありません。</span>
         <span>
-          発送内容の修正や取り消しが必要な場合は管理者への申請が必要です。
+          発送内容の修正や取り消しが必要な場合は管理者への依頼が必要です。
           <Link
             href="/support/shipment-adjustment"
             className="ml-2 inline-flex items-center text-sky-600 underline-offset-2 hover:underline"
           >
-            申請フォームを開く
+            依頼フォームを開く
           </Link>
         </span>
       </Alert>

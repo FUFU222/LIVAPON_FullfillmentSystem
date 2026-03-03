@@ -320,7 +320,7 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
         open={showApprovalConfirm}
         onClose={closeApprovalConfirm}
         title="承認内容を確認してください"
-        description="入力したセラーコードと申請情報を確認のうえ、確定ボタンを押してください。"
+        description="入力したセラーコードと依頼情報を確認のうえ、確定ボタンを押してください。"
         footer={
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={closeApprovalConfirm}>

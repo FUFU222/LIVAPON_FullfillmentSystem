@@ -46,10 +46,10 @@ export function ShipmentAdjustmentForm({
     if (state.status === 'success') {
       showToast({
         variant: 'success',
-        title: state.message ?? '発送修正申請を送信しました。',
+        title: state.message ?? '発送修正依頼を送信しました。',
         description: state.requestId
-          ? `受付番号 #${state.requestId} を登録しました。申請履歴から進捗を確認できます。`
-          : '申請履歴から進捗を確認できます。'
+          ? `受付番号 #${state.requestId} を登録しました。依頼履歴から進捗を確認できます。`
+          : '依頼履歴から進捗を確認できます。'
       });
       formRef.current?.reset();
       router.refresh();
@@ -83,7 +83,7 @@ export function ShipmentAdjustmentForm({
 
             <div className="grid gap-2">
               <label htmlFor="issueType" className="font-medium text-foreground">
-                申請区分 <span className="text-red-500">*</span>
+                依頼区分 <span className="text-red-500">*</span>
               </label>
               <Select id="issueType" name="issueType" defaultValue="tracking_update" required>
                 {shipmentIssueTypeOptions.map((option) => (

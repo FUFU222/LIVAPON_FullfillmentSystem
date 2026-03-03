@@ -30,8 +30,8 @@ function buildTextBody(payload: ShipmentAdjustmentUpdateEmailPayload): string {
 
   return `${recipient}\n\n`
     + 'LIVAPON運営事務局です。\n'
-    + '発送修正申請について、運営により対応しました。\n'
-    + '配送管理システムにログインし、申請履歴より内容をご確認ください。\n\n'
+    + '発送修正依頼について、運営により対応しました。\n'
+    + '配送管理システムにログインし、依頼履歴より内容をご確認ください。\n\n'
     + `${shipmentAdjustmentUrl}\n\n`
     + 'ご不明点がある場合は、本メールにご返信ください。\n';
 }
@@ -47,7 +47,7 @@ function buildHtmlBody(payload: ShipmentAdjustmentUpdateEmailPayload): string {
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>発送修正申請について</title>
+      <title>発送修正依頼について</title>
     </head>
     <body style="margin:0; padding:0; background:#F8FAFC; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#0F172A;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
@@ -59,8 +59,8 @@ function buildHtmlBody(payload: ShipmentAdjustmentUpdateEmailPayload): string {
                   <p style="margin:0 0 12px;">${recipient}</p>
                   <p style="margin:0 0 12px;">LIVAPON運営事務局です。</p>
                   <p style="margin:0 0 12px;">
-                    発送修正申請について、運営により対応しました。<br />
-                    配送管理システムにログインし、申請履歴より内容をご確認ください。
+                    発送修正依頼について、運営により対応しました。<br />
+                    配送管理システムにログインし、依頼履歴より内容をご確認ください。
                   </p>
                   <p style="margin:0 0 16px;">
                     <a href="${escapedUrl}" style="color:#2563EB; text-decoration:underline;">${escapedUrl}</a>
@@ -83,7 +83,7 @@ export async function sendShipmentAdjustmentUpdateEmail(
   const html = buildHtmlBody(payload);
   await sendEmail({
     to: payload.to,
-    subject: '【LIVAPON】発送修正申請について',
+    subject: '【LIVAPON】発送修正依頼について',
     text,
     html
   });

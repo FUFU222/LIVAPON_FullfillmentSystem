@@ -90,22 +90,22 @@ export default async function AdminDashboardPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
               <CardTitle className="text-xl">利用開始依頼</CardTitle>
-              <p className="text-sm text-slate-500">セラー申請の最新状況</p>
+              <p className="text-sm text-slate-500">利用開始依頼の最新状況</p>
             </div>
             <Badge className="border-slate-200 text-slate-600">{pendingApplications.length} 件</Badge>
           </CardHeader>
           <CardContent className="grid gap-3">
             {pendingError ? (
-              <Alert variant="destructive">審査待ちの申請を取得できませんでした。</Alert>
+              <Alert variant="destructive">対応待ちの依頼を取得できませんでした。</Alert>
             ) : pendingApplications.length === 0 ? (
-              <Alert variant="success">現在、審査待ちの申請はありません。</Alert>
+              <Alert variant="success">現在、対応待ちの依頼はありません。</Alert>
             ) : (
               <ul className="grid gap-2">
                 {pendingApplications.slice(0, 3).map((application) => (
                   <li key={application.id} className="rounded-md border border-slate-200 px-3 py-2">
                     <span className="text-sm font-medium text-foreground">{application.companyName}</span>
                     <p className="text-xs text-slate-500">{application.contactEmail}</p>
-                    <p className="text-xs text-slate-400">申請日時: {toDisplayDate(application.createdAt)}</p>
+                    <p className="text-xs text-slate-400">依頼日時: {toDisplayDate(application.createdAt)}</p>
                   </li>
                 ))}
               </ul>
@@ -193,7 +193,7 @@ export default async function AdminDashboardPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
               <CardTitle className="text-xl">発送修正依頼</CardTitle>
-              <p className="text-sm text-slate-500">対応中と最近完了した申請</p>
+              <p className="text-sm text-slate-500">対応中と最近完了した依頼</p>
             </div>
             <Badge className="border-slate-200 text-slate-600">履歴</Badge>
           </CardHeader>

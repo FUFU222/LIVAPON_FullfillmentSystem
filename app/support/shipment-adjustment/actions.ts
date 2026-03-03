@@ -3,8 +3,16 @@
 import { revalidatePath } from 'next/cache';
 import { getServerActionClient } from '@/lib/supabase/server';
 import { assertAuthorizedVendor, requireAuthContext } from '@/lib/auth';
+import {
+  isShipmentAdjustmentSubmissionAdminEmailRetryableError,
+  sendShipmentAdjustmentSubmissionAdminEmail
+} from '@/lib/notifications/shipment-adjustment-submission';
 import type { ShipmentAdjustmentFormState } from './state';
-import { shipmentIssueTypeValues, type ShipmentIssueType } from './options';
+import {
+  shipmentIssueTypeOptions,
+  shipmentIssueTypeValues,
+  type ShipmentIssueType
+} from './options';
 
 function isShipmentIssueType(value: string): value is ShipmentIssueType {
   return shipmentIssueTypeValues.includes(value as ShipmentIssueType);
@@ -20,6 +28,14 @@ function normalizeOrderNumber(raw: string): string {
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getShipmentIssueTypeLabel(value: ShipmentIssueType): string {
+  return shipmentIssueTypeOptions.find((option) => option.value === value)?.label ?? 'その他（自由入力）';
 }
 
 export async function submitShipmentAdjustmentRequest(
@@ -55,7 +71,7 @@ export async function submitShipmentAdjustmentRequest(
   }
 
   if (!isShipmentIssueType(issueTypeInput)) {
-    fieldErrors.issueType = '申請区分を選択してください。';
+    fieldErrors.issueType = '依頼区分を選択してください。';
   } else {
     issueType = issueTypeInput;
   }
@@ -152,10 +168,48 @@ export async function submitShipmentAdjustmentRequest(
     console.error('Failed to create shipment adjustment request', error);
     return {
       status: 'error',
-      message: '申請の送信に失敗しました。時間を置いて再度お試しください。',
+      message: '依頼の送信に失敗しました。時間を置いて再度お試しください。',
       submissionId: Date.now().toString(),
       requestId: null
     } satisfies ShipmentAdjustmentFormState;
+  }
+
+  const requestId = data?.id ?? null;
+
+  if (requestId) {
+    const notificationPayload = {
+      requestId,
+      vendorId: auth.vendorId,
+      vendorUserEmail: auth.user.email ?? null,
+      orderNumber: normalizedOrderNumber,
+      issueTypeLabel: getShipmentIssueTypeLabel(issueType),
+      issueSummary,
+      desiredChange,
+      contactName,
+      contactEmail,
+      contactPhone: contactPhone || null
+    };
+
+    try {
+      await sendShipmentAdjustmentSubmissionAdminEmail(notificationPayload);
+    } catch (error) {
+      if (isShipmentAdjustmentSubmissionAdminEmailRetryableError(error)) {
+        await sleep(700);
+        try {
+          await sendShipmentAdjustmentSubmissionAdminEmail(notificationPayload);
+        } catch (retryError) {
+          console.error('Failed to send shipment adjustment submission admin email after retry', {
+            requestId,
+            error: retryError
+          });
+        }
+      } else {
+        console.error('Failed to send shipment adjustment submission admin email', {
+          requestId,
+          error
+        });
+      }
+    }
   }
 
   revalidatePath('/orders/shipments');
@@ -163,8 +217,8 @@ export async function submitShipmentAdjustmentRequest(
 
   return {
     status: 'success',
-    message: '発送修正申請を送信しました。',
+    message: '発送修正依頼を送信しました。',
     submissionId: Date.now().toString(),
-    requestId: data?.id ?? null
+    requestId
   } satisfies ShipmentAdjustmentFormState;
 }

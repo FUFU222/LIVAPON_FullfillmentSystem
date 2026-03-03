@@ -163,7 +163,7 @@ export async function updateShipmentAdjustmentRequestByAdmin(input: {
   }
 
   if (!request) {
-    throw new Error('申請が見つかりません');
+    throw new Error('依頼が見つかりません');
   }
 
   if (input.comment) {

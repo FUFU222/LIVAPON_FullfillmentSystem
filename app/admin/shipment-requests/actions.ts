@@ -76,7 +76,7 @@ export async function handleShipmentAdjustmentAdminAction(
 
     const requestId = Number(formData.get('requestId'));
     if (!Number.isFinite(requestId)) {
-      return { status: 'error', message: '申請IDが不正です。' };
+      return { status: 'error', message: '依頼IDが不正です。' };
     }
 
     const responseNote = (formData.get('responseNote') as string | null)?.trim() ?? '';
@@ -153,10 +153,10 @@ export async function handleShipmentAdjustmentAdminAction(
       status: 'success',
       message:
         notificationStatus === 'sent'
-          ? '申請を更新し、通知メールを送信しました。'
+          ? '依頼を更新し、通知メールを送信しました。'
           : notificationStatus === 'failed'
-            ? '申請を更新しましたが、通知メールの送信に失敗しました。'
-            : '申請を更新しました。'
+            ? '依頼を更新しましたが、通知メールの送信に失敗しました。'
+            : '依頼を更新しました。'
     };
   } catch (error) {
     console.error('Failed to update shipment adjustment request', error);

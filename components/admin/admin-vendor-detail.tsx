@@ -3,7 +3,7 @@ import type { VendorDetail } from '@/lib/data/vendors';
 
 const statusLabelMap: Record<VendorDetail['applications'][number]['status'], string> = {
   approved: '承認済み',
-  pending: '審査中',
+  pending: '対応待ち',
   rejected: '却下'
 };
 
@@ -74,9 +74,9 @@ export function AdminVendorDetail({ vendor }: Props) {
       </section>
 
       <section className="grid gap-3">
-        <h3 className="text-sm font-semibold text-foreground">申請履歴</h3>
+        <h3 className="text-sm font-semibold text-foreground">利用開始依頼履歴</h3>
         {applications.length === 0 ? (
-          <p className="text-sm text-slate-500">紐づく申請履歴はありません。</p>
+          <p className="text-sm text-slate-500">紐づく依頼履歴はありません。</p>
         ) : (
           <div className="flex flex-col gap-3">
             {applications.map((application) => (
@@ -90,7 +90,7 @@ export function AdminVendorDetail({ vendor }: Props) {
                       {application.companyName}
                     </span>
                     <span className="text-xs text-slate-500">
-                      申請ID: {application.id} / 申請日: {formatDate(application.createdAt)}
+                      依頼ID: {application.id} / 依頼日: {formatDate(application.createdAt)}
                     </span>
                   </div>
                   <Badge className={statusBadgeClasses[application.status]}>
@@ -112,11 +112,11 @@ export function AdminVendorDetail({ vendor }: Props) {
             <dd className="text-slate-700">{application.contactPhone ?? '-'}</dd>
           </div>
           <div className="flex flex-col gap-1">
-            <dt className="text-xs uppercase tracking-wide text-slate-500">審査担当</dt>
+            <dt className="text-xs uppercase tracking-wide text-slate-500">対応担当</dt>
             <dd className="text-slate-700">{application.reviewerEmail ?? '-'}</dd>
           </div>
                   <div className="flex flex-col gap-1">
-                    <dt className="text-xs uppercase tracking-wide text-slate-500">審査日時</dt>
+                    <dt className="text-xs uppercase tracking-wide text-slate-500">対応日時</dt>
                     <dd className="text-slate-700">{formatDateTime(application.reviewedAt)}</dd>
                   </div>
                 </dl>
@@ -132,7 +132,7 @@ export function AdminVendorDetail({ vendor }: Props) {
 
                 {application.notes ? (
                   <div className="mt-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">審査メモ</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">対応メモ</p>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
                       {application.notes}
                     </p>

@@ -20,7 +20,7 @@
 - **管理者コンソール**:
   - `/admin` ダッシュボード：審査待ち申請・最新注文・最新セラーのカード表示。
   - `/admin/applications` で審査（承認時 `approveVendorApplication` がコード採番）。
-  - `/admin/vendors` 一覧 + 詳細モーダル + 一括削除 + CSV エクスポート。
+  - `/admin/vendors` 一覧 + 詳細モーダル + 一括削除。
   - `/admin/orders` で全注文の最新 50 件を参照。
   - `/admin/shipment-requests` で発送修正申請ボード（コメント/担当者/ステータス管理）を提供し、`shipment_adjustment_comments` と連携。
 - **Shopify / Supabase 連携**:

@@ -1,173 +1,118 @@
 # Security Best Practices Audit Report
 
-Date: 2026-02-19
+Date: 2026-03-02
 Target: LIVAPON_FullfillmentSystem
 Auditor: Codex (`$security-best-practices` workflow)
 
 ## Executive Summary
 
-The audit found **6 security issues**: **2 Critical, 2 High, 1 Medium, 1 Low**.
+This review found **2 concrete issues** in the repository-visible implementation: **1 Medium** and **1 Low**.
 
-The most urgent risks are:
+The good news is that the core trust boundaries are materially better than the previous snapshot of this codebase:
 
-1. **Privilege escalation via trusted user metadata** in server-side authorization logic.
-2. **Overly permissive RLS policy on `orders` (`FOR ALL USING (true)`)**, which can expose/allow tampering of order data when accessed through Supabase client credentials.
+- `AuthContext` is derived from Supabase server session data and admin checks now rely on `app_metadata`-first claims.
+- Sensitive Supabase tables have explicit RLS hardening migrations, including helper functions for `app_metadata`-based role and vendor scoping.
+- Cookie-authenticated state-changing route handlers include same-origin CSRF checks.
+- Public `.env*` files are ignored by git, and no committed secret file was found in tracked paths.
+- Shopify webhooks and OAuth callback paths perform HMAC verification and shop-domain pinning.
 
-These two findings can allow unauthorized data access and role escalation across vendor/admin boundaries and should be remediated first.
+The remaining gaps are mostly in **browser/operational defense-in-depth**, not in the main authorization model.
 
-## Critical Findings
+## Findings
 
-### [F-001] Critical - Role/Vendor authorization trusts mutable user metadata
-- Rule ID: `NEXT-AUTH-001`
-- Severity: Critical
-- Location:
-  - `lib/auth.ts:30`
-  - `lib/auth.ts:35`
-  - `lib/auth.ts:54`
-  - `lib/auth.ts:59`
-  - `lib/auth.ts:61`
-  - `app/(public)/apply/actions.ts:46`
-  - `app/(public)/apply/actions.ts:47`
-- Evidence:
-  - `lib/auth.ts` resolves `vendor_id`/`role` from merged `user_metadata` and `app_metadata`.
-  - Signup stores `role: 'pending_vendor'` in user metadata (`app/(public)/apply/actions.ts:46-50`).
-- Impact:
-  - If a user can mutate own `user_metadata` (common in Supabase via `auth.updateUser({ data: ... })`), they can attempt to escalate role/vendor context and access admin/vendor-protected flows.
-- Fix:
-  - Treat **only server-controlled claims** as authorization source (e.g., `app_metadata` only, or DB-backed role table joined server-side by `auth.user.id`).
-  - Ignore `user_metadata` for `role` and `vendor_id` in all authz decisions.
-- Mitigation:
-  - Add DB-backed authorization checks in sensitive actions/routes (`assertAdmin`, vendor ownership checks) even after session resolution.
-- False positive notes:
-  - If Supabase project explicitly blocks user metadata updates for all users, risk is reduced; verify policy/hook config before downgrading.
+### [F-001] Medium - Production CSP is too permissive to provide strong XSS containment
 
-### [F-002] Critical - `orders` RLS allows unrestricted operations (`FOR ALL USING (true)`)
-- Rule ID: `NEXT-AUTH-001`
-- Severity: Critical
-- Location:
-  - `supabase/migrations/20251114194444_enable_orders_realtime_security.sql:17`
-  - `supabase/migrations/20251114194444_enable_orders_realtime_security.sql:19`
-  - `schema.sql:283`
-  - `schema.sql:285`
-  - `lib/supabase/client.ts:11`
-  - `lib/supabase/client.ts:18`
-- Evidence:
-  - Policy definition: `CREATE POLICY "OrdersInsertUpdate" ... FOR ALL USING (true) WITH CHECK (true)`.
-  - Browser Supabase client is instantiated from public env (`NEXT_PUBLIC_SUPABASE_*`) and used on client side.
-- Impact:
-  - Authenticated/anon API consumers can potentially read/modify/delete `orders` rows beyond tenant scope (depending on grants), bypassing vendor boundary logic.
-- Fix:
-  - Replace `FOR ALL USING (true)` with least-privilege policies per command:
-    - `SELECT`: vendor/admin scope only.
-    - `INSERT/UPDATE/DELETE`: service role only (or tightly constrained server role).
-  - Explicitly deny write paths for `anon`/`authenticated` where not required.
-- Mitigation:
-  - Keep all order mutations server-side using service role only.
-  - Add integration tests that attempt cross-vendor read/write with user JWT and assert denial.
-- False positive notes:
-  - If grants for `authenticated`/`anon` on `orders` are revoked in production, exposure is reduced; validate grants directly in DB before closing.
-
-## High Findings
-
-### [F-003] High - Sensitive tables lack explicit RLS enablement/policies
-- Rule ID: `NEXT-AUTH-001`
-- Severity: High
-- Location:
-  - `schema.sql:6` (`vendors`)
-  - `schema.sql:18` (`vendor_applications`)
-  - `schema.sql:137` (`shopify_connections`)
-  - `schema.sql:223` (`import_logs`)
-  - `schema.sql:498` (`fulfillment_requests`)
-  - `schema.sql:533` (`webhook_jobs`)
-  - `schema.sql:263`-`schema.sql:270` (RLS enabled only for a subset of tables)
-- Evidence:
-  - Multiple sensitive tables are created without corresponding `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` or restrictive policies.
-- Impact:
-  - If exposed via PostgREST grants, attackers can enumerate PII, internal job payloads, and operational secrets metadata.
-- Fix:
-  - Enable RLS on all sensitive tables and define explicit least-privilege policies.
-  - Keep `shopify_connections` and job tables service-role only.
-- Mitigation:
-  - Immediately verify and tighten table grants for `anon` / `authenticated` roles.
-- False positive notes:
-  - If production grants already deny these roles on all tables, practical exposure is lower; still a defense-in-depth gap in schema.
-
-### [F-004] High - Shopify OAuth callback lacks local admin authorization and strict shop pinning
-- Rule ID: `NEXT-AUTH-001` / `NEXT-REDIRECT-001`
-- Severity: High
-- Location:
-  - `app/api/shopify/auth/callback/route.ts:16`
-  - `app/api/shopify/auth/callback/route.ts:26`
-  - `app/api/shopify/auth/callback/route.ts:39`
-  - `lib/shopify/oauth.ts:73`
-  - `lib/shopify/oauth.ts:87`
-  - `lib/shopify/shop-domains.ts:10`
-- Evidence:
-  - Callback processes and stores OAuth tokens without checking local admin session.
-  - `shop` from callback is persisted as trusted connection via upsert, then used by domain trust checks.
-- Impact:
-  - Unauthorized connection registration or trust-scope expansion can occur if OAuth flow is completed outside intended admin control.
-- Fix:
-  - Require local admin-authenticated session (or signed one-time admin initiation token) before accepting callback.
-  - Enforce `shop === SHOPIFY_STORE_DOMAIN` (or strict allowlist) during callback.
-- Mitigation:
-  - Alert/log when new shop domains are added; require manual approval workflow.
-- False positive notes:
-  - Risk is lower if app distribution is technically limited to one store and callback URL is tightly controlled, but explicit in-app enforcement is still recommended.
-
-## Medium Findings
-
-### [F-005] Medium - State-changing API routes lack explicit CSRF defenses and one uses GET side effects
-- Rule ID: `NEXT-CSRF-001`
+- Rule ID: `NEXT-CSP-001`
 - Severity: Medium
 - Location:
-  - `app/api/shopify/orders/shipments/route.ts:21`
-  - `app/api/shopify/orders/shipments/route.ts:25`
-  - `app/api/shipment-jobs/[id]/route.ts:9`
-  - `app/api/shipment-jobs/[id]/route.ts:28`
-  - `app/api/shipment-jobs/[id]/route.ts:37`
+  - `middleware.ts:4`
+  - `middleware.ts:12`
+  - `middleware.ts:13`
+  - `middleware.ts:14`
 - Evidence:
-  - Cookie-authenticated POST route does not validate `Origin`/CSRF token.
-  - `GET /api/shipment-jobs/[id]` triggers processing side effects.
+  - The global CSP currently allows:
+    - `style-src 'self' 'unsafe-inline' https:`
+    - `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`
+    - `connect-src 'self' https: http: wss: ws:`
 - Impact:
-  - Cross-site request triggering and accidental crawler/prefetch execution risk for state transitions.
+  - This weakens CSP as a browser-side mitigation against XSS and script gadget abuse.
+  - `unsafe-inline` and `unsafe-eval` remove much of the value of an otherwise good CSP baseline.
+  - Allowing `http:` and `ws:` in `connect-src` also broadens downgrade and data-exfiltration surface beyond what a production-only policy should normally permit.
 - Fix:
-  - Add CSRF validation (`Origin` allowlist + token) for cookie-auth POSTs.
-  - Make side-effect endpoints POST-only; keep GET read-only.
+  - Split development and production CSP behavior.
+  - Remove `unsafe-eval`, `unsafe-inline`, `http:`, and `ws:` from the production policy unless there is a documented hard requirement.
+  - Prefer nonce-based allowances for any unavoidable inline scripts.
 - Mitigation:
-  - Ensure auth cookies are `SameSite=Lax/Strict` and add idempotency controls.
+  - Keep React's default escaping and continue avoiding dangerous DOM sinks.
+  - If tightening CSP immediately is risky, start with a report-only production policy and iterate from runtime violations.
 - False positive notes:
-  - If same-site cookie behavior blocks all cross-site contexts in your deployment, exploitability is lower but not eliminated for GET/navigation paths.
+  - If an upstream CDN or proxy injects a stricter CSP at runtime, effective risk is lower. That stricter policy is not visible in this repo.
 
-## Low Findings
+### [F-002] Low - Internal worker endpoints fail open outside production when secrets are missing
 
-### [F-006] Low - Missing global Content Security Policy header
-- Rule ID: `NEXT-XSS-001`
+- Rule ID: `NEXT-AUTHZ-OPS-001`
 - Severity: Low
 - Location:
-  - `middleware.ts:4`
-  - `middleware.ts:8`
+  - `app/api/internal/webhook-jobs/process/route.ts:8`
+  - `app/api/internal/shipment-jobs/process/route.ts:8`
+  - `app/api/internal/shipments/resync/route.ts:6`
 - Evidence:
-  - Security headers are set, but no `Content-Security-Policy` is configured.
+  - `webhook-jobs` route:
+    - `return process.env.NODE_ENV !== 'production';`
+  - `shipment-jobs` route:
+    - `return process.env.NODE_ENV !== 'production';`
+  - `shipments/resync` route:
+    - allows requests in non-production when `CRON_SECRET` is unset
 - Impact:
-  - Reduced browser-side defense-in-depth against XSS/script injection.
+  - Any internet-reachable dev/staging environment that is not running as `production` and is missing these secrets can have internal job processing triggered without authentication.
+  - The result is unauthorized job execution and background mutation rather than direct privilege escalation.
 - Fix:
-  - Add a strict CSP (start in report-only mode, then enforce).
+  - Default to deny when the secret is missing in all environments.
+  - If local convenience is required, guard it behind an explicit opt-in env such as `ALLOW_INSECURE_INTERNAL_ROUTES=true`.
 - Mitigation:
-  - Keep escaping/sanitization discipline and avoid dangerous sinks.
+  - Ensure preview, staging, and shared dev environments are not publicly reachable unless the bearer secret is configured.
 - False positive notes:
-  - CSP may be enforced at CDN/proxy; verify runtime response headers before closing.
+  - If these routes are only ever reachable on localhost, practical exposure is low. The repo itself does not prove that network boundary.
+
+## Metric Scores
+
+| Metric | Score | Notes |
+| --- | --- | --- |
+| Authentication & Session Management | 7.5 / 10 | Server-side auth flow is sound, but repo-local Supabase auth defaults are not fully hardened for production parity. |
+| Authorization & Tenant Isolation | 8.8 / 10 | Strong improvement: app-metadata-based role resolution and recent RLS hardening materially reduce cross-tenant risk. |
+| API & Webhook Protection | 8.2 / 10 | Shopify HMAC checks, domain validation, and same-origin CSRF checks are solid; internal worker routes still have a non-prod fail-open path. |
+| Browser / XSS Hardening | 6.4 / 10 | No dangerous DOM sinks were found, but the current CSP is too permissive to be a strong containment layer. |
+| Secrets & Configuration Hygiene | 7.2 / 10 | `.env*` is ignored and secret-bearing code stays server-side, but runtime config hardening still needs verification. |
+| Admin Tooling & Data Handling | 7.5 / 10 | No active admin-side export surface requiring spreadsheet hardening remains in the current code. |
+
+**Overall score: 7.7 / 10**
+
+## Additional Observations
+
+- No use of `dangerouslySetInnerHTML`, `innerHTML`, `eval`, or similar browser-side high-risk sinks was found in `app/`, `lib/`, or `components/`.
+- The sign-in redirect flow is correctly constrained to relative paths:
+  - `app/(auth)/sign-in/page.tsx:8`
+- CSRF checks are present on the cookie-authenticated JSON POST routes that mutate vendor shipment state:
+  - `app/api/shopify/orders/shipments/route.ts:25`
+  - `app/api/shipment-jobs/[id]/route.ts:34`
+- Recent Supabase migrations show meaningful authorization hardening:
+  - `supabase/migrations/20260219154000_enable_rls_for_sensitive_tables.sql`
+  - `supabase/migrations/20260228123000_align_rls_with_app_metadata_claims.sql`
+  - `supabase/migrations/20260228124500_reenable_orders_rls.sql`
+
+## Runtime Verification Items
+
+These were not directly verifiable from repository code alone and should be checked in the deployed environment before calling the system "production-hardened":
+
+1. Confirm the deployed Supabase project does not mirror the weaker local auth defaults in `supabase/config.toml`, especially:
+   - `minimum_password_length = 6`
+   - `enable_confirmations = false`
+   - `secure_password_change = false`
+   - CAPTCHA disabled
+2. Verify whether an upstream edge layer injects a stricter production CSP than the one defined in `middleware.ts`.
+3. Verify that internal worker endpoints are not reachable from shared/public environments without bearer secrets configured.
 
 ## Recommended Remediation Order
 
-1. Fix `[F-001]` authorization source hardening (metadata trust removal).
-2. Fix `[F-002]` `orders` RLS policy (`FOR ALL USING (true)` removal).
-3. Fix `[F-003]` by enabling RLS + least-privilege policies for sensitive tables.
-4. Fix `[F-004]` OAuth callback admin gating + shop allowlist.
-5. Fix `[F-005]` CSRF and HTTP method semantics.
-6. Fix `[F-006]` CSP hardening.
-
-## Notes
-
-- This audit is evidence-based on repository code/schema only; runtime infra controls (WAF/CDN/DB grants) were not directly validated here.
-- A focused follow-up should include DB grant verification and live authorization tests with real JWT roles.
+1. Tighten `[F-001]` by separating development CSP from production CSP.
+2. Remove the `[F-002]` fail-open behavior from internal worker routes.

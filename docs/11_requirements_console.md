@@ -1,7 +1,7 @@
-# Requirements: LIVAPON 配送管理コンソール (MVP)
+# Requirements: LIVAPON 配送管理システム (MVP)
 
 ## 背景と目的
-- LIVAPON/CHAIRMAN で扱う Shopify 注文を Supabase に集約し、セラーが追跡番号登録・発送管理を自律的に行えるようにする（配送管理コンソール）。
+- LIVAPON/CHAIRMAN で扱う Shopify 注文を Supabase に集約し、セラーが追跡番号登録・発送管理を自律的に行えるようにする（配送管理システム）。
 - 管理者はセラー申請の審査・セラー情報整理・注文状況の俯瞰を担う。
 - Shopify Fulfillment Orders（FO）との整合を取り、部分発送・リトライを含めた追跡番号同期を実現する。
 
@@ -20,7 +20,7 @@
 4. **管理者業務**:
    - `/admin` ダッシュボードで pending 申請・最近の注文・新規セラーをモニタ。
    - `/admin/applications` で審査（承認: コード採番 + Supabase Auth 紐付け / 却下: 理由登録）。
-   - `/admin/vendors` で一覧確認、詳細モーダル、単体/一括削除、CSV Export。
+   - `/admin/vendors` で一覧確認、詳細モーダル、単体/一括削除。
    - `/admin/orders` で最新 50 件の注文を参照。
 5. **Shopify 同期**:
    - `upsertShipment` が `shipments` / `shipment_line_items` を作成し、`sync_status` を `pending` に。
@@ -42,7 +42,7 @@
 | 発送登録 | ラインアイテム複数選択、数量自動算出（残数が優先）、送信後は UI をリセット。|
 | 発送履歴 | `sync_status`（`pending`/`processing`/`synced`/`error`）と `shipped_at`、キャンセル導線。|
 | 申請審査 | 申請カードで承認/却下。承認時は 4 桁コード自動採番・Auth ユーザー紐付け。|
-| セラー管理 | 一覧→詳細モーダル（申請履歴 + Summary）、一括削除、CSV エクスポート。|
+| セラー管理 | 一覧→詳細モーダル（申請履歴 + Summary）、一括削除。|
 | Shopify 同期 | OAuth (`write_merchant_managed_fulfillment_orders`)、Webhook 検証、FO 情報キャッシュ、指数バックオフ。|
 | CSV | プレビュー、部分失敗の行別エラー、ログ保存。
 

@@ -11,7 +11,7 @@
 | 1 | 安全なログイン/セッション管理 | 要改善 | 役割/セラーIDを`user_metadata`でも参照しており改ざんリスク。パスワード変更で現パス検証なし。ローカルサインアウトのみ。 (`lib/auth.ts`, `app/vendor/profile/actions.ts`, `components/auth/sign-out-button.tsx`) |
 | 2 | 通信経路の安全性（TLS） | 要確認 | 本番TLSはホスティング依存。ローカル`api.tls`は無効。HSTS/HTTPS強制ヘッダ未設定。 (`supabase/config.toml`, `proxy.ts`) |
 | 3 | 鍵/秘密情報の保護（ハッシュ化/耐タンパー） | 要改善 | パスワードはSupabase側でハッシュ化想定だが、DB内のShopifyアクセストークン等が平文保存。キー保管/回転の仕組み記述なし。 (`lib/shopify/oauth.ts`, `supabase/migrations/20251011024028_shopify_oauth_tokens.sql`) |
-| 4 | 個人情報保護/GDPR相当 | 要改善 | 同意記録・保管期間・削除/開示の仕組みなし。CSVエクスポートにPII含む。 (`app/(public)/apply/actions.ts`, `app/admin/vendors/export/route.ts`) |
+| 4 | 個人情報保護/GDPR相当 | 要改善 | 同意記録・保管期間・削除/開示の仕組みなし。 (`app/(public)/apply/actions.ts`) |
 | 5 | バックアップ体制 | 要確認 | バックアップ/リストア方針や手順がコード/ドキュメントにない。 |
 | 6 | アクセス集中耐性 | 要改善 | アプリ/API側のレート制限やキュー設計が限定的。バックグラウンド処理はあるが全体設計は不明。 (`app/api/internal/*`, `app/api/shopify/orders/ingest/route.ts`) |
 | 7 | 流出防止/最新パッチ/SQLi対策 | 要改善 | RLSが未設定/緩いテーブルがあり、`OrdersInsertUpdate`が全許可。`/app/dev`が本番に残る可能性。セキュリティヘッダ無効。 (`supabase/migrations/*`, `app/dev/*`, `proxy.ts`) |
@@ -70,7 +70,6 @@
 現状
 - 連絡先/住所/電話等のPIIを保存。
 - 利用規約の同意チェックはあるが、同意記録は保存していない。 (`app/(public)/apply/actions.ts`)
-- CSVエクスポートでPIIを出力。 (`app/admin/vendors/export/route.ts`)
 
 懸念
 - 同意管理、データ保持期間、削除/開示対応、監査ログが未整備。
@@ -157,4 +156,3 @@
 3. `/app/dev`の本番遮断、セキュリティヘッダの有効化
 4. パスワードリセット機能導入、`secure_password_change=true`の運用
 5. バックアップ/リストア計画の整備
-

@@ -37,8 +37,10 @@
 
 ## 6x — ステータス / レポート / テスト
 - `docs/60_development_status.md`
-- `docs/61_dev_report_20251109.md`
-- `docs/62_code_review_20251110.md`
 - `docs/63_orders_test_plan.md`
+
+## Archive
+- `docs/archive/README.md` — 過去の計画メモ / 監査メモ / 引き継ぎメモ
+  - 現役の仕様・運用判断には使わない履歴置き場
 
 > Serena を使う場合は、上記ファイル名をキーに高速検索できます。

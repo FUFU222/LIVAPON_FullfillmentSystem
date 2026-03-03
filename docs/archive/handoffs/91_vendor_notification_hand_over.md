@@ -23,6 +23,6 @@
 
 ## 4. 参考ドキュメント
 - `docs/22_vendor_order_email_notifications.md`（仕様・文面・トリガー／動的項目）
-- `docs/90_vendor_notification_handoff.md`（送信戦略引き継ぎメモ）
+- `docs/archive/handoffs/90_vendor_notification_handoff.md`（送信戦略引き継ぎメモ）
 
 以上を踏まえ、次セッションでは Gmail API 用 Secrets の投入と本番テスト、管理者通知の移行や再送ジョブの設計を優先してください。EOF

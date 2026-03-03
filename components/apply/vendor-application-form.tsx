@@ -26,6 +26,7 @@ export function VendorApplicationForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const router = useRouter();
+  const hasFieldErrors = Object.keys(state.errors ?? {}).length > 0;
 
   useEffect(() => {
     if (state.status === 'success') {
@@ -43,7 +44,7 @@ export function VendorApplicationForm() {
         </p>
       </div>
 
-      {state.status === 'error' && state.message ? (
+      {state.status === 'error' && state.message && !hasFieldErrors ? (
         <Alert variant="destructive">{state.message}</Alert>
       ) : null}
 
@@ -76,6 +77,8 @@ export function VendorApplicationForm() {
             type="email"
             required
             placeholder="contact@example.com"
+            aria-invalid={state.errors?.contactEmail ? 'true' : 'false'}
+            className={state.errors?.contactEmail ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
           />
           {state.errors?.contactEmail ? (
             <span className="text-xs text-red-500">{state.errors?.contactEmail}</span>
@@ -93,6 +96,8 @@ export function VendorApplicationForm() {
             required
             placeholder="例: 03-1234-5678 / 080-1234-5678"
             autoComplete="tel"
+            aria-invalid={state.errors?.contactPhone ? 'true' : 'false'}
+            className={state.errors?.contactPhone ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
           />
           <p className="text-xs text-slate-500">発送に関する緊急連絡で使用します。</p>
           {state.errors?.contactPhone ? (
@@ -112,6 +117,8 @@ export function VendorApplicationForm() {
             minLength={8}
             autoComplete="new-password"
             placeholder="8文字以上で入力"
+            aria-invalid={state.errors?.password ? 'true' : 'false'}
+            className={state.errors?.password ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
           />
           {state.errors?.password ? (
             <span className="text-xs text-red-500">{state.errors?.password}</span>
@@ -131,6 +138,8 @@ export function VendorApplicationForm() {
             required
             autoComplete="new-password"
             placeholder="確認のため再入力"
+            aria-invalid={state.errors?.passwordConfirm ? 'true' : 'false'}
+            className={state.errors?.passwordConfirm ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
           />
           {state.errors?.passwordConfirm ? (
             <span className="text-xs text-red-500">{state.errors?.passwordConfirm}</span>

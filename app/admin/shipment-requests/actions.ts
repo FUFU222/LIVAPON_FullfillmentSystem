@@ -7,10 +7,6 @@ import {
   SHIPMENT_ADJUSTMENT_STATUSES,
   type ShipmentAdjustmentStatus
 } from '@/lib/data/shipment-adjustments';
-import {
-  isShipmentAdjustmentUpdateEmailRetryableError,
-  sendShipmentAdjustmentUpdateEmail
-} from '@/lib/notifications/shipment-adjustment-update';
 
 export type ShipmentAdjustmentAdminActionState = {
   status: 'idle' | 'success' | 'error';
@@ -24,6 +20,42 @@ export const INITIAL_SHIPMENT_ADJUSTMENT_ADMIN_STATE: ShipmentAdjustmentAdminAct
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('通知メールの送信がタイムアウトしました。')), ms);
+      })
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
+
+async function sendShipmentAdjustmentResolvedNotification(params: {
+  to: string;
+  contactName: string | null;
+}) {
+  const notificationModule = await import('@/lib/notifications/shipment-adjustment-update');
+
+  await withTimeout(
+    notificationModule.sendShipmentAdjustmentUpdateEmail({
+      to: params.to,
+      contactName: params.contactName
+    }),
+    5000
+  );
+
+  return {
+    isRetryableEmailError: notificationModule.isShipmentAdjustmentUpdateEmailRetryableError
+  };
 }
 
 function assertAdmin(role: string | null) {
@@ -90,16 +122,21 @@ export async function handleShipmentAdjustmentAdminAction(
       result.contactEmail
     ) {
       try {
-        await sendShipmentAdjustmentUpdateEmail({
+        const notification = await sendShipmentAdjustmentResolvedNotification({
           to: result.contactEmail,
           contactName: result.contactName
         });
         notificationStatus = 'sent';
       } catch (error) {
-        if (isShipmentAdjustmentUpdateEmailRetryableError(error)) {
+        const notificationModule = await import('@/lib/notifications/shipment-adjustment-update').catch(
+          () => null
+        );
+        const isRetryable = notificationModule?.isShipmentAdjustmentUpdateEmailRetryableError(error) ?? false;
+
+        if (isRetryable) {
           await sleep(700);
           try {
-            await sendShipmentAdjustmentUpdateEmail({
+            await sendShipmentAdjustmentResolvedNotification({
               to: result.contactEmail,
               contactName: result.contactName
             });

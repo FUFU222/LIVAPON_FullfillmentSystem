@@ -8,7 +8,7 @@
 5. **データベース & トークン管理**: Token/Scope は `shopify_connections` に保存し、Supabase Dashboard で直接確認できる。今後は同テーブルを UI で閲覧できれば十分。`/api/internal/shipments/resync` も GitHub Actions から 30 分間隔で呼び出し、`SHIPMENT_RESYNC_LIMIT` 可変 + Step summary に結果を記録する構成とした。発送済み注文の修正はユーザーからの申請フローに一本化し、コンソール上の「未発送に戻す」ボタンは廃止済み。
 
 > 2025-11-20 追記: 2 つの GitHub Actions（`Process Webhook Jobs`, `Resync Pending Shipments`）に `workflow_dispatch` 入力と repo variable fallback (`WEBHOOK_JOB_LIMIT`, `SHIPMENT_RESYNC_LIMIT`) を追加し、Step summary へ処理件数ログを出すよう統一した。`timeout-minutes: 3`, `curl --max-time 20`, `jq` での `ok` 検証も導入し、失敗時は即エラーとして検知できる。Shipment 側は 30 分間隔、Webhook 側は 5 分間隔で運用中。
-6. **UI/UX & リアルタイム同期**: 発送一覧の行高を調整し、リアルタイム購読で `shipments`/`line_items`/`orders` を即時更新。発送登録は「入力 → 確認」二段階、未発送へ戻す際は注意パネルと理由入力を必須化。ブランド表記を「配送管理コンソール」に統一し、ボタン/ナビの hover/active や操作中オーバーレイで体感スピードを底上げ。
+6. **UI/UX & リアルタイム同期**: 発送一覧の行高を調整し、リアルタイム購読で `shipments`/`line_items`/`orders` を即時更新。発送登録は「入力 → 確認」二段階、未発送へ戻す際は注意パネルと理由入力を必須化。ブランド表記を「配送管理システム」に統一し、ボタン/ナビの hover/active や操作中オーバーレイで体感スピードを底上げ。
 7. **在庫ポリシー**: 在庫編集は Shopify GUI（マーチャント管理ロケーション）のみが真実の源。Console は閲覧＋同期に限定し、FS モデル由来の在庫操作フローは廃止済み。
 8. **Fulfillment Callback**: `/api/shopify/fulfillment/callback` で Shopify → Console の配送依頼やメタ更新を受信し、`fulfillment_requests` テーブル経由で追跡・解析可能。
 9. **Secret & Inline 設定**: 2025-11-13 に `JOB_WORKER_SECRET` をローカル/Vercel の両方へ投入済み。Cron が 1 日 1 回である現状は `ENABLE_INLINE_WEBHOOK_PROCESSING=true`、`INLINE_WEBHOOK_BATCH=5` を標準とし、Pro へ移行した時点で改めて見直す方針。2025-11-14 には GitHub Actions へ Cron を移行し、`JOB_WORKER_SECRET` / `CRON_SECRET` を Bearer 認証で利用する体制へ切り替えた。

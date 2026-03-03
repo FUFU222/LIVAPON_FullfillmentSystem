@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useFormState, useFormStatus } from 'react-dom';
 import { submitShipmentAdjustmentRequest } from '@/app/support/shipment-adjustment/actions';
 import { initialShipmentAdjustmentFormState } from '@/app/support/shipment-adjustment/state';
@@ -11,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/toast-provider';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -37,12 +39,22 @@ export function ShipmentAdjustmentForm({
     initialShipmentAdjustmentFormState
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (state.status === 'success') {
+      showToast({
+        variant: 'success',
+        title: state.message ?? '発送修正申請を送信しました。',
+        description: state.requestId
+          ? `受付番号 #${state.requestId} を登録しました。申請履歴から進捗を確認できます。`
+          : '申請履歴から進捗を確認できます。'
+      });
       formRef.current?.reset();
+      router.refresh();
     }
-  }, [state.status]);
+  }, [router, showToast, state.message, state.requestId, state.status, state.submissionId]);
 
   return (
     <div className="grid gap-4 text-base text-slate-700">
@@ -51,19 +63,7 @@ export function ShipmentAdjustmentForm({
           <div className="mb-4 text-lg font-semibold text-foreground">{vendorName}</div>
         ) : null}
 
-        {state.status === 'success' && state.message ? (
-          <Alert variant="success" className="mb-4">
-            <div className="font-medium">{state.message}</div>
-            {state.requestId ? (
-              <div className="text-sm text-green-700">申請ID: #{state.requestId}</div>
-            ) : null}
-            <div className="mt-2 text-sm text-slate-600">
-              管理者が確認し次第、なるべく早く対応いたします。内容によっては登録済みの電話番号へご連絡する場合があります。
-            </div>
-          </Alert>
-        ) : null}
-
-        {state.status === 'error' && state.message ? (
+        {state.status === 'error' && state.message && !state.fieldErrors ? (
           <Alert variant="destructive" className="mb-4">
             {state.message}
           </Alert>

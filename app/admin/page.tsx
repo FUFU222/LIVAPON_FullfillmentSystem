@@ -128,8 +128,7 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
-              <CardTitle className="text-xl">最新のセラー</CardTitle>
-              <p className="text-sm text-slate-500">最近登録されたセラー</p>
+              <CardTitle className="text-xl">最近登録されたセラー</CardTitle>
             </div>
             <Badge className="border-slate-200 text-slate-600">{recentVendors.length} 件</Badge>
           </CardHeader>

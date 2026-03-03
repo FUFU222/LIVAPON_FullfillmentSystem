@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { updateVendorProfileAction } from '@/app/vendor/profile/actions';
@@ -26,11 +27,42 @@ const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
   submissionId: null
 };
 
+function shouldPreventEnterSubmit(event: ReactKeyboardEvent<HTMLFormElement>) {
+  if (event.key !== 'Enter') {
+    return false;
+  }
+
+  if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+    return false;
+  }
+
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target instanceof HTMLTextAreaElement) {
+    return false;
+  }
+
+  if (!(target instanceof HTMLInputElement)) {
+    return false;
+  }
+
+  return !['submit', 'button', 'checkbox', 'radio', 'file'].includes(target.type);
+}
+
 export function VendorProfileForm({ initial }: { initial: VendorProfileInitialValues }) {
   const [state, formAction] = useFormState(updateVendorProfileAction, INITIAL_VENDOR_PROFILE_STATE);
   const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
   const router = useRouter();
+
+  function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    if (shouldPreventEnterSubmit(event)) {
+      event.preventDefault();
+    }
+  }
 
   useEffect(() => {
     if (state.status === 'success' && state.message) {
@@ -51,7 +83,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
   }, [router, showToast, state.fieldErrors, state.message, state.status, state.submissionId]);
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-6">
+    <form ref={formRef} action={formAction} className="grid gap-6" onKeyDown={handleFormKeyDown}>
       <div className="grid gap-2">
         <label htmlFor="companyName" className="text-sm font-medium text-foreground">
           会社名

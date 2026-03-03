@@ -82,6 +82,7 @@ export async function submitShipmentAdjustmentRequest(
     return {
       status: 'error',
       message: '入力内容を確認してください。',
+      submissionId: Date.now().toString(),
       fieldErrors,
       requestId: null
     } satisfies ShipmentAdjustmentFormState;
@@ -152,6 +153,7 @@ export async function submitShipmentAdjustmentRequest(
     return {
       status: 'error',
       message: '申請の送信に失敗しました。時間を置いて再度お試しください。',
+      submissionId: Date.now().toString(),
       requestId: null
     } satisfies ShipmentAdjustmentFormState;
   }
@@ -161,7 +163,8 @@ export async function submitShipmentAdjustmentRequest(
 
   return {
     status: 'success',
-    message: '申請を受け付けました。管理者が確認次第ご連絡します。',
+    message: '発送修正申請を送信しました。',
+    submissionId: Date.now().toString(),
     requestId: data?.id ?? null
   } satisfies ShipmentAdjustmentFormState;
 }

@@ -7,6 +7,10 @@ import {
   SHIPMENT_ADJUSTMENT_STATUSES,
   type ShipmentAdjustmentStatus
 } from '@/lib/data/shipment-adjustments';
+import {
+  isShipmentAdjustmentUpdateEmailRetryableError,
+  sendShipmentAdjustmentUpdateEmail
+} from '@/lib/notifications/shipment-adjustment-update';
 
 export type ShipmentAdjustmentAdminActionState = {
   status: 'idle' | 'success' | 'error';
@@ -17,6 +21,10 @@ export const INITIAL_SHIPMENT_ADJUSTMENT_ADMIN_STATE: ShipmentAdjustmentAdminAct
   status: 'idle',
   message: null
 };
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function assertAdmin(role: string | null) {
   if (role !== 'admin') {
@@ -57,7 +65,7 @@ export async function handleShipmentAdjustmentAdminAction(
       return { status: 'error', message: '解決済みにする場合は処置内容を入力してください。' };
     }
 
-    await updateShipmentAdjustmentRequestByAdmin({
+    const result = await updateShipmentAdjustmentRequestByAdmin({
       requestId,
       status: nextStatus,
       resolutionSummary,
@@ -74,10 +82,51 @@ export async function handleShipmentAdjustmentAdminAction(
         : null
     });
 
+    let notificationStatus: 'sent' | 'failed' | 'skipped' = 'skipped';
+
+    if (
+      result.previousStatus !== 'resolved' &&
+      result.nextStatus === 'resolved' &&
+      result.contactEmail
+    ) {
+      try {
+        await sendShipmentAdjustmentUpdateEmail({
+          to: result.contactEmail,
+          contactName: result.contactName
+        });
+        notificationStatus = 'sent';
+      } catch (error) {
+        if (isShipmentAdjustmentUpdateEmailRetryableError(error)) {
+          await sleep(700);
+          try {
+            await sendShipmentAdjustmentUpdateEmail({
+              to: result.contactEmail,
+              contactName: result.contactName
+            });
+            notificationStatus = 'sent';
+          } catch (retryError) {
+            notificationStatus = 'failed';
+            console.error('Failed to send shipment adjustment update email after retry', retryError);
+          }
+        } else {
+          notificationStatus = 'failed';
+          console.error('Failed to send shipment adjustment update email', error);
+        }
+      }
+    }
+
     revalidatePath('/admin/shipment-requests');
     revalidatePath('/support/shipment-adjustment');
 
-    return { status: 'success', message: '申請を更新しました。' };
+    return {
+      status: 'success',
+      message:
+        notificationStatus === 'sent'
+          ? '申請を更新し、通知メールを送信しました。'
+          : notificationStatus === 'failed'
+            ? '申請を更新しましたが、通知メールの送信に失敗しました。'
+            : '申請を更新しました。'
+    };
   } catch (error) {
     console.error('Failed to update shipment adjustment request', error);
     return {

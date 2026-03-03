@@ -38,6 +38,13 @@ export type AdminShipmentAdjustmentRequest = {
   comments: ShipmentAdjustmentComment[];
 };
 
+export type ShipmentAdjustmentAdminUpdateResult = {
+  previousStatus: ShipmentAdjustmentStatus | null;
+  nextStatus: ShipmentAdjustmentStatus | null;
+  contactEmail: string | null;
+  contactName: string | null;
+};
+
 function mapComment(record: Database['public']['Tables']['shipment_adjustment_comments']['Row']): ShipmentAdjustmentComment {
   return {
     id: record.id,
@@ -127,12 +134,12 @@ export async function updateShipmentAdjustmentRequestByAdmin(input: {
     authorName: string | null;
     authorRole: string;
   } | null;
-}): Promise<void> {
+}): Promise<ShipmentAdjustmentAdminUpdateResult> {
   const client = assertServiceClient();
 
   const { data: request, error: fetchError } = await client
     .from('shipment_adjustment_requests')
-    .select('id, vendor_id')
+    .select('id, vendor_id, status, contact_email, contact_name')
     .eq('id', input.requestId)
     .maybeSingle();
 
@@ -183,4 +190,11 @@ export async function updateShipmentAdjustmentRequestByAdmin(input: {
   if (updateError) {
     throw updateError;
   }
+
+  return {
+    previousStatus: (request.status as ShipmentAdjustmentStatus | null) ?? null,
+    nextStatus: input.status ?? ((request.status as ShipmentAdjustmentStatus | null) ?? null),
+    contactEmail: request.contact_email ?? null,
+    contactName: request.contact_name ?? null
+  };
 }

@@ -6,7 +6,10 @@ import { AppShell, type AppShellInitialAuth } from '@/components/layout/app-shel
 import { ToastProvider } from '@/components/ui/toast-provider';
 import { getAuthContext } from '@/lib/auth';
 import { countActiveShipmentAdjustmentRequestsForAdmin } from '@/lib/data/shipment-adjustments';
-import { getVendorProfile } from '@/lib/data/vendors';
+import {
+  countPendingVendorApplicationsForAdmin,
+  getVendorProfile
+} from '@/lib/data/vendors';
 
 export const metadata: Metadata = {
   title: 'LIVAPON 配送管理システム',
@@ -18,6 +21,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   let companyName: string | null = null;
   let adminActiveShipmentRequestCount = 0;
+  let adminPendingVendorApplicationCount = 0;
 
   if (auth && typeof auth.vendorId === 'number') {
     try {
@@ -30,9 +34,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   if (auth?.role === 'admin') {
     try {
-      adminActiveShipmentRequestCount = await countActiveShipmentAdjustmentRequestsForAdmin();
+      [adminActiveShipmentRequestCount, adminPendingVendorApplicationCount] = await Promise.all([
+        countActiveShipmentAdjustmentRequestsForAdmin(),
+        countPendingVendorApplicationsForAdmin()
+      ]);
     } catch (error) {
-      console.error('Failed to load active shipment adjustment request count for layout', error);
+      console.error('Failed to load admin navigation counts for layout', error);
     }
   }
 
@@ -43,7 +50,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         vendorId: auth.vendorId,
         role: auth.role,
         companyName,
-        adminActiveShipmentRequestCount
+        adminActiveShipmentRequestCount,
+        adminPendingVendorApplicationCount
       }
     : {
         status: 'signed-out',
@@ -51,7 +59,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         vendorId: null,
         role: null,
         companyName: null,
-        adminActiveShipmentRequestCount: 0
+        adminActiveShipmentRequestCount: 0,
+        adminPendingVendorApplicationCount: 0
       };
 
   return (

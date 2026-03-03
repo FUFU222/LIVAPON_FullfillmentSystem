@@ -31,7 +31,7 @@ export default async function AdminShipmentRequestsPage() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">発送修正申請 — 対応中</CardTitle>
+          <CardTitle className="text-2xl font-semibold">発送修正依頼 — 対応中</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           {activeRequests.length === 0 ? (
@@ -46,7 +46,7 @@ export default async function AdminShipmentRequestsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">最近完了した申請</CardTitle>
+          <CardTitle className="text-xl font-semibold">最近完了した依頼</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           {resolvedRequests.length === 0 ? (

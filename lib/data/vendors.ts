@@ -110,6 +110,37 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+async function authUserExistsByEmail(client: AnySupabaseClient, email: string): Promise<boolean> {
+  const normalizedEmail = normalizeEmail(email);
+  let page = 1;
+  const perPage = 200;
+
+  for (;;) {
+    const { data, error } = await client.auth.admin.listUsers({ page, perPage });
+
+    if (error) {
+      throw error;
+    }
+
+    const users = data?.users ?? [];
+    const matched = users.some((user) => normalizeEmail(user.email ?? '') === normalizedEmail);
+
+    if (matched) {
+      return true;
+    }
+
+    if (users.length < perPage) {
+      return false;
+    }
+
+    page += 1;
+  }
+}
+
 async function deleteAuthUsers(client: AnySupabaseClient, authUserIds: string[]) {
   const uniqueIds = Array.from(new Set(authUserIds.filter(isNonEmptyString)));
 
@@ -379,7 +410,7 @@ export async function createVendorApplication(
 ): Promise<VendorApplication> {
   const client = clientOverride ?? assertServiceClient();
 
-  const normalizedEmail = input.contactEmail.trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(input.contactEmail);
 
   const { data: existingPending, error: existingError } = await client
     .from('vendor_applications')
@@ -420,6 +451,39 @@ export async function createVendorApplication(
   return toVendorApplication(data);
 }
 
+export async function getVendorApplicationEmailConflict(
+  email: string,
+  clientOverride?: AnySupabaseClient
+): Promise<string | null> {
+  const client = clientOverride ?? assertServiceClient();
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const { data: existingPending, error: existingError } = await client
+    .from('vendor_applications')
+    .select('id')
+    .eq('contact_email', normalizedEmail)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existingPending) {
+    return 'このメールアドレスで審査中の利用申請が既にあります。';
+  }
+
+  if (await authUserExistsByEmail(client, normalizedEmail)) {
+    return 'このメールアドレスは既に登録されています。サインインしてご利用ください。';
+  }
+
+  return null;
+}
+
 export async function getPendingVendorApplications(): Promise<VendorApplication[]> {
   const client = assertServiceClient();
 
@@ -434,6 +498,20 @@ export async function getPendingVendorApplications(): Promise<VendorApplication[
   }
 
   return (data ?? []).map(toVendorApplication);
+}
+
+export async function countPendingVendorApplicationsForAdmin(): Promise<number> {
+  const client = assertServiceClient();
+  const { count, error } = await client
+    .from('vendor_applications')
+    .select('id', { head: true, count: 'exact' })
+    .eq('status', 'pending');
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
 }
 
 export async function getRecentVendorApplications(limit = 20): Promise<VendorApplication[]> {

@@ -6,6 +6,7 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { approveApplicationAction, rejectApplicationAction } from '@/app/admin/applications/actions';
 import { initialAdminActionState, type AdminActionState } from '@/app/admin/applications/state';
+import { VENDOR_APPLICATION_NAV_SYNC_EVENT } from '@/lib/vendor-application/constants';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -200,6 +201,12 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
       setShowApprovalDialog(true);
     }
   }, [approveState.status, approveState.details, application.companyName, application.contactEmail, application.contactName]);
+
+  useEffect(() => {
+    if (approveState.status === 'success' || rejectState.status === 'success') {
+      window.dispatchEvent(new Event(VENDOR_APPLICATION_NAV_SYNC_EVENT));
+    }
+  }, [approveState.status, rejectState.status]);
 
   function handleApproveSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (bypassConfirmRef.current) {

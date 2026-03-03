@@ -25,7 +25,7 @@ export default async function AdminApplicationsPage() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">利用申請の審査</CardTitle>
+          <CardTitle className="text-2xl font-semibold">利用開始依頼</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-6">
           {pending.length === 0 ? (
@@ -40,7 +40,7 @@ export default async function AdminApplicationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">最近審査した申請</CardTitle>
+          <CardTitle className="text-xl font-semibold">最近対応した依頼</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           {recent.length === 0 ? (

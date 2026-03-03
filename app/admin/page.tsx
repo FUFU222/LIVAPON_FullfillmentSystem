@@ -89,7 +89,7 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
-              <CardTitle className="text-xl">審査待ち申請</CardTitle>
+              <CardTitle className="text-xl">利用開始依頼</CardTitle>
               <p className="text-sm text-slate-500">セラー申請の最新状況</p>
             </div>
             <Badge className="border-slate-200 text-slate-600">{pendingApplications.length} 件</Badge>
@@ -113,7 +113,7 @@ export default async function AdminDashboardPage() {
           </CardContent>
           <CardFooter>
             <Link href="/admin/applications" className={buttonClasses('outline', 'text-sm')}>
-              申請一覧へ
+              依頼一覧へ
             </Link>
           </CardFooter>
         </Card>
@@ -192,14 +192,14 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-2">
             <div className="space-y-1">
-              <CardTitle className="text-xl">発送修正申請</CardTitle>
+              <CardTitle className="text-xl">発送修正依頼</CardTitle>
               <p className="text-sm text-slate-500">対応中と最近完了した申請</p>
             </div>
             <Badge className="border-slate-200 text-slate-600">履歴</Badge>
           </CardHeader>
           <CardContent className="grid gap-4">
             {shipmentRequestsError ? (
-              <Alert variant="destructive">発送修正申請を取得できませんでした。</Alert>
+              <Alert variant="destructive">発送修正依頼を取得できませんでした。</Alert>
             ) : (
               <>
                 <div className="grid gap-2">
@@ -252,7 +252,7 @@ export default async function AdminDashboardPage() {
           </CardContent>
           <CardFooter>
             <Link href="/admin/shipment-requests" className={buttonClasses('outline', 'text-sm')}>
-              申請履歴と更新へ
+              依頼一覧へ
             </Link>
           </CardFooter>
         </Card>

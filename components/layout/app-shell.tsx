@@ -10,6 +10,7 @@ import {
   ACTIVE_SHIPMENT_ADJUSTMENT_STATUSES,
   SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT
 } from '@/lib/shipment-adjustment/constants';
+import { VENDOR_APPLICATION_NAV_SYNC_EVENT } from '@/lib/vendor-application/constants';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { resolveRoleFromAuthUser, resolveVendorIdFromAuthUser } from '@/lib/auth-metadata';
 import { SignOutButton } from '@/components/auth/sign-out-button';
@@ -27,6 +28,7 @@ export type AppShellInitialAuth = {
   role: string | null;
   companyName: string | null;
   adminActiveShipmentRequestCount: number;
+  adminPendingVendorApplicationCount: number;
 };
 
 const navItems = [
@@ -36,8 +38,8 @@ const navItems = [
 
 const adminNavItems = [
   { href: '/admin', label: 'ダッシュボード' },
-  { href: '/admin/applications', label: '申請審査' },
-  { href: '/admin/shipment-requests', label: '発送修正申請' },
+  { href: '/admin/applications', label: '利用開始依頼' },
+  { href: '/admin/shipment-requests', label: '発送修正依頼' },
   { href: '/admin/orders', label: '注文' },
   { href: '/admin/vendors', label: 'セラー' }
 ];
@@ -98,6 +100,9 @@ function AppShellContent({
   const [adminActiveShipmentRequestCount, setAdminActiveShipmentRequestCount] = useState(
     initialAuth.adminActiveShipmentRequestCount
   );
+  const [adminPendingVendorApplicationCount, setAdminPendingVendorApplicationCount] = useState(
+    initialAuth.adminPendingVendorApplicationCount
+  );
 
   useEffect(() => {
     const supabase = getBrowserClient();
@@ -140,6 +145,7 @@ function AppShellContent({
       setStatus('signed-out');
       setCompanyName(null);
       setAdminActiveShipmentRequestCount(0);
+      setAdminPendingVendorApplicationCount(0);
     }
 
     async function syncSession(session: Session | null) {
@@ -206,8 +212,10 @@ function AppShellContent({
     setRole(initialAuth.role);
     setCompanyName(initialAuth.companyName);
     setAdminActiveShipmentRequestCount(initialAuth.adminActiveShipmentRequestCount);
+    setAdminPendingVendorApplicationCount(initialAuth.adminPendingVendorApplicationCount);
   }, [
     initialAuth.adminActiveShipmentRequestCount,
+    initialAuth.adminPendingVendorApplicationCount,
     initialAuth.companyName,
     initialAuth.email,
     initialAuth.role,
@@ -305,6 +313,62 @@ function AppShellContent({
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener(SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT, handleShipmentAdjustmentUpdate);
+    };
+  }, [pathname, role, status]);
+
+  useEffect(() => {
+    if (status !== 'signed-in' || role !== 'admin') {
+      setAdminPendingVendorApplicationCount(0);
+      return;
+    }
+
+    let isCancelled = false;
+    const supabase = getBrowserClient();
+
+    async function refreshPendingVendorApplicationCount() {
+      const { count, error } = await supabase
+        .from('vendor_applications')
+        .select('id', { head: true, count: 'exact' })
+        .eq('status', 'pending');
+
+      if (isCancelled) {
+        return;
+      }
+
+      if (error) {
+        console.warn('Failed to refresh pending vendor application count', error);
+        return;
+      }
+
+      setAdminPendingVendorApplicationCount(count ?? 0);
+    }
+
+    void refreshPendingVendorApplicationCount();
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshPendingVendorApplicationCount();
+      }
+    }, 30000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        void refreshPendingVendorApplicationCount();
+      }
+    }
+
+    function handleVendorApplicationUpdate() {
+      void refreshPendingVendorApplicationCount();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener(VENDOR_APPLICATION_NAV_SYNC_EVENT, handleVendorApplicationUpdate);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener(VENDOR_APPLICATION_NAV_SYNC_EVENT, handleVendorApplicationUpdate);
     };
   }, [pathname, role, status]);
 
@@ -454,6 +518,14 @@ function AppShellContent({
                     onClick={(event) => handleNavigation(event, item.href)}
                   >
                     <span>{item.label}</span>
+                    {role === 'admin' &&
+                    item.href === '/admin/applications' &&
+                    adminPendingVendorApplicationCount > 0 ? (
+                      <span
+                        aria-hidden="true"
+                        className="ml-1.5 inline-block h-2.5 w-2.5 rounded-full bg-rose-600"
+                      />
+                    ) : null}
                     {role === 'admin' &&
                     item.href === '/admin/shipment-requests' &&
                     adminActiveShipmentRequestCount > 0 ? (

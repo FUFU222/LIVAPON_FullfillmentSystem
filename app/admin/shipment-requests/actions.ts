@@ -13,11 +13,6 @@ export type ShipmentAdjustmentAdminActionState = {
   message: string | null;
 };
 
-export const INITIAL_SHIPMENT_ADJUSTMENT_ADMIN_STATE: ShipmentAdjustmentAdminActionState = {
-  status: 'idle',
-  message: null
-};
-
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -122,7 +117,7 @@ export async function handleShipmentAdjustmentAdminAction(
       result.contactEmail
     ) {
       try {
-        const notification = await sendShipmentAdjustmentResolvedNotification({
+        await sendShipmentAdjustmentResolvedNotification({
           to: result.contactEmail,
           contactName: result.contactName
         });

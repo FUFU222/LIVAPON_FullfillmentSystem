@@ -13,8 +13,13 @@ import type { AdminShipmentAdjustmentRequest, ShipmentAdjustmentComment } from '
 import { SHIPMENT_ADJUSTMENT_STATUSES } from '@/lib/data/shipment-adjustments';
 import {
   handleShipmentAdjustmentAdminAction,
-  INITIAL_SHIPMENT_ADJUSTMENT_ADMIN_STATE
+  type ShipmentAdjustmentAdminActionState
 } from '@/app/admin/shipment-requests/actions';
+
+const INITIAL_SHIPMENT_ADJUSTMENT_ADMIN_STATE: ShipmentAdjustmentAdminActionState = {
+  status: 'idle',
+  message: null
+};
 
 function formatDate(value: string | null) {
   if (!value) return '-';

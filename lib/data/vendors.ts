@@ -39,6 +39,7 @@ export type VendorProfile = {
   name: string;
   contactName: string | null;
   contactEmail: string | null;
+  notificationEmails: string[];
   contactPhone: string | null;
   notifyNewOrders: boolean;
 };
@@ -681,7 +682,7 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email, contact_name, contact_phone, notify_new_orders')
+    .select('id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders')
     .eq('id', vendorId)
     .maybeSingle();
 
@@ -699,6 +700,9 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
     name: data.name,
     contactName: data.contact_name,
     contactEmail: data.contact_email,
+    notificationEmails: Array.isArray(data.notification_emails)
+      ? data.notification_emails.filter((email): email is string => typeof email === 'string' && email.trim().length > 0)
+      : [],
     contactPhone: data.contact_phone ?? null,
     notifyNewOrders: data.notify_new_orders ?? true
   };

@@ -15,7 +15,8 @@ import { useToast } from '@/components/ui/toast-provider';
 export type VendorProfileInitialValues = {
   companyName: string;
   contactName: string | null;
-  email: string;
+  contactEmail: string;
+  notificationEmails: string[];
   vendorCode: string | null;
   contactPhone: string | null;
   notifyNewOrders: boolean;
@@ -57,6 +58,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
   const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
   const router = useRouter();
+  const notificationEmailValues = Array.from({ length: 2 }, (_value, index) => initial.notificationEmails[index] ?? '');
 
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
     if (shouldPreventEnterSubmit(event)) {
@@ -148,66 +150,107 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
             新規注文メール通知
           </label>
           <p className="text-xs text-slate-500">
-            登録メールアドレスへ注文内容の通知が届きます。不要な場合はチェックを外してください。
+            連絡先メールアドレスと追加通知先へ注文内容の通知が届きます。不要な場合はチェックを外してください。
           </p>
         </div>
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="email" className="text-sm font-medium text-foreground">
-          メールアドレス
+        <label htmlFor="contactEmail" className="text-sm font-medium text-foreground">
+          連絡先メールアドレス
         </label>
         <Input
-          id="email"
-          name="email"
+          id="contactEmail"
+          name="contactEmail"
           type="email"
-          defaultValue={initial.email}
-          placeholder="user@example.com"
+          defaultValue={initial.contactEmail}
+          placeholder="contact@example.com"
           autoComplete="email"
           required
-          aria-invalid={state.fieldErrors?.email ? 'true' : 'false'}
+          aria-invalid={state.fieldErrors?.contactEmail ? 'true' : 'false'}
         />
-        {state.fieldErrors?.email ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.email}</p>
-        ) : null}
-      </div>
-
-      <div className="grid gap-2">
-        <label htmlFor="currentPassword" className="text-sm font-medium text-foreground">
-          現在のパスワード
-        </label>
-        <Input
-          id="currentPassword"
-          name="currentPassword"
-          type="password"
-          placeholder="現在のパスワード"
-          autoComplete="current-password"
-          aria-invalid={state.fieldErrors?.currentPassword ? 'true' : 'false'}
-        />
-        {state.fieldErrors?.currentPassword ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.currentPassword}</p>
+        {state.fieldErrors?.contactEmail ? (
+          <p className="text-xs text-red-600">{state.fieldErrors.contactEmail}</p>
         ) : (
-          <p className="text-xs text-slate-500">新しいパスワードを設定する場合のみ入力してください。</p>
+          <p className="text-xs text-slate-500">緊急連絡先としても使われ、注文通知はこのアドレスを含めて送信されます。</p>
         )}
       </div>
 
-      <div className="grid gap-2">
-        <label htmlFor="password" className="text-sm font-medium text-foreground">
-          新しいパスワード（任意）
-        </label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          placeholder="8文字以上で入力"
-          autoComplete="new-password"
-          aria-invalid={state.fieldErrors?.password ? 'true' : 'false'}
-        />
-        {state.fieldErrors?.password ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.password}</p>
-        ) : (
-          <p className="text-xs text-slate-500">新しいパスワードを設定する場合のみ入力してください。</p>
-        )}
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">追加通知先メールアドレス</p>
+          <p className="text-xs text-slate-500">
+            連絡先メールアドレスに加えて、最大2件まで注文通知の送信先を追加できます。
+          </p>
+        </div>
+        {notificationEmailValues.map((value, index) => {
+          const inputId = `notificationEmail${index + 1}` as const;
+          const errorMessage = state.fieldErrors?.[inputId];
+
+          return (
+            <div key={inputId} className="grid gap-2">
+              <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+                追加通知先 {index + 1}
+              </label>
+              <Input
+                id={inputId}
+                name={inputId}
+                type="email"
+                defaultValue={value}
+                placeholder={`notify-extra${index + 1}@example.com`}
+                autoComplete="email"
+                aria-invalid={errorMessage ? 'true' : 'false'}
+              />
+              {errorMessage ? (
+                <p className="text-xs text-red-600">{errorMessage}</p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">ログイン情報</p>
+          <p className="text-xs text-slate-500">ログイン用メールアドレスは別管理です。ここではパスワードのみ変更できます。</p>
+        </div>
+        <div className="grid gap-2">
+          <label htmlFor="currentPassword" className="text-sm font-medium text-foreground">
+            現在のパスワード
+          </label>
+          <Input
+            id="currentPassword"
+            name="currentPassword"
+            type="password"
+            placeholder="現在のパスワード"
+            autoComplete="current-password"
+            aria-invalid={state.fieldErrors?.currentPassword ? 'true' : 'false'}
+          />
+          {state.fieldErrors?.currentPassword ? (
+            <p className="text-xs text-red-600">{state.fieldErrors.currentPassword}</p>
+          ) : (
+            <p className="text-xs text-slate-500">新しいパスワードを設定する場合のみ入力してください。</p>
+          )}
+        </div>
+
+        <div className="grid gap-2">
+          <label htmlFor="password" className="text-sm font-medium text-foreground">
+            新しいパスワード（任意）
+          </label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="8文字以上で入力"
+            autoComplete="new-password"
+            aria-invalid={state.fieldErrors?.password ? 'true' : 'false'}
+          />
+          {state.fieldErrors?.password ? (
+            <p className="text-xs text-red-600">{state.fieldErrors.password}</p>
+          ) : (
+            <p className="text-xs text-slate-500">新しいパスワードを設定する場合のみ入力してください。</p>
+          )}
+        </div>
       </div>
 
       {state.status === 'error' && !state.fieldErrors ? (

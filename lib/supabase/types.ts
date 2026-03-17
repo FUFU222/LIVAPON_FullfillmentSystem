@@ -945,6 +945,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string | null
           id: number
+          notification_emails: string[]
           notify_new_orders: boolean | null
           name: string
         }
@@ -955,6 +956,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: number
+          notification_emails?: string[]
           notify_new_orders?: boolean | null
           name: string
         }
@@ -965,6 +967,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: number
+          notification_emails?: string[]
           notify_new_orders?: boolean | null
           name?: string
         }

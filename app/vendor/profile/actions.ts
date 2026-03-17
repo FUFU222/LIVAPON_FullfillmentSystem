@@ -9,7 +9,16 @@ export type VendorProfileActionState = {
   message: string | null;
   submissionId?: string | null;
   fieldErrors?: Partial<
-    Record<'companyName' | 'email' | 'password' | 'currentPassword' | 'contactPhone', string>
+    Record<
+      | 'companyName'
+      | 'contactEmail'
+      | 'password'
+      | 'currentPassword'
+      | 'contactPhone'
+      | 'notificationEmail1'
+      | 'notificationEmail2',
+      string
+    >
   >;
 };
 
@@ -18,6 +27,11 @@ const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
   message: null,
   submissionId: null
 };
+
+const NOTIFICATION_EMAIL_FIELDS = [
+  'notificationEmail1',
+  'notificationEmail2'
+] as const;
 
 function validateEmail(email: string) {
   const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,15 +49,19 @@ export async function updateVendorProfileAction(
 ): Promise<VendorProfileActionState> {
   const rawCompanyName = formData.get('companyName');
   const rawContactName = formData.get('contactName');
-  const rawEmail = formData.get('email');
+  const rawContactEmail = formData.get('contactEmail');
   const rawContactPhone = formData.get('contactPhone');
   const rawPassword = formData.get('password');
   const rawCurrentPassword = formData.get('currentPassword');
   const notifyNewOrdersRaw = formData.get('notifyNewOrders');
+  const notificationEmailValues = NOTIFICATION_EMAIL_FIELDS.map((fieldName) => {
+    const rawValue = formData.get(fieldName);
+    return typeof rawValue === 'string' ? rawValue.trim() : '';
+  });
 
   const companyName = typeof rawCompanyName === 'string' ? rawCompanyName.trim() : '';
   const contactName = typeof rawContactName === 'string' ? rawContactName.trim() : '';
-  const email = typeof rawEmail === 'string' ? rawEmail.trim() : '';
+  const contactEmail = typeof rawContactEmail === 'string' ? rawContactEmail.trim() : '';
   const contactPhone = typeof rawContactPhone === 'string' ? rawContactPhone.trim() : '';
   const password = typeof rawPassword === 'string' ? rawPassword : '';
   const currentPassword = typeof rawCurrentPassword === 'string' ? rawCurrentPassword : '';
@@ -55,10 +73,10 @@ export async function updateVendorProfileAction(
     fieldErrors.companyName = '会社名を入力してください。';
   }
 
-  if (!email) {
-    fieldErrors.email = 'メールアドレスを入力してください。';
-  } else if (!validateEmail(email)) {
-    fieldErrors.email = 'メールアドレスの形式が正しくありません。';
+  if (!contactEmail) {
+    fieldErrors.contactEmail = '連絡先メールアドレスを入力してください。';
+  } else if (!validateEmail(contactEmail)) {
+    fieldErrors.contactEmail = 'メールアドレスの形式が正しくありません。';
   }
 
   if (!contactPhone) {
@@ -75,6 +93,29 @@ export async function updateVendorProfileAction(
       fieldErrors.currentPassword = '現在のパスワードを入力してください。';
     }
   }
+
+  const notificationEmails: string[] = [];
+  const seenNotificationEmails = new Set<string>();
+  const normalizedContactEmail = contactEmail.toLowerCase();
+  notificationEmailValues.forEach((value, index) => {
+    if (!value) {
+      return;
+    }
+
+    const fieldName = NOTIFICATION_EMAIL_FIELDS[index];
+    if (!validateEmail(value)) {
+      fieldErrors[fieldName] = 'メールアドレスの形式が正しくありません。';
+      return;
+    }
+
+    const normalizedValue = value.toLowerCase();
+    if (normalizedValue === normalizedContactEmail || seenNotificationEmails.has(normalizedValue)) {
+      return;
+    }
+
+    seenNotificationEmails.add(normalizedValue);
+    notificationEmails.push(normalizedValue);
+  });
 
   if (Object.keys(fieldErrors).length > 0) {
     return {
@@ -94,7 +135,8 @@ export async function updateVendorProfileAction(
     .from('vendors')
     .update({
       name: companyName,
-      contact_email: email,
+      contact_email: contactEmail,
+      notification_emails: notificationEmails,
       contact_name: contactName || null,
       contact_phone: contactPhone || null,
       notify_new_orders: notifyNewOrders
@@ -128,11 +170,6 @@ export async function updateVendorProfileAction(
     data: mergedMetadata
   };
 
-  const currentEmail = auth.session.user.email ?? null;
-  if (email && email !== currentEmail) {
-    authPayload.email = email;
-  }
-
   if (password) {
     authPayload.password = password;
   }
@@ -143,8 +180,7 @@ export async function updateVendorProfileAction(
     console.error('Failed to update auth profile', authUpdateError);
     return {
       status: 'error',
-      message:
-        '認証情報の更新に失敗しました。時間を置いて再度お試しください。メールアドレス変更の場合は再度サインインをお試しください。',
+      message: '認証情報の更新に失敗しました。時間を置いて再度お試しください。',
       submissionId: Date.now().toString()
     };
   }

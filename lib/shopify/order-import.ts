@@ -185,6 +185,29 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeNotificationRecipient(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function resolveVendorNotificationRecipients(vendor: {
+  contact_email?: string | null;
+  notification_emails?: string[] | null;
+}): string[] {
+  const recipients = [
+    normalizeNotificationRecipient(vendor.contact_email),
+    ...(Array.isArray(vendor.notification_emails)
+      ? vendor.notification_emails.map(normalizeNotificationRecipient)
+      : [])
+  ].filter((email): email is string => email !== null);
+
+  return Array.from(new Set(recipients)).slice(0, 3);
+}
+
 // ==========================
 // Orders Table Upsert
 // ==========================
@@ -350,7 +373,7 @@ async function notifyVendorsOfNewOrder(
   const vendorIds = Array.from(vendorItems.keys());
   const { data: vendorRows, error: vendorError } = await client
     .from('vendors')
-    .select('id, name, contact_email, notify_new_orders')
+    .select('id, name, contact_email, notification_emails, notify_new_orders')
     .in('id', vendorIds);
   if (vendorError) {
     throw vendorError;
@@ -371,8 +394,9 @@ async function notifyVendorsOfNewOrder(
       continue;
     }
 
-    if (!vendor.contact_email) {
-      await upsertVendorNotificationRecord(client, orderId, vendorId, 'skipped', 'missing_contact_email');
+    const recipients = resolveVendorNotificationRecipients(vendor);
+    if (recipients.length === 0) {
+      await upsertVendorNotificationRecord(client, orderId, vendorId, 'skipped', 'missing_notification_recipient');
       continue;
     }
 
@@ -382,7 +406,7 @@ async function notifyVendorsOfNewOrder(
     }
 
     const emailPayload = {
-      to: vendor.contact_email,
+      to: recipients.length === 1 ? recipients[0] : recipients,
       vendorName: vendor.name ?? 'セラー各位',
       orderNumber: payload.name || payload.order_number,
       orderCreatedAt: payload.created_at,

@@ -38,7 +38,7 @@ export default async function VendorProfilePage() {
   }
 
   const contactName = (vendor.contactName ?? (auth.session.user.user_metadata?.contact_name ?? null)) as string | null;
-  const email = auth.session.user.email ?? vendor.contactEmail ?? '';
+  const contactEmail = vendor.contactEmail ?? auth.session.user.email ?? '';
   const notifyNewOrders = vendor.notifyNewOrders ?? true;
 
   return (
@@ -48,7 +48,7 @@ export default async function VendorProfilePage() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <GradientAvatar seed={vendor.name ?? email} label={vendor.name ?? email} size="lg" />
+              <GradientAvatar seed={vendor.name ?? contactEmail} label={vendor.name ?? contactEmail} size="lg" />
               <div className="space-y-1 text-sm text-slate-500">
                 <CardTitle className="text-2xl font-semibold text-foreground">
                   {vendor.name}
@@ -61,7 +61,8 @@ export default async function VendorProfilePage() {
               initial={{
                 companyName: vendor.name,
                 contactName,
-                email,
+                contactEmail,
+                notificationEmails: vendor.notificationEmails,
                 vendorCode: vendor.code,
                 contactPhone: vendor.contactPhone ?? null,
                 notifyNewOrders

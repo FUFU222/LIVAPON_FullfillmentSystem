@@ -8,7 +8,7 @@ export type VendorNewOrderEmailLineItem = {
 };
 
 export type VendorNewOrderEmailPayload = {
-  to: string;
+  to: string | string[];
   vendorName: string;
   orderNumber: string;
   orderCreatedAt: string;

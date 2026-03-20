@@ -1,3 +1,4 @@
+import { formatDateTimeInJst } from '@/lib/date-time';
 import { sendEmail, isRetryableEmailError } from './email';
 
 export type VendorNewOrderEmailLineItem = {
@@ -24,18 +25,7 @@ export type VendorNewOrderEmailPayload = {
 };
 
 function formatOrderDate(timestamp: string): string {
-  try {
-    return new Date(timestamp).toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  } catch (error) {
-    console.warn('Failed to format order timestamp for email', error);
-    return timestamp;
-  }
+  return formatDateTimeInJst(timestamp);
 }
 
 function formatShippingBlock(shipping: VendorNewOrderEmailPayload['shipping']): string {

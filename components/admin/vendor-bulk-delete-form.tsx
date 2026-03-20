@@ -13,18 +13,8 @@ import {
 } from '@/app/admin/vendors/actions';
 import { VendorDeleteButton } from '@/components/admin/vendor-delete-button';
 import { AdminVendorDetail } from '@/components/admin/admin-vendor-detail';
+import { formatDateInJst } from '@/lib/date-time';
 import type { VendorDetail, VendorListEntry } from '@/lib/data/vendors';
-
-function toDisplayDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-  return new Date(value).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
 
 type LoadState = 'idle' | 'loading' | 'error';
 
@@ -175,7 +165,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
                   : '審査情報なし'}
               </p>
               <p className="truncate">メール: {vendor.contactEmail ?? '-'}</p>
-              <p>登録日: {toDisplayDate(vendor.createdAt)}</p>
+              <p>登録日: {formatDateInJst(vendor.createdAt)}</p>
             </div>
             <div className="mt-3 flex justify-end">
               <VendorDeleteButton vendorId={vendor.id} vendorName={vendor.name} />
@@ -253,7 +243,7 @@ export function VendorBulkDeleteForm({ vendors }: { vendors: VendorListEntry[] }
                   )}
                 </td>
                 <td className="px-3 py-2">{vendor.contactEmail ?? '-'}</td>
-                <td className="px-3 py-2 text-xs">{toDisplayDate(vendor.createdAt)}</td>
+                <td className="px-3 py-2 text-xs">{formatDateInJst(vendor.createdAt)}</td>
                 <td
                   className="px-3 py-2 text-right"
                   onClick={(event) => event.stopPropagation()}

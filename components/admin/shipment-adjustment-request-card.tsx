@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useFormState } from 'react-dom';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
+import { formatDateTimeInJst } from '@/lib/date-time';
 import { SHIPMENT_ADJUSTMENT_NAV_SYNC_EVENT } from '@/lib/shipment-adjustment/constants';
 import type { AdminShipmentAdjustmentRequest, ShipmentAdjustmentComment } from '@/lib/data/shipment-adjustments';
 import {
@@ -20,16 +19,6 @@ const INITIAL_SHIPMENT_ADJUSTMENT_ADMIN_STATE: ShipmentAdjustmentAdminActionStat
   status: 'idle',
   message: null
 };
-
-function formatDate(value: string | null) {
-  if (!value) return '-';
-  try {
-    return format(new Date(value), 'yyyy/MM/dd HH:mm', { locale: ja });
-  } catch (error) {
-    console.warn('Failed to format date', error);
-    return value ?? '-';
-  }
-}
 
 const statusLabels: Record<string, string> = {
   pending: '未対応',
@@ -56,7 +45,7 @@ function CommentsTimeline({ comments }: { comments: ShipmentAdjustmentComment[] 
         <div key={comment.id} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span>{comment.authorName ?? comment.authorRole ?? 'Admin'}</span>
-            <span>{formatDate(comment.createdAt)}</span>
+            <span>{formatDateTimeInJst(comment.createdAt)}</span>
           </div>
           <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{comment.body}</p>
           {comment.visibility === 'internal' ? (
@@ -114,7 +103,7 @@ export function ShipmentAdjustmentRequestCard({
           <span>連絡先: {request.contactName ?? '-'} / {request.contactEmail ?? '-'}</span>
           <span>電話: {request.contactPhone ?? request.vendorPhone ?? '-'}</span>
           <span>トラッキング: {request.trackingNumber ?? '-'}</span>
-          <span>依頼日時: {formatDate(request.createdAt)}</span>
+          <span>依頼日時: {formatDateTimeInJst(request.createdAt)}</span>
         </div>
       </div>
 

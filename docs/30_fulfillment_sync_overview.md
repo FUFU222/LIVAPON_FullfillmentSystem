@@ -26,9 +26,10 @@
 
 ## Shopify 側の依存
 - Admin API Version: `2025-10`（`SHOPIFY_ADMIN_API_VERSION` で上書き可）。
-- 必須スコープ: `write_merchant_managed_fulfillment_orders`, `read_orders`, `write_orders`, `read_fulfillments`。
+- 必須スコープ: `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders`, `read_orders`, `write_orders`。
 - 配送会社マッピング: `yamato` → `Yamato (JA)`、`sagawa` → `Sagawa (JA)` 等。未対応キャリアはそのまま文字列を渡す。
 - FO 取得: `/orders/{order_id}/fulfillment_orders.json`。最初の FO を前提にしているため、将来的に複数ロケーション対応を検討。
+- FO webhook: `order_routing_complete` / `hold_released` / `cancellation_request_accepted` はいずれも order 解決後に同じ resync 経路へ流す。
 
 ## エラー処理
 - 戻り値に応じて `sync_status` を更新。

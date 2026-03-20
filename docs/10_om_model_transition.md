@@ -36,9 +36,9 @@
 # 4. Bridge AppのAPI要件（必須スコープとMutation）
 - **必須スコープ**
   - `read_orders`
-  - `write_fulfillments`
   - `read_merchant_managed_fulfillment_orders`
   - `write_merchant_managed_fulfillment_orders`
+  - `write_orders`
 - **不要になるスコープ**
   - `read_assigned_fulfillment_orders`
   - `write_assigned_fulfillment_orders`

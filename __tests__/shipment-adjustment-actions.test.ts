@@ -137,7 +137,7 @@ describe('submitShipmentAdjustmentRequest', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/support/shipment-adjustment');
     expect(result).toMatchObject({
       status: 'success',
-      message: '発送修正申請を送信しました。',
+      message: '発送修正依頼を送信しました。',
       requestId: 77
     });
   });

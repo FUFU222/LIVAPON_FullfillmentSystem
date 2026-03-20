@@ -80,7 +80,14 @@ function createSupabaseMock() {
 
   const shopifyConnectionsSelectMaybeSingle = jest
     .fn()
-    .mockResolvedValue({ data: { access_token: 'test-access-token' }, error: null });
+    .mockResolvedValue({
+      data: {
+        access_token: 'test-access-token',
+        scopes:
+          'read_merchant_managed_fulfillment_orders,read_orders,write_merchant_managed_fulfillment_orders,write_orders'
+      },
+      error: null
+    });
   const shopifyConnectionsSelectEq = jest
     .fn()
     .mockReturnValue({ maybeSingle: shopifyConnectionsSelectMaybeSingle });
@@ -221,6 +228,23 @@ describe('syncShipmentWithShopify', () => {
         ok: true,
         status: 200,
         json: async () => ({
+          data: {
+            currentAppInstallation: {
+              accessScopes: [
+                { handle: 'read_orders' },
+                { handle: 'write_orders' },
+                { handle: 'read_merchant_managed_fulfillment_orders' },
+                { handle: 'write_merchant_managed_fulfillment_orders' }
+              ]
+            }
+          }
+        }),
+        text: async () => ''
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
           fulfillment_orders: [
             {
               id: 999,
@@ -247,15 +271,18 @@ describe('syncShipmentWithShopify', () => {
 
     await syncShipmentWithShopify(shipmentRecord.id);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0]?.[0]?.toString()).toBe(
-      'https://example.myshopify.com/admin/api/2025-10/orders/1234567890/fulfillment_orders.json'
+      'https://example.myshopify.com/admin/api/2025-10/graphql.json'
     );
     expect(fetchMock.mock.calls[1]?.[0]?.toString()).toBe(
+      'https://example.myshopify.com/admin/api/2025-10/orders/1234567890/fulfillment_orders.json'
+    );
+    expect(fetchMock.mock.calls[2]?.[0]?.toString()).toBe(
       'https://example.myshopify.com/admin/api/2025-10/fulfillments.json'
     );
 
-    const fulfillmentBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    const fulfillmentBody = JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string);
     expect(fulfillmentBody.fulfillment.line_items_by_fulfillment_order[0]).toMatchObject({
       fulfillment_order_id: 999,
       fulfillment_order_line_items: [{ id: 777, quantity: 2 }]

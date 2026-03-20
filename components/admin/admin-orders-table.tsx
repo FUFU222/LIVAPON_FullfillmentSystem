@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { compareTimestampsDesc } from '@/lib/date-time';
 import type { AdminOrderPreview, OrderDetail } from '@/lib/data/orders';
 import { formatOrderDateTime } from '@/lib/orders/date-time';
 
@@ -30,11 +31,7 @@ export function AdminOrdersTable({ orders }: Props) {
   const cachedOrder = activeOrderId ? detailCache[activeOrderId] : null;
 
   const sortedOrders = useMemo(() => {
-    return [...orders].sort((a, b) => {
-      const timeA = a.updatedAt ?? '';
-      const timeB = b.updatedAt ?? '';
-      return timeB.localeCompare(timeA);
-    });
+    return [...orders].sort((a, b) => compareTimestampsDesc(a.updatedAt, b.updatedAt));
   }, [orders]);
 
   const handleOpenOrder = (orderId: number) => {

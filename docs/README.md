@@ -38,6 +38,7 @@
 ## 6x — ステータス / レポート / テスト
 - `docs/60_development_status.md`
 - `docs/63_orders_test_plan.md`
+- `docs/67_test_strategy_20260315.md` — 推奨テスト体型と実装計画
 
 ## Archive
 - `docs/archive/README.md` — 過去の計画メモ / 監査メモ / 引き継ぎメモ

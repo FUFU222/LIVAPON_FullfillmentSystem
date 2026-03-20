@@ -1,8 +1,6 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
 import type { OrderLineItemSummary, OrderSummary } from "@/lib/data/orders";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/orders/status-badge";
@@ -10,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
 import { Badge } from "@/components/ui/badge";
 import { SelectedLineItem } from "@/components/orders/types";
+import { formatDateTimeInJst } from "@/lib/date-time";
 
 const ORDER_ROW_HEAD = "px-2 py-2 text-[11px] tracking-normal sm:px-3";
 const ORDER_ROW_CELL = "px-2 py-2 align-middle sm:px-3";
@@ -18,18 +17,6 @@ const ORDER_ROW_CELL_MUTED =
 const LINE_ITEM_HEAD = "px-3 py-1.5 text-xs font-medium text-slate-500";
 const LINE_ITEM_CELL = "px-3 py-1.5 text-xs";
 const LINE_ITEM_PRODUCT = "px-3 py-1.5 text-xs text-slate-700";
-
-function formatDate(date: string | null) {
-  if (!date) {
-    return "-";
-  }
-  try {
-    return format(new Date(date), "yyyy/MM/dd HH:mm", { locale: ja });
-  } catch (error) {
-    console.warn("Failed to format date", error);
-    return date;
-  }
-}
 
 function getShippedQuantity(lineItem: OrderLineItemSummary): number {
   if (typeof lineItem.shippedQuantity === "number") {
@@ -378,7 +365,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                 <TableCell className={ORDER_ROW_CELL}>
                   <StatusBadge status={displayOrderStatus} />
                 </TableCell>
-                <TableCell className={cn(ORDER_ROW_CELL, "hidden xl:table-cell")}>{formatDate(order.createdAt)}</TableCell>
+                <TableCell className={cn(ORDER_ROW_CELL, "hidden xl:table-cell")}>{formatDateTimeInJst(order.createdAt)}</TableCell>
               </TableRow>
 
                 <TableRow className="bg-slate-50">

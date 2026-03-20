@@ -1,25 +1,21 @@
 import { upsertShopifyOrder } from '@/lib/shopify/order-import';
 import { isRegisteredShopDomain } from '@/lib/shopify/shop-domains';
 import {
+  SHOPIFY_FULFILLMENT_ORDER_WEBHOOK_TOPICS,
+  SHOPIFY_SUPPORTED_WEBHOOK_TOPICS
+} from '@/lib/shopify/app-config';
+import {
   triggerShipmentResyncForShopifyOrder,
   syncFulfillmentOrderMetadata
 } from '@/lib/data/orders';
 import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
 import type { WebhookJobRecord } from '@/lib/data/webhook-jobs';
 
-export const SUPPORTED_TOPICS = new Set([
-  'orders/create',
-  'orders/updated',
-  'orders/cancelled',
-  'orders/fulfilled',
-  'fulfillment_orders/order_routing_complete',
-  'fulfillment_orders/hold_released'
-]);
+export const SUPPORTED_TOPICS: ReadonlySet<string> = new Set(SHOPIFY_SUPPORTED_WEBHOOK_TOPICS);
 
-export const FULFILLMENT_ORDER_TOPICS = new Set([
-  'fulfillment_orders/order_routing_complete',
-  'fulfillment_orders/hold_released'
-]);
+export const FULFILLMENT_ORDER_TOPICS: ReadonlySet<string> = new Set(
+  SHOPIFY_FULFILLMENT_ORDER_WEBHOOK_TOPICS
+);
 
 export async function processShopifyWebhook(job: WebhookJobRecord) {
   const logContext = {

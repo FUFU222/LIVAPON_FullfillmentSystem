@@ -1,20 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
 import { Alert } from "@/components/ui/alert";
+import { formatDateTimeInJst } from "@/lib/date-time";
 import type { ShipmentHistoryEntry } from "@/lib/data/orders";
-
-function formatDate(value: string | null) {
-  if (!value) return "-";
-  try {
-    return format(new Date(value), "yyyy/MM/dd HH:mm", { locale: ja });
-  } catch (error) {
-    console.warn("Failed to format date", error);
-    return value;
-  }
-}
 
 export function ShipmentHistoryTable({
   shipments,
@@ -56,7 +45,7 @@ export function ShipmentHistoryTable({
             {shipments.map((shipment) => (
               <tr key={shipment.id} className="border-b border-slate-100 align-top">
                 <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap">
-                  {formatDate(shipment.shippedAt)}
+                  {formatDateTimeInJst(shipment.shippedAt)}
                 </td>
                 <td className="px-3 py-3">
                   <span className="text-sm text-slate-600">{shipment.orderNumber}</span>
@@ -90,7 +79,7 @@ export function ShipmentHistoryTable({
           <div key={shipment.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
               <span className="font-medium text-foreground">{shipment.orderNumber}</span>
-              <span>{formatDate(shipment.shippedAt)}</span>
+              <span>{formatDateTimeInJst(shipment.shippedAt)}</span>
             </div>
             <div className="mt-3 space-y-2 text-sm text-slate-600">
               <p>

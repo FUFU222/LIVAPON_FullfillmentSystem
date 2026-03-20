@@ -16,6 +16,10 @@ jest.mock('@/lib/data/orders', () => ({
   markShipmentsCancelledForOrder: jest.fn()
 }));
 
+jest.mock('@/lib/shopify/fulfillment', () => ({
+  resolveShopifyOrderIdFromFulfillmentOrder: jest.fn()
+}));
+
 jest.mock('@/lib/shopify/hmac', () => ({
   verifyShopifyWebhook: jest.fn(),
   getWebhookSecretMetadata: jest.fn().mockResolvedValue([])
@@ -47,6 +51,10 @@ const { syncFulfillmentOrderMetadata, markShipmentsCancelledForOrder } = jest.re
   syncFulfillmentOrderMetadata: jest.Mock;
   markShipmentsCancelledForOrder: jest.Mock;
 }>('@/lib/data/orders');
+
+const { resolveShopifyOrderIdFromFulfillmentOrder } = jest.requireMock<{
+  resolveShopifyOrderIdFromFulfillmentOrder: jest.Mock;
+}>('@/lib/shopify/fulfillment');
 
 const { verifyShopifyWebhook, getWebhookSecretMetadata } = jest.requireMock<{
   verifyShopifyWebhook: jest.Mock;
@@ -100,6 +108,7 @@ describe('POST /api/shopify/orders/ingest', () => {
       fulfillmentOrderId: 1,
       lineItemCount: 0
     });
+    resolveShopifyOrderIdFromFulfillmentOrder.mockResolvedValue(321);
     markShipmentsCancelledForOrder.mockResolvedValue(undefined);
     enqueueWebhookJob.mockResolvedValue({ id: 123 });
   });
@@ -154,6 +163,33 @@ describe('POST /api/shopify/orders/ingest', () => {
 
     expect(response.status).toBe(202);
     expect(enqueueWebhookJob).toHaveBeenCalled();
+  });
+
+  it('accepts fulfillment cancellation webhooks and resolves order id from fulfillment order id', async () => {
+    const payload = {
+      fulfillment_order: {
+        id: 987654321
+      }
+    };
+
+    const response = await POST(
+      buildRequest(payload, {
+        'x-shopify-topic': 'fulfillment_orders/cancellation_request_accepted'
+      })
+    );
+
+    expect(response.status).toBe(202);
+    expect(enqueueWebhookJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'fulfillment_orders/cancellation_request_accepted',
+        payload
+      })
+    );
+    expect(resolveShopifyOrderIdFromFulfillmentOrder).toHaveBeenCalledWith(
+      'example.myshopify.com',
+      987654321
+    );
+    expect(syncFulfillmentOrderMetadata).toHaveBeenCalledWith('example.myshopify.com', 321);
   });
 });
 jest.mock('next/server', () => {

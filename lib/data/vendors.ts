@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { compareTimestampsDesc } from '@/lib/date-time';
 import type { Database } from '@/lib/supabase/types';
 
 const serviceUrl = process.env.SUPABASE_URL;
@@ -19,6 +20,9 @@ type VendorApplicationRecord = Database['public']['Tables']['vendor_applications
 type VendorInsert = Database['public']['Tables']['vendors']['Insert'];
 
 type VendorRecord = Database['public']['Tables']['vendors']['Row'];
+
+const PENDING_VENDOR_APPLICATION_MESSAGE =
+  'このメールアドレスで審査中の利用申請が既にあります。';
 
 type MinimalVendor = {
   id: number;
@@ -113,6 +117,24 @@ function isNonEmptyString(value: unknown): value is string {
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function isPendingVendorApplicationUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const databaseError = error as {
+    code?: string | null;
+    constraint?: string | null;
+    message?: string | null;
+  };
+
+  return databaseError.code === '23505'
+    && (
+      databaseError.constraint === 'idx_vendor_applications_pending_email_unique'
+      || databaseError.message?.includes('idx_vendor_applications_pending_email_unique')
+    );
 }
 
 async function authUserExistsByEmail(client: AnySupabaseClient, email: string): Promise<boolean> {
@@ -277,7 +299,7 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
       }))
     : [];
 
-  applications.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  applications.sort((a, b) => compareTimestampsDesc(a.createdAt, b.createdAt));
 
   const [orderCount, shipmentCount, skuCount] = await Promise.all([
     countRelatedRows(client, 'orders', vendorId),
@@ -425,7 +447,7 @@ export async function createVendorApplication(
   }
 
   if (existingPending) {
-    throw new Error('このメールアドレスで審査中の利用申請が既にあります。');
+    throw new Error(PENDING_VENDOR_APPLICATION_MESSAGE);
   }
 
   const insertPayload: Database['public']['Tables']['vendor_applications']['Insert'] = {
@@ -446,6 +468,9 @@ export async function createVendorApplication(
     .single();
 
   if (error) {
+    if (isPendingVendorApplicationUniqueViolation(error)) {
+      throw new Error(PENDING_VENDOR_APPLICATION_MESSAGE);
+    }
     throw error;
   }
 
@@ -475,7 +500,7 @@ export async function getVendorApplicationEmailConflict(
   }
 
   if (existingPending) {
-    return 'このメールアドレスで審査中の利用申請が既にあります。';
+    return PENDING_VENDOR_APPLICATION_MESSAGE;
   }
 
   if (await authUserExistsByEmail(client, normalizedEmail)) {
@@ -747,7 +772,7 @@ function pickLatestApplication(
     const latestTimestamp = latest?.reviewed_at ?? latest?.created_at ?? '';
     const currentTimestamp = current.reviewed_at ?? current.created_at ?? '';
 
-    if (currentTimestamp > latestTimestamp) {
+    if (compareTimestampsDesc(currentTimestamp, latestTimestamp) < 0) {
       latest = current;
     }
   }

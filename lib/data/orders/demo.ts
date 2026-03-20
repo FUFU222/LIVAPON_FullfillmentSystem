@@ -1,3 +1,4 @@
+import { compareTimestampsDesc } from '@/lib/date-time';
 import type { LineItemShipment, OrderDetail, OrderSummary } from './types';
 import { mapDetailToSummary } from './transformers';
 
@@ -153,7 +154,7 @@ export function getDemoShipmentHistory(vendorId: number) {
       const matchingOrder = demoOrders.find((order) => order.id === entry.orderId);
       return matchingOrder?.lineItems.some((item) => item.vendorId === vendorId) ?? false;
     })
-    .sort((a, b) => (b.shippedAt ?? '').localeCompare(a.shippedAt ?? ''));
+    .sort((a, b) => compareTimestampsDesc(a.shippedAt, b.shippedAt));
 }
 
 function formatDemoShippingAddress(order: OrderDetail) {

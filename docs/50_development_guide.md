@@ -84,8 +84,13 @@
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | OAuth クレデンシャル |
 | `SHOPIFY_WEBHOOK_SECRET` / `_APP` / `_STORE` | Webhook HMAC 検証（ストア通知・アプリ通知ごとに設定可能） |
 | `SHOPIFY_STORE_DOMAIN` | 既定のストアドメイン（例: `example.myshopify.com`） |
-| `SHOPIFY_SCOPES` | 要求スコープ（未設定時はデフォルト文字列） |
+| `SHOPIFY_SCOPES` | 要求スコープ。未設定時は `read_merchant_managed_fulfillment_orders,read_orders,write_merchant_managed_fulfillment_orders,write_orders` を使用 |
 | `SHOPIFY_ADMIN_API_VERSION` | API バージョン指定（省略時 `2025-10`） |
+| `APP_BASE_URL` | GitHub Actions から内部 API を叩くためのベース URL |
+| `NEXT_PUBLIC_APP_URL` | 通知メール内リンク生成に使う公開アプリ URL |
+| `CRON_SECRET` / `JOB_WORKER_SECRET` | 内部 API の Bearer 認証用シークレット |
+| `GMAIL_SERVICE_ACCOUNT_CLIENT_EMAIL` / `GMAIL_SERVICE_ACCOUNT_PRIVATE_KEY` / `GMAIL_IMPERSONATED_USER` / `GMAIL_SENDER` | Gmail API を使った通知メール送信設定 |
+| `GMAIL_FROM_NAME` | 通知メールの差出人名。未設定時は `LIVAPON 事務局` |
 
 Secrets は `.env.local` で管理し、Git にコミットしない。
 

@@ -25,6 +25,9 @@ export function resolveApplySubmissionErrorMessage(error: unknown): string {
   }
 
   const normalized = rawMessage.toLowerCase();
+  if (normalized.includes('idx_vendor_applications_pending_email_unique')) {
+    return APPLY_PENDING_APPLICATION_MESSAGE;
+  }
   if (
     normalized.includes('duplicate key value') ||
     normalized.includes('unique constraint') ||

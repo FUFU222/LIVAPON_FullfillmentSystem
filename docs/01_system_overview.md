@@ -13,8 +13,8 @@
 - **パブリック / オンボーディング**: ランディング (`/`)、申請フォーム (`/(public)/apply`)、サインイン (`/(auth)/sign-in`)、審査待ち (`/pending`)。
 - **セラーコンソール**:
 -  - `/orders` 検索・ステータスフィルタ・ラインアイテム展開表示、リアルタイム購読バナー、即時再読込ボタン。発送登録パネルは選択済みラインと数量調整、追跡番号・配送会社入力、`shipment_import_jobs` の進捗トラッキングまで担う。
--  - `/orders/shipments` は発送履歴と `sync_status/sync_error` 表示、再読込ボタン。
--  - `/import` で CSV プレビュー + バリデーション付き一括登録（ベータ停止中で UI からのリンク非表示）。
+-  - `/orders/shipments` は発送履歴の参照画面。修正や取消が必要な場合は `/support/shipment-adjustment` から管理者へ依頼する運用。
+-  - `/import` は preview / validation 用コードが残存しているが、現行の正式運用フローには含めない。
 -  - `/vendor/profile` で会社/担当者/連絡先/通知設定/任意パスワード変更。新規注文メール通知トグルが `vendor_order_notifications` と連動。
 -  - `/support/shipment-adjustment` で発送後修正申請フォームを提供し、`shipment_adjustment_requests` を作成。
 - **管理者コンソール**:
@@ -69,7 +69,7 @@ app/
   (public)/apply/        セラー申請フォーム
   pending/               審査待ち表示
   orders/                セラー向け注文 UI 一式
-  import/                CSV インポート UI + サーバーアクション
+  import/                CSV preview / validation コード（現行運用スコープ外）
   support/               発送修正申請フォーム
   vendor/profile/        セラープロフィール編集
   admin/                 管理者ダッシュボード / 審査 / セラー管理

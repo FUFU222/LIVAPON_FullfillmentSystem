@@ -1,10 +1,14 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
 import { normalizeShopDomain } from '@/lib/shopify/shop-domains';
+import {
+  assertRequestedShopifyScopesCoverRuntimeNeeds,
+  getRequestedShopifyScopesString,
+  logShopifyScopeAudit
+} from '@/lib/shopify/app-config';
 
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY ?? '';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET ?? '';
-const SHOPIFY_SCOPES = process.env.SHOPIFY_SCOPES ?? 'read_orders,write_orders,read_products,read_customers';
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN ?? '';
 
 const serviceUrl = process.env.SUPABASE_URL;
@@ -81,7 +85,8 @@ export function assertPinnedShopDomain(shop: string): string {
 export function buildShopifyAuthUrl(origin: string, state: string): URL {
   const shop = getConfiguredShopDomain();
   const apiKey = assertEnv(SHOPIFY_API_KEY, 'SHOPIFY_API_KEY');
-  const scopes = SHOPIFY_SCOPES;
+  assertRequestedShopifyScopesCoverRuntimeNeeds();
+  const scopes = getRequestedShopifyScopesString();
   const redirect = new URL('/api/shopify/auth/callback', origin);
 
   const authUrl = new URL(`https://${shop}/admin/oauth/authorize`);
@@ -141,6 +146,12 @@ export async function storeShopifyConnection(
   if (error) {
     throw error;
   }
+
+  logShopifyScopeAudit({
+    shop: normalizedShop,
+    grantedScopes: token.scope,
+    source: 'oauth_callback'
+  });
 }
 
 export async function verifyCallbackHmac(params: URLSearchParams): Promise<boolean> {

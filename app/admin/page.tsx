@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/orders/status-badge';
 import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getRecentOrdersForAdmin } from '@/lib/data/orders';
+import { formatDateTimeInJst } from '@/lib/date-time';
 import {
   listShipmentAdjustmentRequestsForAdmin,
   type AdminShipmentAdjustmentRequest,
@@ -28,14 +29,12 @@ const ACTIVE_SHIPMENT_REQUEST_STATUSES: ShipmentAdjustmentStatus[] = [
 const RESOLVED_SHIPMENT_REQUEST_STATUSES: ShipmentAdjustmentStatus[] = ['resolved'];
 
 function toDisplayDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-  return new Date(value).toLocaleString('ja-JP', {
+  return formatDateTimeInJst(value, {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false
   });
 }
 

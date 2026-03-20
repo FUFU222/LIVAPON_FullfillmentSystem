@@ -56,9 +56,9 @@ describe('shipment adjustment submission admin notification', () => {
     };
 
     expect(payload.to).toBe('ops@example.com');
-    expect(payload.subject).toBe('【LIVAPON】発送修正申請を受け付けました（#1234）');
-    expect(payload.text).toContain('申請ID: 42');
-    expect(payload.text).toContain('申請者アカウント: seller@example.com');
+    expect(payload.subject).toBe('【LIVAPON】発送修正依頼を受け付けました（#1234）');
+    expect(payload.text).toContain('依頼ID: 42');
+    expect(payload.text).toContain('依頼者アカウント: seller@example.com');
     expect(payload.text).toContain('確認URL: https://example.com/console/admin/shipment-requests');
     expect(payload.html).toContain('ops-vendor@example.com');
   });

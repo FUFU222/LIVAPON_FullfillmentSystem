@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { formatDateInJst, formatDateTimeInJst } from '@/lib/date-time';
 import type { VendorDetail } from '@/lib/data/vendors';
 
 const statusLabelMap: Record<VendorDetail['applications'][number]['status'], string> = {
@@ -12,30 +13,6 @@ const statusBadgeClasses: Record<VendorDetail['applications'][number]['status'],
   pending: 'border-slate-200 bg-slate-50 text-slate-600',
   rejected: 'border-red-300 bg-red-50 text-red-600'
 };
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return '-';
-  }
-  return new Date(value).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function formatDate(value: string | null) {
-  if (!value) {
-    return '-';
-  }
-  return new Date(value).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
 
 type Props = {
   vendor: VendorDetail;
@@ -56,7 +33,7 @@ export function AdminVendorDetail({ vendor }: Props) {
         <dl className="grid grid-cols-1 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3">
           <div className="flex flex-col gap-1">
             <dt className="text-xs uppercase tracking-wide text-slate-500">登録日</dt>
-            <dd className="text-slate-700">{formatDateTime(vendor.createdAt)}</dd>
+            <dd className="text-slate-700">{formatDateTimeInJst(vendor.createdAt)}</dd>
           </div>
           <div className="flex flex-col gap-1">
             <dt className="text-xs uppercase tracking-wide text-slate-500">関連注文</dt>
@@ -90,7 +67,7 @@ export function AdminVendorDetail({ vendor }: Props) {
                       {application.companyName}
                     </span>
                     <span className="text-xs text-slate-500">
-                      依頼ID: {application.id} / 依頼日: {formatDate(application.createdAt)}
+                      依頼ID: {application.id} / 依頼日: {formatDateInJst(application.createdAt)}
                     </span>
                   </div>
                   <Badge className={statusBadgeClasses[application.status]}>
@@ -117,7 +94,7 @@ export function AdminVendorDetail({ vendor }: Props) {
           </div>
                   <div className="flex flex-col gap-1">
                     <dt className="text-xs uppercase tracking-wide text-slate-500">対応日時</dt>
-                    <dd className="text-slate-700">{formatDateTime(application.reviewedAt)}</dd>
+                    <dd className="text-slate-700">{formatDateTimeInJst(application.reviewedAt)}</dd>
                   </div>
                 </dl>
 

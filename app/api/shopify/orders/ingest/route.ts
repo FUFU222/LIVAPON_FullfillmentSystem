@@ -3,6 +3,7 @@ import { isRegisteredShopDomain } from '@/lib/shopify/shop-domains';
 import { getWebhookSecretMetadata, verifyShopifyWebhook } from '@/lib/shopify/hmac';
 import { enqueueWebhookJob } from '@/lib/data/webhook-jobs';
 import { processWebhookJobs } from '@/lib/jobs/webhook-runner';
+import { SHOPIFY_ORDER_WEBHOOK_TOPICS } from '@/lib/shopify/app-config';
 import { SUPPORTED_TOPICS, FULFILLMENT_ORDER_TOPICS } from '@/lib/shopify/webhook-processor';
 import { syncFulfillmentOrderMetadata } from '@/lib/data/orders';
 import { resolveShopifyOrderIdFromFulfillmentOrder } from '@/lib/shopify/fulfillment';
@@ -12,7 +13,7 @@ export const runtime = 'nodejs';
 
 const INLINE_PROCESSING_ENABLED = process.env.ENABLE_INLINE_WEBHOOK_PROCESSING !== 'false';
 const INLINE_BATCH_LIMIT = Math.max(1, Math.min(Number(process.env.INLINE_WEBHOOK_BATCH ?? '1'), 10));
-const ORDER_STATUS_TOPICS = new Set(['orders/create', 'orders/updated', 'orders/cancelled', 'orders/fulfilled']);
+const ORDER_STATUS_TOPICS: ReadonlySet<string> = new Set(SHOPIFY_ORDER_WEBHOOK_TOPICS);
 
 export async function POST(request: Request) {
   const secretMetadata = await getWebhookSecretMetadata();

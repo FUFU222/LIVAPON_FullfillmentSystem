@@ -1,4 +1,5 @@
 import { assertServiceClient } from '@/lib/data/orders/clients';
+import { compareTimestampsAsc } from '@/lib/date-time';
 import { ACTIVE_SHIPMENT_ADJUSTMENT_STATUSES } from '@/lib/shipment-adjustment/constants';
 import type { Database } from '@/lib/supabase/types';
 
@@ -65,7 +66,7 @@ function mapAdminRequest(
 ): AdminShipmentAdjustmentRequest {
   const comments = (record.shipment_adjustment_comments ?? [])
     .map(mapComment)
-    .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+    .sort((a, b) => compareTimestampsAsc(a.createdAt, b.createdAt));
 
   return {
     id: record.id,

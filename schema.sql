@@ -9,6 +9,7 @@ CREATE TABLE vendors (
   name VARCHAR(255) NOT NULL,
   contact_name VARCHAR(255),
   contact_email VARCHAR(255),
+  notification_emails TEXT[] NOT NULL DEFAULT '{}' CHECK (COALESCE(array_length(notification_emails, 1), 0) <= 2),
   contact_phone VARCHAR(100),
   notify_new_orders BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT NOW()
@@ -29,9 +30,9 @@ CREATE TABLE vendor_applications (
   vendor_id INT REFERENCES vendors(id),
   reviewer_id UUID,
   reviewer_email VARCHAR(255),
-  reviewed_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Shopify注文
@@ -51,8 +52,8 @@ CREATE TABLE orders (
   shipping_address2 VARCHAR(255),
   status VARCHAR(50) DEFAULT 'unfulfilled', -- Fulfilled / Partially Fulfilled / Unfulfilled
   archived_at TIMESTAMPTZ,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
   , last_updated_source TEXT NOT NULL DEFAULT 'console'
   , last_updated_by UUID
 );
@@ -120,9 +121,9 @@ CREATE TABLE shipments (
   tracking_url TEXT,
   shopify_fulfillment_id BIGINT,
   status VARCHAR(50) DEFAULT 'in_transit',
-  shipped_at TIMESTAMP DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
+  shipped_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   sync_status VARCHAR(32) DEFAULT 'pending',
   synced_at TIMESTAMPTZ,
   sync_error TEXT,
@@ -248,6 +249,9 @@ CREATE INDEX idx_shipments_tracking_number ON shipments(tracking_number);
 CREATE INDEX idx_vendor_skus_vendor_id ON vendor_skus(vendor_id);
 CREATE INDEX idx_vendor_applications_status ON vendor_applications(status);
 CREATE INDEX idx_vendor_applications_vendor_code ON vendor_applications(vendor_code);
+CREATE UNIQUE INDEX idx_vendor_applications_pending_email_unique
+ON vendor_applications((LOWER(contact_email)))
+WHERE status = 'pending';
 CREATE INDEX idx_shipments_vendor_id ON shipments(vendor_id);
 CREATE INDEX idx_shipment_line_items_line_item_id ON shipment_line_items(line_item_id);
 CREATE INDEX idx_shipment_import_jobs_vendor_id ON shipment_import_jobs(vendor_id);
@@ -258,18 +262,27 @@ CREATE INDEX idx_shipment_import_job_items_vendor_id ON shipment_import_job_item
 CREATE INDEX idx_shipment_import_job_items_status ON shipment_import_job_items(status);
 CREATE INDEX idx_orders_shop_domain ON orders(shop_domain);
 CREATE INDEX idx_orders_shopify_fo_id ON orders(shopify_fulfillment_order_id);
+CREATE INDEX idx_orders_vendor_id_order_number ON orders(vendor_id, order_number);
 CREATE INDEX idx_line_items_fo_line_item_id ON line_items(fulfillment_order_line_item_id);
+CREATE INDEX idx_line_items_order_id_vendor_id ON line_items(order_id, vendor_id);
 CREATE INDEX idx_shipments_order_id ON shipments(order_id);
 CREATE INDEX idx_shipments_shopify_fulfillment_id ON shipments(shopify_fulfillment_id);
 CREATE INDEX idx_shipments_sync_status ON shipments(sync_status);
+CREATE INDEX idx_shipments_vendor_id_shipped_at_created_at ON shipments(vendor_id, shipped_at DESC, created_at DESC);
+CREATE INDEX idx_shipments_sync_status_pending_until ON shipments(sync_status, sync_pending_until);
 CREATE INDEX idx_shipment_line_items_fo_line_item_id ON shipment_line_items(fulfillment_order_line_item_id);
 CREATE INDEX idx_shipment_adjustment_requests_vendor_id ON shipment_adjustment_requests(vendor_id);
 CREATE INDEX idx_shipment_adjustment_requests_status ON shipment_adjustment_requests(status);
+CREATE INDEX idx_shipment_adjustment_requests_vendor_id_created_at
+ON shipment_adjustment_requests(vendor_id, created_at DESC);
+CREATE INDEX idx_shipment_adjustment_requests_status_created_at
+ON shipment_adjustment_requests(status, created_at DESC);
 CREATE INDEX idx_shipment_adjustment_requests_assigned_admin_id ON shipment_adjustment_requests(assigned_admin_id);
 CREATE INDEX idx_shipment_adjustment_comments_request_id ON shipment_adjustment_comments(request_id);
 CREATE INDEX idx_shipment_adjustment_comments_vendor_id ON shipment_adjustment_comments(vendor_id);
 CREATE INDEX idx_shipment_cancellation_logs_vendor_id ON shipment_cancellation_logs(vendor_id);
 CREATE INDEX idx_shipment_cancellation_logs_order_id ON shipment_cancellation_logs(order_id);
+CREATE INDEX idx_shipment_import_job_items_job_id_status_id ON shipment_import_job_items(job_id, status, id);
 
 -- RLS / Realtime settings
 ALTER TABLE vendors ENABLE ROW LEVEL SECURITY;

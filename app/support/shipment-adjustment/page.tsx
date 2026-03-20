@@ -1,8 +1,7 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { getAuthContext, assertAuthorizedVendor } from '@/lib/auth';
+import { formatDateTimeInJst } from '@/lib/date-time';
 import { getVendorProfile } from '@/lib/data/vendors';
 import { ShipmentAdjustmentForm } from '@/components/support/shipment-adjustment-form';
 import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
@@ -65,16 +64,6 @@ export default async function ShipmentAdjustmentPage() {
     )
   }));
 
-  const formatDate = (value: string | null) => {
-    if (!value) return '-';
-    try {
-      return format(new Date(value), 'yyyy/MM/dd HH:mm', { locale: ja });
-    } catch (error) {
-      console.warn('Failed to format date', error);
-      return value ?? '-';
-    }
-  };
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
       <div className="space-y-2">
@@ -104,7 +93,7 @@ export default async function ShipmentAdjustmentPage() {
                     <span className="font-medium text-foreground">
                       注文 {request.orderNumber}
                     </span>
-                    <span>最終更新: {formatDate(request.updatedAt)}</span>
+                    <span>最終更新: {formatDateTimeInJst(request.updatedAt)}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-slate-500">対応状況</span>
@@ -136,7 +125,7 @@ export default async function ShipmentAdjustmentPage() {
                           <div key={comment.id} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                             <div className="flex justify-between text-xs text-slate-500">
                               <span>{comment.author_role ?? 'admin'}</span>
-                              <span>{formatDate(comment.created_at)}</span>
+                              <span>{formatDateTimeInJst(comment.created_at)}</span>
                             </div>
                             <p className="mt-1 whitespace-pre-wrap text-slate-700">{comment.body}</p>
                           </div>

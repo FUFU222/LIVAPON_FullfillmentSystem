@@ -63,6 +63,9 @@ describe('shopify oauth domain pinning', () => {
 
     expect(url.toString().startsWith('https://allowed-shop.myshopify.com/admin/oauth/authorize?')).toBe(true);
     expect(url.searchParams.get('client_id')).toBe('test-api-key');
+    expect(url.searchParams.get('scope')).toBe(
+      'read_merchant_managed_fulfillment_orders,read_orders,write_merchant_managed_fulfillment_orders,write_orders'
+    );
     expect(url.searchParams.get('state')).toBe('state-123');
     expect(url.searchParams.get('redirect_uri')).toBe(
       'https://app.example.com/api/shopify/auth/callback'

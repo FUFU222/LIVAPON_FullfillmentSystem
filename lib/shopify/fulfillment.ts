@@ -1,9 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
 import { getShopifyServiceClient } from '@/lib/shopify/service-client';
+import { logShopifyScopeAudit, normalizeShopifyScopes } from '@/lib/shopify/app-config';
 
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_ADMIN_API_VERSION ?? '2025-10';
 const DEFAULT_SHOP_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN ?? '';
+const GRANTED_SCOPE_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const grantedScopeCache = new Map<string, { scopes: string | null; expiresAt: number }>();
 
 function normalizeShopDomain(domain: string | null | undefined): string | null {
   if (!domain) return null;
@@ -38,7 +42,7 @@ export async function loadShopifyAccessToken(
 
   const { data, error } = await client
     .from('shopify_connections')
-    .select('access_token')
+    .select('access_token, scopes')
     .eq('shop', normalized)
     .maybeSingle();
 
@@ -50,7 +54,120 @@ export async function loadShopifyAccessToken(
     throw new Error(`Shopify shop ${normalized} is not authorized`);
   }
 
+  const grantedScopes = await resolveGrantedShopifyScopes(client, normalized, data.access_token, data.scopes);
+
+  logShopifyScopeAudit({
+    shop: normalized,
+    grantedScopes,
+    source: 'load_access_token'
+  });
+
   return data.access_token;
+}
+
+async function resolveGrantedShopifyScopes(
+  client: SupabaseClient<Database>,
+  shop: string,
+  accessToken: string,
+  storedScopes: string | null
+): Promise<string | null> {
+  const cacheKey = `${shop}:${accessToken}`;
+  const cached = grantedScopeCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && cached.expiresAt > now) {
+    return cached.scopes;
+  }
+
+  try {
+    const refreshedScopes = await fetchCurrentAppInstallationScopes(shop, accessToken);
+    const normalizedStored = normalizeScopeString(storedScopes);
+    const normalizedRefreshed = normalizeScopeString(refreshedScopes);
+
+    if (normalizedRefreshed !== normalizedStored) {
+      const { error } = await client
+        .from('shopify_connections')
+        .update({
+          scopes: normalizedRefreshed || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('shop', shop);
+
+      if (error) {
+        console.error('Failed to refresh stored Shopify scope metadata', {
+          shop,
+          error
+        });
+      }
+    }
+
+    grantedScopeCache.set(cacheKey, {
+      scopes: normalizedRefreshed || null,
+      expiresAt: now + GRANTED_SCOPE_CACHE_TTL_MS
+    });
+
+    return normalizedRefreshed || null;
+  } catch (error) {
+    console.warn('Failed to fetch current Shopify granted scopes; using stored metadata', {
+      shop,
+      error
+    });
+    return storedScopes;
+  }
+}
+
+async function fetchCurrentAppInstallationScopes(shop: string, accessToken: string): Promise<string> {
+  const normalized = normalizeShopDomain(shop);
+  if (!normalized) {
+    throw new Error('Invalid Shopify shop domain');
+  }
+
+  const url = new URL(`/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, `https://${normalized}`);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': accessToken,
+      Accept: 'application/json'
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      query: 'query { currentAppInstallation { accessScopes { handle } } }'
+    })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Shopify currentAppInstallation query failed: ${response.status} ${text}`);
+  }
+
+  const json = await response.json() as {
+    data?: {
+      currentAppInstallation?: {
+        accessScopes?: Array<{ handle?: string | null }>;
+      } | null;
+    };
+    errors?: Array<{ message?: string }>;
+  };
+
+  if (Array.isArray(json.errors) && json.errors.length > 0) {
+    throw new Error(
+      `Shopify currentAppInstallation query returned errors: ${json.errors
+        .map((error) => error.message || 'Unknown error')
+        .join(', ')}`
+    );
+  }
+
+  const scopes = json.data?.currentAppInstallation?.accessScopes ?? [];
+  return normalizeScopeString(
+    scopes
+      .map((scope) => scope.handle ?? null)
+      .filter((scope): scope is string => typeof scope === 'string' && scope.trim().length > 0)
+  );
+}
+
+function normalizeScopeString(scopes: string | string[] | null | undefined): string {
+  return normalizeShopifyScopes(scopes).join(',');
 }
 
 type ShopifyApiError = Error & { status?: number };

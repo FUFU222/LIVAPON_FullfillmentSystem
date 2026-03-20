@@ -9,7 +9,7 @@
 - `orders` — Shopify `order_id`, `shopify_fulfillment_order_id`, `shop_domain`。
 
 ## フロー概要
-1. セラーが UI / CSV / API で発送登録。
+1. セラーが UI / API で発送登録。CSV 関連コードは残るが、現行運用スコープには含めない。
 2. `upsertShipment`
    - Line Item 権限を検証。
    - Shipment と pivot を作成・更新。
@@ -24,7 +24,7 @@
    - `sync_error` にメッセージ、`sync_retry_count += 1`。
    - `sync_pending_until` を指数バックオフで未来に設定（5, 10, 20, ... 最大 60 分）。
 5. Shopify から FO 関連 Webhook を受信すると `triggerShipmentResyncForShopifyOrder` が対象注文の `sync_status='pending'` を再実行。
-6. セラーが発送取消すると `cancelShipment` が Shopify Fulfillment をキャンセルし、Supabase レコードを削除。注文の残件が無ければ `orders.status` を `unfulfilled` に戻す。
+6. 発送後の修正や取消が必要な場合は、`/support/shipment-adjustment` 経由で管理者が判断する。`cancelShipment` はバックエンド capability として残るが、セラー向け self-service UI は提供しない。
 
 ## エラーパターン & 対応
 | 種類 | 想定原因 | 対応 |
@@ -36,10 +36,10 @@
 
 ## UI との連携
 - `OrdersDispatchTable` / `OrdersDispatchPanel` がラインアイテム選択と発送登録（追跡番号・配送会社入力、確認モーダル、Toast）を担う。
-- `ShipmentHistoryTable` は `sync_status`, `sync_error`, `shipped_at` を表示（エラー時は Tooltip で詳細予定）。
-- 手動再同期・取消ボタンは今後追加予定（バックログ参照）。
+- `ShipmentHistoryTable` は発送履歴の参照と、修正依頼フローへの導線を担う。
+- セラー向けの手動再同期・取消ボタンは現行スコープ外。
 
-## 今後の耐障害強化
-- `sync_pending_until <= NOW()` の Shipment をバッチ再送するワーカー。
+## 耐障害運用 / 今後候補
+- `sync_pending_until <= NOW()` の Shipment は GitHub Actions + `/api/internal/shipments/resync` でバッチ再送する。
 - Shopify API レスポンスログを `shipments_sync_logs` テーブルに保存し、成功/失敗のトレースを容易にする。
 - 通知（Slack/メール）で `sync_status='error'` を監視。

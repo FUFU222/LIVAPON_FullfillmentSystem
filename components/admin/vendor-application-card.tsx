@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
+import { formatDateTimeInJst } from '@/lib/date-time';
 import type { VendorApplication } from '@/lib/data/vendors';
 
 function SubmitButton({ children, pendingLabel, variant = 'default' }: { children: string; pendingLabel: string; variant?: 'default' | 'outline' | 'ghost' }) {
@@ -43,20 +44,7 @@ function ActionMessage({ state }: { state: AdminActionState }) {
 }
 
 function formatDateTime(value: string | null | undefined): string {
-  if (!value) {
-    return '-';
-  }
-  try {
-    return new Date(value).toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  } catch {
-    return value;
-  }
+  return formatDateTimeInJst(value);
 }
 
 function ApprovalSuccessDialog({

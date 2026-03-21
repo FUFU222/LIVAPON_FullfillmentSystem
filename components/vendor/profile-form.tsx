@@ -1,7 +1,7 @@
 'use client';
 
 import { Bell, Building2, KeyRound, type LucideIcon } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -9,9 +9,10 @@ import { updateVendorProfileAction } from '@/app/vendor/profile/actions';
 import type { VendorProfileActionState } from '@/app/vendor/profile/actions';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/toast-provider';
+import { cn } from '@/lib/utils';
 
 export type VendorProfileInitialValues = {
   companyName: string;
@@ -61,6 +62,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
   const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
   const router = useRouter();
+  const [notifyNewOrdersEnabled, setNotifyNewOrdersEnabled] = useState(initial.notifyNewOrders);
   const notificationEmailValues = NOTIFICATION_EMAIL_INPUT_IDS.map(
     (_inputId, index) => initial.notificationEmails[index] ?? ''
   );
@@ -88,6 +90,10 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
       });
     }
   }, [router, showToast, state.fieldErrors, state.message, state.status, state.submissionId]);
+
+  useEffect(() => {
+    setNotifyNewOrdersEnabled(initial.notifyNewOrders);
+  }, [initial.notifyNewOrders]);
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-6" onKeyDown={handleFormKeyDown}>
@@ -149,20 +155,28 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         )}
       </div>
 
-      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4">
+      <div
+        className={cn(
+          'grid gap-4 rounded-lg border p-4 transition-colors duration-150',
+          notifyNewOrdersEnabled
+            ? 'border-amber-200 bg-amber-50/40'
+            : 'border-slate-200 bg-white'
+        )}
+      >
         <SectionHeading
           icon={Bell}
           title="通知設定"
           description="主通知先と追加2件までを設定できます。"
         />
 
-        <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <Checkbox
-            id="notifyNewOrders"
-            name="notifyNewOrders"
-            defaultChecked={initial.notifyNewOrders}
-            className="mt-1"
-          />
+        <div
+          className={cn(
+            'flex items-center justify-between gap-4 rounded-lg border p-3 transition-colors duration-150',
+            notifyNewOrdersEnabled
+              ? 'border-amber-200 bg-amber-50'
+              : 'border-slate-200 bg-slate-50'
+          )}
+        >
           <div className="text-sm text-slate-600">
             <label htmlFor="notifyNewOrders" className="font-medium text-foreground">
               新規注文メール通知
@@ -171,6 +185,13 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
               主通知先と追加通知先へ送信します。
             </p>
           </div>
+          <Switch
+            id="notifyNewOrders"
+            name="notifyNewOrders"
+            checked={notifyNewOrdersEnabled}
+            onChange={(event) => setNotifyNewOrdersEnabled(event.target.checked)}
+            aria-label="新規注文メール通知"
+          />
         </div>
 
         <div className="grid gap-2">

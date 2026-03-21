@@ -28,6 +28,8 @@ const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
   submissionId: null
 };
 
+const NOTIFICATION_EMAIL_INPUT_IDS = ['notificationEmail1', 'notificationEmail2'] as const;
+
 function shouldPreventEnterSubmit(event: ReactKeyboardEvent<HTMLFormElement>) {
   if (event.key !== 'Enter') {
     return false;
@@ -58,7 +60,9 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
   const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
   const router = useRouter();
-  const notificationEmailValues = Array.from({ length: 2 }, (_value, index) => initial.notificationEmails[index] ?? '');
+  const notificationEmailValues = NOTIFICATION_EMAIL_INPUT_IDS.map(
+    (_inputId, index) => initial.notificationEmails[index] ?? ''
+  );
 
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
     if (shouldPreventEnterSubmit(event)) {
@@ -183,8 +187,8 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
             連絡先メールアドレスに加えて、最大2件まで注文通知の送信先を追加できます。
           </p>
         </div>
-        {notificationEmailValues.map((value, index) => {
-          const inputId = `notificationEmail${index + 1}` as const;
+        {NOTIFICATION_EMAIL_INPUT_IDS.map((inputId, index) => {
+          const value = notificationEmailValues[index];
           const errorMessage = state.fieldErrors?.[inputId];
 
           return (

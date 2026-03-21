@@ -133,7 +133,7 @@ function isPendingVendorApplicationUniqueViolation(error: unknown): boolean {
   return databaseError.code === '23505'
     && (
       databaseError.constraint === 'idx_vendor_applications_pending_email_unique'
-      || databaseError.message?.includes('idx_vendor_applications_pending_email_unique')
+      || databaseError.message?.includes('idx_vendor_applications_pending_email_unique') === true
     );
 }
 
@@ -262,7 +262,7 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, contact_name, contact_phone, notify_new_orders, created_at,
+      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, created_at,
        vendor_applications:vendor_applications(
          id, status, company_name, contact_name, contact_email, contact_phone, message,
          reviewer_email, reviewed_at, created_at, updated_at, notes
@@ -319,6 +319,9 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
     name: record.name,
     contactName: record.contact_name ?? null,
     contactEmail: record.contact_email ?? null,
+    notificationEmails: Array.isArray(record.notification_emails)
+      ? record.notification_emails.filter((email): email is string => typeof email === 'string' && email.trim().length > 0)
+      : [],
     contactPhone: record.contact_phone ?? null,
     notifyNewOrders: record.notify_new_orders ?? true,
     createdAt: record.created_at ?? null,
@@ -738,6 +741,7 @@ type VendorWithApplications = {
   code: string | null;
   name: string;
   contact_email: string | null;
+  notification_emails: string[] | null;
   contact_name: string | null;
   contact_phone: string | null;
   created_at: string | null;
@@ -803,6 +807,9 @@ function mapVendorsWithApplications(
       name: lastApplication?.companyName ?? vendor.name,
       contactName: vendor.contact_name,
       contactEmail: vendor.contact_email,
+      notificationEmails: Array.isArray(vendor.notification_emails)
+        ? vendor.notification_emails.filter((email): email is string => typeof email === 'string' && email.trim().length > 0)
+        : [],
       contactPhone: vendor.contact_phone ?? null,
       notifyNewOrders: vendor.notify_new_orders ?? true,
       createdAt: vendor.created_at,
@@ -817,7 +824,7 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, contact_name, contact_phone, notify_new_orders, created_at,
+      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, created_at,
        vendor_applications:vendor_applications(
           id, status, reviewed_at, reviewer_email, auth_user_id, company_name, contact_phone, created_at
        )`
@@ -838,7 +845,7 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, contact_name, contact_phone, notify_new_orders, created_at,
+      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, created_at,
        vendor_applications:vendor_applications(
          id, status, reviewed_at, reviewer_email, auth_user_id, company_name, contact_phone, created_at
        )`

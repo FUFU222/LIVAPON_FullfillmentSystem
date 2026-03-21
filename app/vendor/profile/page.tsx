@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { GradientAvatar } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { VendorProfileForm } from '@/components/vendor/profile-form';
 import { OrdersRealtimeProvider } from '@/components/orders/orders-realtime-context';
@@ -57,20 +56,6 @@ export default async function VendorProfilePage() {
                 <CardDescription>
                   連絡先、通知先、パスワードをここで更新できます。
                 </CardDescription>
-                <div className="flex flex-wrap gap-2">
-                  {vendor.code ? (
-                    <Badge className="border-slate-200 bg-slate-50 text-slate-600 normal-case tracking-normal">
-                      セラーコード {vendor.code}
-                    </Badge>
-                  ) : null}
-                  <Badge
-                    className={notifyNewOrders
-                      ? 'border-amber-200 bg-amber-50 text-amber-700 normal-case tracking-normal'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 normal-case tracking-normal'}
-                  >
-                    {notifyNewOrders ? '注文通知 ON' : '注文通知 OFF'}
-                  </Badge>
-                </div>
               </div>
             </div>
           </CardHeader>

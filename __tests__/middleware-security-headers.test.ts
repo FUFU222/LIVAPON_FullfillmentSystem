@@ -18,7 +18,7 @@ jest.mock('next/server', () => {
   return { NextResponse: MockNextResponse };
 });
 
-import { middleware } from '@/middleware';
+import { proxy } from '@/proxy';
 
 function buildRequest(pathname: string) {
   return {
@@ -26,7 +26,7 @@ function buildRequest(pathname: string) {
   } as unknown as import('next/server').NextRequest;
 }
 
-describe('middleware security headers', () => {
+describe('proxy security headers', () => {
   const previousNodeEnv = process.env.NODE_ENV;
 
   afterEach(() => {
@@ -34,7 +34,7 @@ describe('middleware security headers', () => {
   });
 
   it('adds CSP header for normal requests', () => {
-    const response = middleware(buildRequest('/orders'));
+    const response = proxy(buildRequest('/orders'));
 
     expect(response.headers.get('Content-Security-Policy')).toContain("default-src 'self'");
     expect(response.headers.get('X-Frame-Options')).toBe('DENY');
@@ -43,7 +43,7 @@ describe('middleware security headers', () => {
   it('returns 404 on /dev paths in production and keeps security headers', () => {
     process.env.NODE_ENV = 'production';
 
-    const response = middleware(buildRequest('/dev/tools'));
+    const response = proxy(buildRequest('/dev/tools'));
 
     expect(response.status).toBe(404);
     expect(response.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");

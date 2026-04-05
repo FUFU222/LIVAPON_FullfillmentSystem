@@ -22,7 +22,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Content-Security-Policy': CONTENT_SECURITY_POLICY
 };
 
-export function middleware(_request: NextRequest) {
+export function proxy(_request: NextRequest) {
   if (process.env.NODE_ENV === 'production' && _request.nextUrl.pathname.startsWith('/dev')) {
     const response = new NextResponse('Not Found', { status: 404 });
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) {

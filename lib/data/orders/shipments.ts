@@ -60,12 +60,14 @@ export async function resyncPendingShipments(options?: { limit?: number }): Prom
   const limit = Math.max(1, Math.min(100, normalizedLimit ?? 10));
   const client = assertServiceClient();
   const nowIso = new Date().toISOString();
+  const staleProcessingBeforeIso = new Date(Date.now() - 15 * 60_000).toISOString();
 
   const { data, error } = await client
     .from('shipments')
-    .select('id')
-    .in('sync_status', ['pending', 'error'])
-    .or(`sync_pending_until.is.null,sync_pending_until.lte.${nowIso}`)
+    .select('id, sync_status, updated_at')
+    .or(
+      `and(sync_status.in.(pending,error),or(sync_pending_until.is.null,sync_pending_until.lte.${nowIso})),and(sync_status.eq.processing,updated_at.lte.${staleProcessingBeforeIso})`
+    )
     .order('sync_pending_until', { ascending: true, nullsFirst: true })
     .limit(limit);
 
@@ -83,14 +85,18 @@ export async function resyncPendingShipments(options?: { limit?: number }): Prom
 
   for (const shipment of shipments) {
     try {
+      const statusFrom = shipment.sync_status === 'processing' ? 'processing' : 'pending';
       await recordShipmentSyncEvent(client, {
         shipmentId: shipment.id,
         orderId: null,
         vendorId: null,
         eventType: 'sync_started',
-        statusFrom: 'pending',
+        statusFrom,
         statusTo: 'processing',
-        actorType: 'worker'
+        actorType: 'worker',
+        metadata: {
+          recoveredStaleProcessing: shipment.sync_status === 'processing'
+        }
       });
       await syncShipmentWithShopify(shipment.id);
       await recordShipmentSyncEvent(client, {

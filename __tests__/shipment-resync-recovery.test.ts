@@ -29,26 +29,28 @@ function createResyncClient() {
     eq: jest.fn().mockResolvedValue({ error: null })
   }));
   const eventInsert = jest.fn().mockResolvedValue({ error: null });
+  let listBuilder: any;
+  let firstListBuilder: any;
 
   const client = {
     from: jest.fn((table: string) => {
       if (table === 'shipments') {
-        const listBuilder: any = {
+        listBuilder = {
           select: jest.fn((columns: string) => {
-            if (columns === 'id') {
+            if (columns === 'id, sync_status, updated_at') {
               return listBuilder;
             }
             return detailBuilder;
           }),
-          in: jest.fn(() => listBuilder),
           or: jest.fn(() => listBuilder),
           order: jest.fn(() => listBuilder),
           limit: jest.fn().mockResolvedValue({
-            data: [{ id: 7001 }],
+            data: [{ id: 7001, sync_status: 'processing', updated_at: '2026-03-18T09:45:03.070Z' }],
             error: null
           }),
           update: shipmentUpdate
         };
+        firstListBuilder ??= listBuilder;
 
         const detailBuilder: any = {
           eq: jest.fn(() => detailBuilder),
@@ -75,7 +77,7 @@ function createResyncClient() {
     })
   };
 
-  return { client, shipmentUpdate, eventInsert };
+  return { client, listBuilder: () => firstListBuilder, shipmentUpdate, eventInsert };
 }
 
 describe('resyncPendingShipments recovery', () => {
@@ -84,12 +86,14 @@ describe('resyncPendingShipments recovery', () => {
   });
 
   it('marks failed Shopify sync attempts as error instead of leaving processing', async () => {
-    const { client, shipmentUpdate, eventInsert } = createResyncClient();
+    const { client, listBuilder, shipmentUpdate, eventInsert } = createResyncClient();
     assertServiceClient.mockReturnValue(client);
     syncShipmentWithShopify.mockRejectedValue(new Error('Shopify API 403: missing scope'));
 
     const summary = await resyncPendingShipments({ limit: 1 });
 
+    expect(client.from).toHaveBeenCalledWith('shipments');
+    expect(listBuilder().or).toHaveBeenCalledWith(expect.stringContaining('sync_status.eq.processing'));
     expect(summary).toEqual({
       total: 1,
       succeeded: 0,

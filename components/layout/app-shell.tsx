@@ -5,6 +5,17 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import {
+  ClipboardList,
+  FileText,
+  History,
+  LayoutDashboard,
+  Package,
+  PenLine,
+  UserRound,
+  UsersRound,
+  type LucideIcon
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   ACTIVE_SHIPMENT_ADJUSTMENT_STATUSES,
@@ -46,6 +57,66 @@ const adminNavItems = [
 
 const publicNavItems = [{ href: '/apply', label: '利用申請' }];
 const pendingNavItems = [{ href: '/pending', label: '審査状況' }];
+
+type MobileNavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: number;
+};
+
+function getMobileNavItems({
+  status,
+  role,
+  vendorId,
+  adminActiveShipmentRequestCount,
+  adminPendingVendorApplicationCount
+}: {
+  status: 'loading' | 'signed-in' | 'signed-out';
+  role: string | null;
+  vendorId: number | null;
+  adminActiveShipmentRequestCount: number;
+  adminPendingVendorApplicationCount: number;
+}): MobileNavItem[] {
+  if (status !== 'signed-in') {
+    return [];
+  }
+
+  if (role === 'admin') {
+    return [
+      { href: '/admin', label: '管理', icon: LayoutDashboard },
+      { href: '/admin/orders', label: '注文', icon: ClipboardList },
+      {
+        href: '/admin/applications',
+        label: '申請',
+        icon: FileText,
+        badge: adminPendingVendorApplicationCount
+      },
+      {
+        href: '/admin/shipment-requests',
+        label: '修正',
+        icon: PenLine,
+        badge: adminActiveShipmentRequestCount
+      },
+      { href: '/admin/vendors', label: 'セラー', icon: UsersRound }
+    ];
+  }
+
+  if (vendorId) {
+    return [
+      { href: '/orders', label: '注文', icon: Package },
+      { href: '/orders/shipments', label: '履歴', icon: History },
+      { href: '/support/shipment-adjustment', label: '修正', icon: PenLine },
+      { href: '/vendor/profile', label: '会社', icon: UserRound }
+    ];
+  }
+
+  if (role === 'pending_vendor') {
+    return [{ href: '/pending', label: '審査', icon: FileText }];
+  }
+
+  return [];
+}
 
 function isNavActive(pathname: string | null, href: string) {
   if (!pathname) {
@@ -391,6 +462,14 @@ function AppShellContent({
 
     return publicNavItems;
   })();
+  const mobileNavItems = getMobileNavItems({
+    status,
+    role,
+    vendorId,
+    adminActiveShipmentRequestCount,
+    adminPendingVendorApplicationCount
+  });
+  const hasMobileBottomNav = mobileNavItems.length > 0;
 
   const { beginNavigation } = useNavigationOverlay();
   const navigationFallbackTimerRef = useRef<number | null>(null);
@@ -485,10 +564,10 @@ function AppShellContent({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="relative z-30 border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between md:gap-6 md:px-6 md:py-4">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-3 py-2 sm:px-4 md:gap-6 md:px-6 md:py-4">
           <Link
             href={brandHref}
-            className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground sm:gap-3"
+            className="flex min-w-0 shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-foreground sm:gap-3"
             onClick={(event) => handleNavigation(event, brandHref)}
           >
             <Image
@@ -497,18 +576,26 @@ function AppShellContent({
               width={192}
               height={40}
               priority
-              className="h-12 w-auto sm:h-14 md:h-[4.5rem]"
+              className="h-auto w-20 sm:w-24 md:w-36"
+              style={{ height: 'auto' }}
             />
-            <span className="hidden text-base font-semibold text-slate-500 sm:inline">配送管理システム</span>
+            <span className="hidden text-base font-semibold text-slate-500 md:inline">配送管理システム</span>
           </Link>
-          <div className="flex w-full items-center justify-between gap-3 text-sm md:w-auto md:justify-end md:gap-4">
-            <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pb-1 md:flex-none md:overflow-visible md:pb-0">
-            {links
+          <div className="flex min-w-0 items-center justify-end gap-2 text-sm md:w-auto md:gap-4">
+            <nav
+              aria-label="主要ナビゲーション"
+              className={cn(
+                'min-w-0 items-center gap-1 md:flex-none md:overflow-visible md:pb-0',
+                hasMobileBottomNav ? 'hidden md:flex' : 'flex'
+              )}
+            >
+              {links
                 .filter((item) => item.href !== '/import')
                 .map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isNavActive(pathname ?? null, item.href) ? 'page' : undefined}
                     className={cn(
                       'inline-flex items-center whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98] sm:px-3 sm:py-2 sm:text-sm',
                       isNavActive(pathname ?? null, item.href)
@@ -549,12 +636,22 @@ function AppShellContent({
         </div>
       </header>
       <div className="relative mx-auto flex w-full max-w-6xl flex-1">
-        <main className="flex w-full flex-1 flex-col gap-6 px-3 py-4 sm:px-4 sm:py-5 md:gap-8 md:px-6 md:py-6">
+        <main
+          className={cn(
+            'flex w-full flex-1 flex-col gap-6 px-3 pb-4 pt-4 sm:px-4 sm:pb-5 sm:pt-5 md:gap-8 md:px-6 md:py-6',
+            hasMobileBottomNav && 'pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pb-6'
+          )}
+        >
           {children}
         </main>
         <NavigationOverlayLayer />
       </div>
-      <footer className="border-t border-slate-200 bg-white">
+      <footer
+        className={cn(
+          'border-t border-slate-200 bg-white',
+          hasMobileBottomNav && 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0'
+        )}
+      >
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-3 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-4 md:px-6">
           <span>© {new Date().getFullYear()} LIVAPON Logistics</span>
           <nav className="flex gap-4">
@@ -567,7 +664,73 @@ function AppShellContent({
           </nav>
         </div>
       </footer>
+      {hasMobileBottomNav ? (
+        <MobileBottomNav
+          items={mobileNavItems}
+          pathname={pathname ?? null}
+          onNavigate={handleNavigation}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function MobileBottomNav({
+  items,
+  pathname,
+  onNavigate
+}: {
+  items: MobileNavItem[];
+  pathname: string | null;
+  onNavigate: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
+}) {
+  return (
+    <nav
+      aria-label="モバイル主要ナビ"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
+    >
+      <div
+        className={cn(
+          'mx-auto grid max-w-6xl gap-1 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2',
+          items.length === 5 ? 'grid-cols-5' : items.length === 4 ? 'grid-cols-4' : 'grid-cols-1'
+        )}
+      >
+        {items.map((item) => {
+          const Icon = item.icon;
+          const active = isNavActive(pathname, item.href);
+          const badge = typeof item.badge === 'number' && item.badge > 0
+            ? item.badge > 99
+              ? '99+'
+              : String(item.badge)
+            : null;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40',
+                active
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+              )}
+              onClick={(event) => onNavigate(event, item.href)}
+            >
+              <span className="relative inline-flex">
+                <Icon className="h-5 w-5" aria-hidden="true" strokeWidth={2.1} />
+                {badge ? (
+                  <span className="absolute -right-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold leading-4 text-white ring-2 ring-white">
+                    {badge}
+                  </span>
+                ) : null}
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 

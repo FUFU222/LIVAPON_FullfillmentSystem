@@ -63,14 +63,15 @@ describe('OrderTable / OrdersDispatchTable', () => {
 
     render(<OrdersDispatchTable orders={[order]} vendorId={55} />);
 
-    const orderRow = screen.getByText(order.orderNumber).closest('tr');
+    const desktopTable = screen.getByTestId('orders-dispatch-desktop');
+    const orderRow = within(desktopTable).getByText(order.orderNumber).closest('tr');
     expect(orderRow).not.toBeNull();
     fireEvent.click(orderRow!);
 
-    const detailHeader = screen.getByRole('columnheader', { name: '商品 × 数量' });
+    const detailHeader = within(desktopTable).getByRole('columnheader', { name: '商品 × 数量' });
     expect(detailHeader).toBeInTheDocument();
 
-    const detailCell = screen.getByText(/出荷商品A/).closest('td');
+    const detailCell = within(desktopTable).getByText(/出荷商品A/).closest('td');
     expect(detailCell).not.toBeNull();
     expect(within(detailCell!).getByText('× 3')).toBeInTheDocument();
   });
@@ -105,9 +106,33 @@ describe('OrderTable / OrdersDispatchTable', () => {
 
     render(<OrdersDispatchTable orders={[order]} vendorId={55} />);
 
-    const orderRow = screen.getByText(order.orderNumber).closest('tr');
+    const desktopTable = screen.getByTestId('orders-dispatch-desktop');
+    const orderRow = within(desktopTable).getByText(order.orderNumber).closest('tr');
     expect(orderRow).not.toBeNull();
     expect(within(orderRow!).getByText('発送済')).toBeInTheDocument();
     expect(within(orderRow!).queryByText('未発送')).not.toBeInTheDocument();
+  });
+
+  it('OrdersDispatchTable exposes a compact mobile card list without a horizontal table', () => {
+    const order = buildOrder({
+      orderNumber: '#1002',
+      shippingAddressLines: ['〒150-0001', '東京都渋谷区テスト1-2-3'],
+      lineItems: [
+        buildLineItem({ id: 40, productName: 'モバイル商品A', quantity: 1, vendorId: 55 }),
+        buildLineItem({ id: 41, productName: 'モバイル商品B', quantity: 2, vendorId: 55 })
+      ]
+    });
+
+    render(<OrdersDispatchTable orders={[order]} vendorId={55} />);
+
+    const mobileList = screen.getByLabelText('モバイル注文一覧');
+    expect(within(mobileList).getByRole('button', { name: /#1002/ })).toBeInTheDocument();
+    expect(within(mobileList).getByText('発送可能 2件')).toBeInTheDocument();
+    expect(within(mobileList).getByText(/東京都渋谷区テスト1-2-3/)).toBeInTheDocument();
+
+    fireEvent.click(within(mobileList).getByRole('button', { name: /#1002/ }));
+
+    expect(within(mobileList).getByText('モバイル商品A')).toBeInTheDocument();
+    expect(within(mobileList).getByText('× 2')).toBeInTheDocument();
   });
 });

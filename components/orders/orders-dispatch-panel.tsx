@@ -202,23 +202,31 @@ export function OrdersDispatchPanel({
 
   return (
     <>
-      <div className="pointer-events-none fixed bottom-4 left-0 right-0 z-40 flex justify-center px-4">
+      <div
+        data-testid="orders-dispatch-panel-bar"
+        className="pointer-events-none fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 flex justify-center px-3 md:bottom-4 md:px-4"
+      >
         <div className="pointer-events-auto w-full max-w-3xl rounded-2xl border border-slate-200 bg-white/95 px-5 py-4 shadow-xl backdrop-blur">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-1 text-sm text-slate-500">
               <span className="text-xs uppercase text-slate-400">選択中</span>
               <div className="flex items-center gap-2">
-                <div className="flex max-w-[60vw] items-center gap-2 overflow-x-auto">
+                <div
+                  data-testid="orders-dispatch-preview-list"
+                  className="flex max-w-full flex-wrap items-center gap-2 md:max-w-[60vw] md:flex-nowrap md:overflow-x-auto"
+                >
                   {previewItems.map((item) => (
                     <span
                       key={item.lineItemId}
-                      className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600"
+                      className="flex max-w-full items-start gap-2 rounded-md bg-slate-100 px-3 py-1 text-xs text-slate-600 md:items-center md:whitespace-nowrap"
                     >
-                      {item.orderNumber}: {item.productName}
-                      {item.variantTitle ? `（${item.variantTitle}）` : ""}
+                      <span className="min-w-0 break-words">
+                        {item.orderNumber}: {item.productName}
+                        {item.variantTitle ? `（${item.variantTitle}）` : ""}
+                      </span>
                       <button
                         type="button"
-                        className="text-slate-400 transition hover:text-slate-600"
+                        className="shrink-0 text-slate-400 transition hover:text-slate-600"
                         onClick={() => onRemoveLineItem(item.lineItemId)}
                         aria-label={`${item.productName} を選択から外す`}
                       >

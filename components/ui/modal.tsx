@@ -146,7 +146,7 @@ export function Modal({ open, onClose, title, description, children, footer, sho
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-0 sm:items-center sm:px-4"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
@@ -156,14 +156,14 @@ export function Modal({ open, onClose, title, description, children, footer, sho
     >
       <div
         ref={dialogRef}
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl focus:outline-none"
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-lg border border-slate-200 bg-white shadow-xl focus:outline-none sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         tabIndex={-1}
       >
-        <div className="relative flex flex-col gap-4 p-6">
+        <div className="relative flex flex-col gap-4 p-4 sm:p-6">
           {showCloseButton ? (
             <button
               type="button"
@@ -176,7 +176,7 @@ export function Modal({ open, onClose, title, description, children, footer, sho
           ) : null}
           {title ? (
             <div className="flex flex-col gap-2">
-              <h2 id={titleId} className="text-xl font-semibold text-foreground">
+              <h2 id={titleId} className="text-lg font-semibold text-foreground sm:text-xl">
                 {title}
               </h2>
               {description ? (
@@ -188,7 +188,14 @@ export function Modal({ open, onClose, title, description, children, footer, sho
           ) : null}
           <div className="text-sm text-slate-700">{children}</div>
         </div>
-        {footer ? <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">{footer}</div> : null}
+        {footer ? (
+          <div
+            data-testid="modal-footer"
+            className="sticky bottom-0 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-6 sm:py-4"
+          >
+            {footer}
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body

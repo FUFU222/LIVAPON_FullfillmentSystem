@@ -79,6 +79,39 @@ export function AdminOrdersTable({ orders }: Props) {
     setLoadState('idle');
   };
 
+  const handleReloadActiveOrder = () => {
+    if (!activeOrderId) {
+      return;
+    }
+
+    setLoadState('loading');
+    setErrorMessage(null);
+
+    startTransition(() => {
+      loadAdminOrderDetailAction(activeOrderId)
+        .then((result) => {
+          if (!result || result.status !== 'success') {
+            const message =
+              result?.status === 'not_found'
+                ? '注文詳細が見つかりませんでした。'
+                : result?.message ?? '注文詳細の取得に失敗しました。';
+            setErrorMessage(message);
+            setLoadState('error');
+            return;
+          }
+
+          setDetailCache((prev) => ({ ...prev, [activeOrderId]: result.detail }));
+          setActiveDetail(result.detail);
+          setLoadState('idle');
+        })
+        .catch((error) => {
+          console.error('Failed to reload admin order detail', error);
+          setErrorMessage('注文詳細の再取得に失敗しました。');
+          setLoadState('error');
+        });
+    });
+  };
+
   const renderModalContent = () => {
     if (loadState === 'loading' || isPending) {
       return (
@@ -101,7 +134,7 @@ export function AdminOrdersTable({ orders }: Props) {
       return <Alert variant="default">注文詳細が見つかりませんでした。</Alert>;
     }
 
-    return <AdminOrderDetail order={detail} />;
+    return <AdminOrderDetail order={detail} onOrderUpdated={handleReloadActiveOrder} />;
   };
 
   const modalTitle = activeDetail?.orderNumber ?? cachedOrder?.orderNumber ?? '注文詳細';

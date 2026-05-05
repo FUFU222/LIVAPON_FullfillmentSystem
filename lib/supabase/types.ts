@@ -672,6 +672,76 @@ export type Database = {
           },
         ]
       }
+      shipment_sync_events: {
+        Row: {
+          id: number
+          shipment_id: number | null
+          order_id: number | null
+          vendor_id: number | null
+          actor_type: string
+          actor_user_id: string | null
+          event_type: string
+          status_from: string | null
+          status_to: string | null
+          request_id: string | null
+          error_message: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          shipment_id?: number | null
+          order_id?: number | null
+          vendor_id?: number | null
+          actor_type?: string
+          actor_user_id?: string | null
+          event_type: string
+          status_from?: string | null
+          status_to?: string | null
+          request_id?: string | null
+          error_message?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          shipment_id?: number | null
+          order_id?: number | null
+          vendor_id?: number | null
+          actor_type?: string
+          actor_user_id?: string | null
+          event_type?: string
+          status_from?: string | null
+          status_to?: string | null
+          request_id?: string | null
+          error_message?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_sync_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_sync_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_sync_events_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipments: {
         Row: {
           carrier: string | null
@@ -680,6 +750,8 @@ export type Database = {
           last_updated_by: string | null
           last_updated_source: string
           order_id: number | null
+          registration_payload_hash: string | null
+          registration_request_id: string | null
           shipped_at: string | null
           shopify_fulfillment_id: number | null
           status: string | null
@@ -702,6 +774,8 @@ export type Database = {
           last_updated_by?: string | null
           last_updated_source?: string
           order_id?: number | null
+          registration_payload_hash?: string | null
+          registration_request_id?: string | null
           shipped_at?: string | null
           shopify_fulfillment_id?: number | null
           status?: string | null
@@ -724,6 +798,8 @@ export type Database = {
           last_updated_by?: string | null
           last_updated_source?: string
           order_id?: number | null
+          registration_payload_hash?: string | null
+          registration_request_id?: string | null
           shipped_at?: string | null
           shopify_fulfillment_id?: number | null
           status?: string | null

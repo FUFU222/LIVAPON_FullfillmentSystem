@@ -24,7 +24,11 @@ const demoOrders: OrderDetail[] = [
         carrier: 'yamato',
         status: 'in_transit',
         shippedAt: new Date().toISOString(),
-        lineItemIds: [101, 102]
+        syncStatus: 'synced',
+        syncError: null,
+        shopifyFulfillmentId: 9005001,
+        lineItemIds: [101, 102],
+        syncEvents: []
       }
     ],
     lineItems: [
@@ -49,6 +53,10 @@ const demoOrders: OrderDetail[] = [
             status: 'in_transit',
             shippedAt: new Date().toISOString(),
             lineItemIds: [101, 102],
+            syncStatus: 'synced',
+            syncError: null,
+            shopifyFulfillmentId: 9005001,
+            syncEvents: [],
             quantity: 2
           }
         ]
@@ -74,6 +82,10 @@ const demoOrders: OrderDetail[] = [
             status: 'in_transit',
             shippedAt: new Date().toISOString(),
             lineItemIds: [101, 102],
+            syncStatus: 'synced',
+            syncError: null,
+            shopifyFulfillmentId: 9005001,
+            syncEvents: [],
             quantity: 1
           }
         ]

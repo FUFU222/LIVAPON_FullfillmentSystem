@@ -1,11 +1,14 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { requireAuthContext, assertAuthorizedVendor } from "@/lib/auth";
-import { type ShipmentSelection } from "@/lib/data/orders";
 import {
-  createShipmentImportJob,
+  registerShipmentsFromSelections,
+  resyncPendingShipments,
+  type ShipmentSelection
+} from "@/lib/data/orders";
+import {
   validateShipmentSelectionsForVendor
 } from "@/lib/data/shipment-import-jobs";
-import { processShipmentImportJobById } from "@/lib/jobs/shipment-import-runner";
 import { isSameOriginRequest } from "@/lib/security/csrf";
 
 type ShipmentRequestItem = {
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
   assertAuthorizedVendor(auth.vendorId);
 
   const body = await request.json();
-  const { items, trackingNumber, carrier } = body ?? {};
+  const { items, trackingNumber, carrier, requestId: rawRequestId } = body ?? {};
 
   if (!Array.isArray(items) || items.length === 0 || !items.every(isValidItem)) {
     return NextResponse.json({ error: "line item selections are required" }, { status: 400 });
@@ -44,6 +47,12 @@ export async function POST(request: Request) {
   if (typeof carrier !== "string" || carrier.trim().length === 0) {
     return NextResponse.json({ error: "carrier is required" }, { status: 400 });
   }
+
+  if (rawRequestId !== undefined && (typeof rawRequestId !== "string" || !isUuid(rawRequestId))) {
+    return NextResponse.json({ error: "requestId must be a UUID" }, { status: 400 });
+  }
+
+  const requestId = typeof rawRequestId === "string" ? rawRequestId : randomUUID();
 
   const normalizedItems: ShipmentSelection[] = items.map((item) => ({
     orderId: item.orderId,
@@ -60,48 +69,41 @@ export async function POST(request: Request) {
   }
 
   try {
-    const job = await createShipmentImportJob({
-      vendorId: auth.vendorId,
+    const result = await registerShipmentsFromSelections(normalizedItems, auth.vendorId, {
       trackingNumber: trackingNumber.trim(),
       carrier: carrier.trim(),
-      selections: normalizedItems
+      requestId,
+      actorUserId: auth.user?.id ?? null
     });
 
-    const kickoffItemLimit = parseLimit(
-      process.env.SHIPMENT_JOB_KICKOFF_ITEM_LIMIT,
-      Number(process.env.SHIPMENT_JOB_ITEM_LIMIT ?? '50'),
-      1,
-      50
-    );
-
-    void processShipmentImportJobById(job.jobId, { itemLimit: kickoffItemLimit, orderLimit: 1 }).catch((processError) => {
-      console.error('Failed to process shipment job asynchronously', processError);
+    void resyncPendingShipments({ limit: 1 }).catch((processError) => {
+      console.error('Failed to resync shipment asynchronously', processError);
     });
 
-    return NextResponse.json({ ok: true, jobId: job.jobId, totalCount: job.totalCount }, { status: 202 });
+    return NextResponse.json({ ok: true, ...result }, { status: 202 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'failed';
     const isClientError = clientErrorMessages.has(message);
+    const status = message === conflictErrorMessage ? 409 : isClientError ? 400 : 500;
 
     if (!isClientError) {
-      console.error("Failed to enqueue shipment import job", error);
+      console.error("Failed to register shipments", error);
     }
 
-    return NextResponse.json({ error: message }, { status: isClientError ? 400 : 500 });
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
-function parseLimit(value: string | undefined, fallback: number, min: number, max: number) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return Math.max(min, Math.min(fallback, max));
-  }
-  return Math.max(min, Math.min(parsed, max));
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
+
+const conflictErrorMessage = 'Shipment request payload conflicts with a previous registration';
 
 const clientErrorMessages = new Set([
   'line item selections are required',
   'Unauthorized line item selections',
   '発送できる明細が見つかりませんでした',
-  'A valid vendorId is required to create shipment jobs'
+  'A valid vendorId is required to register shipments',
+  conflictErrorMessage
 ]);

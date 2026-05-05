@@ -25,6 +25,7 @@
 - `docs/33_fulfillment_sync_backlog.md`
 - `docs/34_fulfillment_order_plan.md`
 - `docs/35_csv_import_notes.md`
+- `docs/68_async_shipment_registration_design.md` — 配送登録即時受付化の要件定義・設計
 
 ## 4x — Supabase Realtime Platform
 - `docs/livapon-realtime-sync-guidelines.md` — 中心方針（今回の軸）

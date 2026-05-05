@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderSummary } from "@/lib/data/orders";
@@ -29,16 +29,6 @@ type Props = {
   onRemoveOrder: (orderId: number) => void;
 };
 
-type ShipmentJobState = {
-  id: number;
-  status: string;
-  totalCount: number;
-  processedCount: number;
-  errorCount: number;
-  lastError: string | null;
-  recentFailures: Array<{ id: number; order_id: number | null; line_item_id: number | null; error_message: string | null }>;
-};
-
 export function OrdersDispatchPanel({
   orders,
   selectedLineItems,
@@ -48,7 +38,7 @@ export function OrdersDispatchPanel({
   onRemoveOrder
 }: Props) {
   const router = useRouter();
-  const { showToast, dismissToast } = useToast();
+  const { showToast } = useToast();
   const { markOrdersAsRefreshed } = useOrdersRealtimeContext();
   const [, startRefresh] = useTransition();
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -59,12 +49,11 @@ export function OrdersDispatchPanel({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
   const [pendingShipment, setPendingShipment] = useState<{
+    requestId: string;
     trackingNumber: string;
     carrier: string;
     items: Array<{ orderId: number; lineItemId: number; quantity: number }>;
   } | null>(null);
-  const [activeJob, setActiveJob] = useState<ShipmentJobState | null>(null);
-  const jobPollTimer = useRef<NodeJS.Timeout | null>(null);
   const refreshRetryTimersRef = useRef<number[]>([]);
 
   const selectedByOrder = useMemo(() => {
@@ -110,6 +99,7 @@ export function OrdersDispatchPanel({
     }
 
     setPendingShipment({
+      requestId: createUuid(),
       trackingNumber: trackingNumber.trim(),
       carrier,
       items: selectedLineItems.map((item) => ({
@@ -129,7 +119,6 @@ export function OrdersDispatchPanel({
 
     setSubmitting(true);
     setSubmitErrorMessage(null);
-    const fallbackTotalCount = pendingShipment.items.length;
 
     try {
       const response = await fetch("/api/shopify/orders/shipments", {
@@ -147,9 +136,7 @@ export function OrdersDispatchPanel({
         );
       }
 
-      const result = (await response.json().catch(() => null)) as
-        | { jobId?: number; totalCount?: number }
-        | null;
+      await response.json().catch(() => null);
 
       setConfirmOpen(false);
       setPendingShipment(null);
@@ -159,18 +146,23 @@ export function OrdersDispatchPanel({
       setTrackingNumber("");
       setCarrier(carrierOptions[0]?.value ?? "");
       markOrdersAsRefreshed();
+      startRefresh(() => {
+        router.refresh();
+      });
+      refreshRetryTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+      refreshRetryTimersRef.current = [1200, 3000].map((delayMs) =>
+        window.setTimeout(() => {
+          router.refresh();
+        }, delayMs)
+      );
 
       window.requestAnimationFrame(() => {
         showToast({
-          variant: "info",
-          title: "発送情報を受け付けました",
-          duration: 4000
+          variant: "success",
+          title: "配送登録しました",
+          duration: 3000
         });
       });
-
-      if (result?.jobId) {
-        beginJobTracking(result.jobId, result.totalCount ?? fallbackTotalCount);
-      }
     } catch (error) {
       console.error("Failed to submit shipment", error);
       setSubmitErrorMessage(
@@ -181,113 +173,12 @@ export function OrdersDispatchPanel({
     }
   };
 
-  const handleJobCompletion = useCallback(
-    (job: ShipmentJobState) => {
-      if (job.status === 'succeeded') {
-        showToast({
-          variant: "success",
-          title: "発送登録が完了しました",
-          description: `${job.totalCount}件の発送が反映されました。`,
-          duration: 3000
-        });
-        startRefresh(() => {
-          router.refresh();
-        });
-        refreshRetryTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
-        refreshRetryTimersRef.current = [1200, 3000].map((delayMs) =>
-          window.setTimeout(() => {
-            router.refresh();
-          }, delayMs)
-        );
-      } else if (job.status === 'failed') {
-        showToast({
-          variant: "error",
-          title: "一部の発送が登録できませんでした",
-          description: "時間を置いて再度お試しください。問題が続く場合は管理者へお問い合わせください。",
-          duration: 4000
-        });
-      }
-    },
-    [router, showToast, startRefresh]
-  );
-
-  const refreshJobStatus = useCallback(async (jobId: number) => {
-    const response = await fetch(`/api/shipment-jobs/${jobId}`, {
-      method: "POST",
-      cache: "no-store"
-    });
-
-    if (!response.ok) {
-      throw new Error('ジョブ状態の取得に失敗しました');
-    }
-
-    const payload = (await response.json()) as { job?: ShipmentJobState };
-    if (!payload.job) {
-      throw new Error('ジョブ情報が見つかりません');
-    }
-    setActiveJob(payload.job);
-    if (isTerminalStatus(payload.job.status)) {
-      handleJobCompletion(payload.job);
-    }
-  }, [handleJobCompletion]);
-
-  const beginJobTracking = (jobId: number, totalCount: number) => {
-    setActiveJob({
-      id: jobId,
-      status: "pending",
-      totalCount,
-      processedCount: 0,
-      errorCount: 0,
-      lastError: null,
-      recentFailures: []
-    });
-    refreshJobStatus(jobId).catch((error) => {
-      console.error("Failed to refresh shipment job", error);
-    });
-  };
-
-  useEffect(() => {
-    if (!activeJob || isTerminalStatus(activeJob.status)) {
-      return () => undefined;
-    }
-
-    if (jobPollTimer.current) {
-      clearTimeout(jobPollTimer.current);
-    }
-
-    jobPollTimer.current = setTimeout(() => {
-      refreshJobStatus(activeJob.id).catch((error) => {
-        console.error("Failed to refresh shipment job", error);
-        showToast({
-          variant: "error",
-          title: "処理状況を取得できませんでした",
-          description: error instanceof Error ? error.message : "時間を置いて再度お試しください。",
-          duration: 3000
-        });
-        setActiveJob(null);
-      });
-    }, 5000);
-
-    return () => {
-      if (jobPollTimer.current) {
-        clearTimeout(jobPollTimer.current);
-      }
-    };
-  }, [activeJob, refreshJobStatus, showToast]);
-
   useEffect(() => {
     return () => {
       refreshRetryTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
       refreshRetryTimersRef.current = [];
     };
   }, []);
-
-  const dismissJobStatus = () => {
-    if (jobPollTimer.current) {
-      clearTimeout(jobPollTimer.current);
-    }
-    setActiveJob(null);
-  };
 
   const previewItems = selectedLineItems.slice(0, 2);
   const overflowCount = Math.max(0, selectedLineItems.length - previewItems.length);
@@ -401,45 +292,6 @@ export function OrdersDispatchPanel({
               </Button>
             </div>
           </div>
-
-          {activeJob && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="font-semibold text-slate-900">発送ジョブ #{activeJob.id}</div>
-                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
-                  状態: {jobStatusLabel(activeJob.status)}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="px-2 py-1 text-xs"
-                    onClick={dismissJobStatus}
-                  >
-                    閉じる
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-4 text-base">
-                <span>
-                  進捗: {activeJob.processedCount} / {activeJob.totalCount} 件
-                </span>
-                <span className={activeJob.errorCount > 0 ? "text-red-600" : "text-slate-500"}>
-                  失敗: {activeJob.errorCount} 件
-                </span>
-              </div>
-              {activeJob.recentFailures.length > 0 && (
-                <div className="mt-2 text-xs text-red-600">
-                  最新の失敗:
-                  <ul className="list-disc pl-4">
-                    {activeJob.recentFailures.map((failure) => (
-                      <li key={failure.id}>
-                        注文#{failure.order_id ?? '-'} / ライン {failure.line_item_id ?? '-'}: {failure.error_message ?? '理由不明'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -606,19 +458,21 @@ export function OrdersDispatchPanel({
   );
 }
 
-function isTerminalStatus(status: string) {
-  return status === 'succeeded' || status === 'failed';
-}
+function createUuid() {
+  const webCrypto = globalThis.crypto;
 
-function jobStatusLabel(status: string) {
-  switch (status) {
-    case 'succeeded':
-      return '完了';
-    case 'failed':
-      return '失敗';
-    case 'running':
-      return '処理中';
-    default:
-      return '待機中';
+  if (typeof webCrypto?.randomUUID === 'function') {
+    return webCrypto.randomUUID();
   }
+
+  if (!webCrypto) {
+    throw new Error('Secure random source is unavailable');
+  }
+
+  const bytes = new Uint8Array(16);
+  webCrypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
+  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10, 16).join('')}`;
 }

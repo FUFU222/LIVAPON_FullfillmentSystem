@@ -66,7 +66,7 @@ export async function getOrders(vendorId: number): Promise<OrderSummary[]> {
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
-           shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at)
+           shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at, sync_status, sync_error, shopify_fulfillment_id)
          )
        )`
     )
@@ -105,7 +105,7 @@ export async function getOrderDetail(vendorId: number, id: number): Promise<Orde
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
-           shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at)
+           shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at, sync_status, sync_error, shopify_fulfillment_id)
          )
        )`
     )
@@ -137,7 +137,10 @@ export async function getOrderDetailForAdmin(id: number): Promise<OrderDetail | 
          vendor:vendor_id(id, code, name),
          shipments:shipment_line_items(
            quantity,
-           shipment:shipments(id, vendor_id, tracking_number, carrier, status, shipped_at)
+           shipment:shipments(
+             id, vendor_id, tracking_number, carrier, status, shipped_at, sync_status, sync_error, shopify_fulfillment_id,
+             shipment_sync_events(id, event_type, actor_type, status_from, status_to, error_message, created_at)
+           )
          )
        )`
     )

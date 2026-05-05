@@ -4,7 +4,21 @@ export type OrderShipment = {
   carrier: string | null;
   status: string | null;
   shippedAt: string | null;
+  syncStatus: string | null;
+  syncError: string | null;
+  shopifyFulfillmentId: number | null;
   lineItemIds: number[];
+  syncEvents: ShipmentSyncEvent[];
+};
+
+export type ShipmentSyncEvent = {
+  id: number;
+  eventType: string;
+  actorType: string | null;
+  statusFrom: string | null;
+  statusTo: string | null;
+  errorMessage: string | null;
+  createdAt: string | null;
 };
 
 export type LineItemShipment = OrderShipment & {
@@ -116,7 +130,19 @@ export type RawShipmentPivot = {
     carrier: string | null;
     status: string | null;
     shipped_at: string | null;
+    sync_status?: string | null;
+    sync_error?: string | null;
+    shopify_fulfillment_id?: number | null;
     line_item_ids?: number[];
+    shipment_sync_events?: Array<{
+      id: number;
+      event_type: string;
+      actor_type: string | null;
+      status_from: string | null;
+      status_to: string | null;
+      error_message: string | null;
+      created_at: string | null;
+    }>;
   } | null;
 };
 

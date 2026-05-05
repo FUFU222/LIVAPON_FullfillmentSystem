@@ -130,6 +130,8 @@ CREATE TABLE shipments (
   sync_retry_count INT DEFAULT 0,
   last_retry_at TIMESTAMPTZ,
   sync_pending_until TIMESTAMPTZ,
+  registration_request_id UUID,
+  registration_payload_hash TEXT,
   last_updated_source TEXT NOT NULL DEFAULT 'console',
   last_updated_by UUID
 );
@@ -150,6 +152,22 @@ CREATE TABLE shipment_line_items (
   fulfillment_order_line_item_id BIGINT,
   quantity INT DEFAULT 0,
   PRIMARY KEY (shipment_id, line_item_id)
+);
+
+CREATE TABLE shipment_sync_events (
+  id BIGSERIAL PRIMARY KEY,
+  shipment_id INT REFERENCES shipments(id) ON DELETE SET NULL,
+  order_id INT REFERENCES orders(id) ON DELETE SET NULL,
+  vendor_id INT REFERENCES vendors(id) ON DELETE SET NULL,
+  actor_type TEXT NOT NULL DEFAULT 'system',
+  actor_user_id UUID,
+  event_type TEXT NOT NULL,
+  status_from TEXT,
+  status_to TEXT,
+  request_id UUID,
+  error_message TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE shipment_import_jobs (
@@ -270,7 +288,13 @@ CREATE INDEX idx_shipments_shopify_fulfillment_id ON shipments(shopify_fulfillme
 CREATE INDEX idx_shipments_sync_status ON shipments(sync_status);
 CREATE INDEX idx_shipments_vendor_id_shipped_at_created_at ON shipments(vendor_id, shipped_at DESC, created_at DESC);
 CREATE INDEX idx_shipments_sync_status_pending_until ON shipments(sync_status, sync_pending_until);
+CREATE UNIQUE INDEX idx_shipments_vendor_request_order_unique
+ON shipments(vendor_id, registration_request_id, order_id)
+WHERE registration_request_id IS NOT NULL;
 CREATE INDEX idx_shipment_line_items_fo_line_item_id ON shipment_line_items(fulfillment_order_line_item_id);
+CREATE INDEX idx_shipment_sync_events_shipment_id_created_at ON shipment_sync_events(shipment_id, created_at DESC);
+CREATE INDEX idx_shipment_sync_events_vendor_id_created_at ON shipment_sync_events(vendor_id, created_at DESC);
+CREATE INDEX idx_shipment_sync_events_event_type_created_at ON shipment_sync_events(event_type, created_at DESC);
 CREATE INDEX idx_shipment_adjustment_requests_vendor_id ON shipment_adjustment_requests(vendor_id);
 CREATE INDEX idx_shipment_adjustment_requests_status ON shipment_adjustment_requests(status);
 CREATE INDEX idx_shipment_adjustment_requests_vendor_id_created_at
@@ -299,6 +323,7 @@ ALTER TABLE vendor_order_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_adjustment_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_cancellation_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipment_sync_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopify_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
 -- vendor_skus / shipment_line_items / vendor_order_notifications /

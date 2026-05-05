@@ -4,7 +4,8 @@ import type {
   OrderSummary,
   OrderShipment,
   RawOrderRecord,
-  RawShipmentPivot
+  RawShipmentPivot,
+  ShipmentSyncEvent
 } from './types';
 import { extractOsNumberFromParts } from '@/lib/orders/os-number';
 
@@ -105,22 +106,6 @@ function calculateShipmentProgress(
 
 export function mapDetailToSummary(order: OrderDetail): OrderSummary {
   const lineItems = dedupeOrderLineItems(order.lineItems);
-  console.info('[orders-line-items]', {
-    orderNumber: order.orderNumber,
-    items: lineItems.map((item) => ({
-      id: item.id,
-      vendorId: item.vendorId,
-      quantity: item.quantity,
-      shippedQuantity: item.shippedQuantity,
-      remainingQuantity: item.remainingQuantity,
-      shipments: item.shipments.map((shipment) => ({
-        id: shipment.id,
-        quantity: shipment.quantity,
-        carrier: shipment.carrier
-      })),
-      rawShipments: JSON.stringify(item.shipments)
-    }))
-  });
   const trackingNumbers = new Set<string>();
   order.shipments.forEach((shipment) => {
     if (shipment.trackingNumber) {
@@ -164,13 +149,6 @@ export function mapDetailToSummary(order: OrderDetail): OrderSummary {
     }
     return localStatus ?? 'unfulfilled';
   })();
-
-  console.info('[orders-status]', {
-    orderNumber: order.orderNumber,
-    resolvedStatus,
-    shopifyStatus,
-    localStatus
-  });
 
   const isArchived = Boolean(order.archivedAt);
 
@@ -261,7 +239,27 @@ export function toOrderDetailFromRecord(
           carrier: shipmentRecord.carrier ?? null,
           status: shipmentRecord.status ?? null,
           shippedAt: shipmentRecord.shipped_at ?? null,
-          lineItemIds: [item.id]
+          syncStatus: shipmentRecord.sync_status ?? null,
+          syncError: shipmentRecord.sync_error ?? null,
+          shopifyFulfillmentId: shipmentRecord.shopify_fulfillment_id ?? null,
+          lineItemIds: [item.id],
+          syncEvents: Array.isArray(shipmentRecord.shipment_sync_events)
+            ? shipmentRecord.shipment_sync_events
+                .map((event: any): ShipmentSyncEvent => ({
+                  id: event.id,
+                  eventType: event.event_type,
+                  actorType: event.actor_type ?? null,
+                  statusFrom: event.status_from ?? null,
+                  statusTo: event.status_to ?? null,
+                  errorMessage: event.error_message ?? null,
+                  createdAt: event.created_at ?? null
+                }))
+                .sort((a: ShipmentSyncEvent, b: ShipmentSyncEvent) => {
+                  const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+                  const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
+                  return bTime - aTime;
+                })
+            : []
         });
       } else if (!existing.lineItemIds.includes(item.id)) {
         existing.lineItemIds.push(item.id);

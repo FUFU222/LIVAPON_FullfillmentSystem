@@ -1,5 +1,6 @@
+import { createHash } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/supabase/types';
+import type { Database, Json } from '@/lib/supabase/types';
 import {
   syncShipmentWithShopify,
   cancelShopifyFulfillment,
@@ -34,6 +35,23 @@ export type ShipmentUpsertResult = {
   syncError: string | null;
 };
 
+export type ShipmentRegistrationResult = {
+  shipmentIds: number[];
+  orderIds: number[];
+  itemCount: number;
+};
+
+type ShipmentActorType = 'vendor' | 'admin' | 'worker' | 'system';
+
+type ShipmentSyncEventType =
+  | 'registered'
+  | 'sync_started'
+  | 'sync_succeeded'
+  | 'sync_failed'
+  | 'resync_requested'
+  | 'manual_resolved'
+  | 'shopify_fulfillment_linked';
+
 const CLOSED_FO_STATUSES = new Set(['closed', 'canceled', 'cancelled']);
 
 export async function resyncPendingShipments(options?: { limit?: number }): Promise<ShipmentResyncSummary> {
@@ -65,13 +83,32 @@ export async function resyncPendingShipments(options?: { limit?: number }): Prom
 
   for (const shipment of shipments) {
     try {
+      await recordShipmentSyncEvent(client, {
+        shipmentId: shipment.id,
+        orderId: null,
+        vendorId: null,
+        eventType: 'sync_started',
+        statusFrom: 'pending',
+        statusTo: 'processing',
+        actorType: 'worker'
+      });
       await syncShipmentWithShopify(shipment.id);
+      await recordShipmentSyncEvent(client, {
+        shipmentId: shipment.id,
+        orderId: null,
+        vendorId: null,
+        eventType: 'sync_succeeded',
+        statusFrom: 'processing',
+        statusTo: 'synced',
+        actorType: 'worker'
+      });
       summary.succeeded += 1;
     } catch (err) {
+      await markShipmentSyncFailure(client, shipment.id, err, { actorType: 'worker' });
       summary.failed += 1;
       summary.errors.push({
         shipmentId: shipment.id,
-        message: err instanceof Error ? err.message : 'Unknown error'
+        message: sanitizeSyncErrorMessage(err instanceof Error ? err.message : 'Unknown error')
       });
     }
   }
@@ -82,8 +119,13 @@ export async function resyncPendingShipments(options?: { limit?: number }): Prom
 export async function registerShipmentsFromSelections(
   selections: ShipmentSelection[],
   vendorId: number,
-  options: { trackingNumber: string; carrier: string }
-): Promise<number[]> {
+  options: {
+    trackingNumber: string;
+    carrier: string;
+    requestId?: string | null;
+    actorUserId?: string | null;
+  }
+): Promise<ShipmentRegistrationResult> {
   if (!Array.isArray(selections) || selections.length === 0) {
     throw new Error('line item selections are required');
   }
@@ -103,7 +145,9 @@ export async function registerShipmentsFromSelections(
     grouped.set(selection.orderId, entry);
   });
 
-  const processedOrders: number[] = [];
+  const orderIds: number[] = [];
+  const shipmentIds: number[] = [];
+  let itemCount = 0;
 
   for (const [orderId, orderSelections] of grouped.entries()) {
     let plan: ShipmentBatchPlan | null = null;
@@ -113,7 +157,8 @@ export async function registerShipmentsFromSelections(
         vendorId,
         orderId,
         selections: orderSelections,
-        client
+        client,
+        skipFulfillmentOrderSync: true
       });
     } catch (error) {
       console.warn('Fulfillment order closed during bulk shipment registration', {
@@ -127,7 +172,7 @@ export async function registerShipmentsFromSelections(
       continue;
     }
 
-    await upsertShipment(
+    const result = await upsertShipment(
       {
         lineItemIds: plan.lineItemIds,
         lineItemQuantities: plan.lineItemQuantities,
@@ -136,17 +181,25 @@ export async function registerShipmentsFromSelections(
         status: 'shipped'
       },
       vendorId,
-      { skipFulfillmentOrderSync: true }
+      {
+        skipFulfillmentOrderSync: true,
+        deferShopifySync: true,
+        registrationRequestId: options.requestId ?? null,
+        actorType: 'vendor',
+        actorUserId: options.actorUserId ?? null
+      }
     );
 
-    processedOrders.push(orderId);
+    shipmentIds.push(result.shipmentId);
+    orderIds.push(orderId);
+    itemCount += plan.lineItemIds.length;
   }
 
-  if (processedOrders.length === 0) {
+  if (orderIds.length === 0) {
     throw new Error('発送できる明細が見つかりませんでした');
   }
 
-  return processedOrders;
+  return { shipmentIds, orderIds, itemCount };
 }
 
 export async function prepareShipmentBatch(options: {
@@ -154,6 +207,7 @@ export async function prepareShipmentBatch(options: {
   orderId: number;
   selections: ShipmentSelection[];
   client?: SupabaseClient<Database>;
+  skipFulfillmentOrderSync?: boolean;
 }): Promise<ShipmentBatchPlan | null> {
   const { vendorId, orderId, selections } = options;
   if (!Number.isInteger(vendorId) || !Number.isInteger(orderId)) {
@@ -192,12 +246,14 @@ export async function prepareShipmentBatch(options: {
     return null;
   }
 
-  lineItems = await ensureFulfillmentOrderIsActive({
-    client,
-    orderId,
-    lineItems,
-    loadLineItems
-  });
+  if (!options.skipFulfillmentOrderSync) {
+    lineItems = await ensureFulfillmentOrderIsActive({
+      client,
+      orderId,
+      lineItems,
+      loadLineItems
+    });
+  }
 
   const metadata = new Map<number, { quantity: number; fulfilled: number; fulfillable: number | null }>();
   lineItems.forEach((item) => {
@@ -255,6 +311,11 @@ export async function upsertShipment(
   options?: {
     skipFulfillmentOrderSync?: boolean;
     nonFatalSyncErrors?: boolean;
+    deferShopifySync?: boolean;
+    registrationRequestId?: string | null;
+    registrationPayloadHash?: string | null;
+    actorType?: ShipmentActorType;
+    actorUserId?: string | null;
   }
 ): Promise<ShipmentUpsertResult> {
   if (!Number.isInteger(vendorId)) {
@@ -313,6 +374,37 @@ export async function upsertShipment(
   }
 
   const nowIso = new Date().toISOString();
+  const registrationRequestId = options?.registrationRequestId ?? null;
+  const registrationPayloadHash = registrationRequestId
+    ? options?.registrationPayloadHash ?? buildShipmentRegistrationHash({
+        vendorId,
+        orderId,
+        trackingNumber: shipment.trackingNumber,
+        carrier: shipment.carrier,
+        lineItemIds: shipment.lineItemIds,
+        lineItemQuantities: shipment.lineItemQuantities ?? {}
+      })
+    : null;
+
+  if (!shipment.id && registrationRequestId) {
+    const existingRegistration = await loadExistingShipmentRegistration(
+      client,
+      vendorId,
+      registrationRequestId,
+      orderId
+    );
+    if (existingRegistration) {
+      if (existingRegistration.registration_payload_hash !== registrationPayloadHash) {
+        throw new Error('Shipment request payload conflicts with a previous registration');
+      }
+
+      return {
+        shipmentId: existingRegistration.id,
+        syncStatus: normalizeShipmentSyncStatus(existingRegistration.sync_status),
+        syncError: existingRegistration.sync_error ?? null
+      };
+    }
+  }
 
   const payload: Database['public']['Tables']['shipments']['Insert'] = {
     tracking_number: shipment.trackingNumber,
@@ -328,7 +420,9 @@ export async function upsertShipment(
     updated_at: nowIso,
     sync_retry_count: 0,
     last_retry_at: null,
-    sync_pending_until: null
+    sync_pending_until: null,
+    registration_request_id: registrationRequestId,
+    registration_payload_hash: registrationPayloadHash
   } satisfies Database['public']['Tables']['shipments']['Insert'];
 
   let shipmentId = shipment.id ?? null;
@@ -359,6 +453,25 @@ export async function upsertShipment(
       .single();
 
     if (insertError) {
+      if (registrationRequestId && isUniqueViolation(insertError)) {
+        const existingRegistration = await loadExistingShipmentRegistration(
+          client,
+          vendorId,
+          registrationRequestId,
+          orderId
+        );
+        if (existingRegistration) {
+          if (existingRegistration.registration_payload_hash !== registrationPayloadHash) {
+            throw new Error('Shipment request payload conflicts with a previous registration');
+          }
+
+          return {
+            shipmentId: existingRegistration.id,
+            syncStatus: normalizeShipmentSyncStatus(existingRegistration.sync_status),
+            syncError: existingRegistration.sync_error ?? null
+          };
+        }
+      }
       throw insertError;
     }
 
@@ -386,8 +499,51 @@ export async function upsertShipment(
     throw pivotError;
   }
 
+  await recordShipmentSyncEvent(client, {
+    shipmentId: shipmentId as number,
+    orderId,
+    vendorId,
+    eventType: 'registered',
+    statusTo: 'pending',
+    requestId: registrationRequestId,
+    actorType: options?.actorType ?? 'vendor',
+    actorUserId: options?.actorUserId ?? null,
+    metadata: {
+      lineItemCount: shipment.lineItemIds.length,
+      deferred: Boolean(options?.deferShopifySync)
+    }
+  });
+
+  if (options?.deferShopifySync) {
+    return {
+      shipmentId: shipmentId as number,
+      syncStatus: 'pending',
+      syncError: null
+    };
+  }
+
   try {
+    await recordShipmentSyncEvent(client, {
+      shipmentId: shipmentId as number,
+      orderId,
+      vendorId,
+      eventType: 'sync_started',
+      statusFrom: 'pending',
+      statusTo: 'processing',
+      actorType: options?.actorType ?? 'worker',
+      actorUserId: options?.actorUserId ?? null
+    });
     await syncShipmentWithShopify(shipmentId as number);
+    await recordShipmentSyncEvent(client, {
+      shipmentId: shipmentId as number,
+      orderId,
+      vendorId,
+      eventType: 'sync_succeeded',
+      statusFrom: 'processing',
+      statusTo: 'synced',
+      actorType: options?.actorType ?? 'worker',
+      actorUserId: options?.actorUserId ?? null
+    });
     return {
       shipmentId: shipmentId as number,
       syncStatus: 'synced',
@@ -396,7 +552,9 @@ export async function upsertShipment(
   } catch (error) {
     const now = new Date();
     const nowIso = now.toISOString();
-    const rawMessage = error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました';
+    const rawMessage = sanitizeSyncErrorMessage(
+      error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました'
+    );
     const isFoMissing = rawMessage.includes('No fulfillment order found for Shopify order');
 
     const updatePayload: Database['public']['Tables']['shipments']['Update'] = {
@@ -431,6 +589,23 @@ export async function upsertShipment(
 
     const resultStatus = updatePayload.sync_status === 'pending' ? 'pending' : 'error';
 
+    await recordShipmentSyncEvent(client, {
+      shipmentId: shipmentId as number,
+      orderId,
+      vendorId,
+      eventType: 'sync_failed',
+      statusFrom: 'processing',
+      statusTo: resultStatus,
+      actorType: options?.actorType ?? 'worker',
+      actorUserId: options?.actorUserId ?? null,
+      errorMessage: rawMessage,
+      metadata: {
+        isFoMissing,
+        retryCount: updatePayload.sync_retry_count ?? null,
+        pendingUntil: updatePayload.sync_pending_until ?? null
+      }
+    });
+
     console.error('Failed to sync shipment with Shopify', {
       shipmentId,
       vendorId,
@@ -454,6 +629,208 @@ export async function upsertShipment(
     }
 
     throw error instanceof Error ? error : new Error(rawMessage);
+  }
+}
+
+async function markShipmentSyncFailure(
+  client: SupabaseClient<Database>,
+  shipmentId: number,
+  error: unknown,
+  options?: {
+    actorType?: ShipmentActorType;
+    actorUserId?: string | null;
+  }
+) {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const rawMessage = sanitizeSyncErrorMessage(
+    error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました'
+  );
+  const shouldRetry = isRetriableShipmentSyncError(rawMessage);
+
+  const { data: shipment, error: loadError } = await client
+    .from('shipments')
+    .select('id, vendor_id, order_id, sync_status, sync_retry_count')
+    .eq('id', shipmentId)
+    .maybeSingle();
+
+  if (loadError) {
+    console.error('Failed to load shipment before marking sync failure', {
+      shipmentId,
+      error: loadError
+    });
+    return;
+  }
+
+  const currentRetryCount = shipment?.sync_retry_count ?? 0;
+  const nextRetryCount = currentRetryCount + 1;
+  const pendingUntil = shouldRetry
+    ? new Date(now.getTime() + calculateShipmentRetryDelayMinutes(currentRetryCount) * 60_000).toISOString()
+    : null;
+  const nextStatus = shouldRetry ? 'pending' : 'error';
+
+  const updatePayload: Database['public']['Tables']['shipments']['Update'] = {
+    sync_status: nextStatus,
+    sync_error: rawMessage,
+    updated_at: nowIso,
+    last_retry_at: nowIso,
+    sync_retry_count: nextRetryCount,
+    sync_pending_until: pendingUntil
+  };
+
+  const { error: updateError } = await client
+    .from('shipments')
+    .update(updatePayload)
+    .eq('id', shipmentId);
+
+  if (updateError) {
+    console.error('Failed to mark shipment sync failure', {
+      shipmentId,
+      error: updateError
+    });
+    return;
+  }
+
+  await recordShipmentSyncEvent(client, {
+    shipmentId,
+    orderId: shipment?.order_id ?? null,
+    vendorId: shipment?.vendor_id ?? null,
+    eventType: 'sync_failed',
+    statusFrom: shipment?.sync_status ?? 'processing',
+    statusTo: nextStatus,
+    actorType: options?.actorType ?? 'worker',
+    actorUserId: options?.actorUserId ?? null,
+    errorMessage: rawMessage,
+    metadata: {
+      retryCount: nextRetryCount,
+      pendingUntil
+    }
+  });
+}
+
+function isRetriableShipmentSyncError(message: string) {
+  if (message.includes('No fulfillment order found for Shopify order')) {
+    return true;
+  }
+  return /\b(429|500|502|503|504)\b/.test(message);
+}
+
+function sanitizeSyncErrorMessage(message: string) {
+  return message
+    .replace(/shpat_[A-Za-z0-9_]+/g, 'shpat_[redacted]')
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
+    .replace(/X-Shopify-Access-Token["':\s]+[A-Za-z0-9._~+/=-]+/gi, 'X-Shopify-Access-Token [redacted]')
+    .slice(0, 2000);
+}
+
+function calculateShipmentRetryDelayMinutes(currentRetryCount: number) {
+  const baseDelayMinutes = 5;
+  return Math.min(60, baseDelayMinutes * Math.pow(2, currentRetryCount));
+}
+
+async function loadExistingShipmentRegistration(
+  client: SupabaseClient<Database>,
+  vendorId: number,
+  registrationRequestId: string,
+  orderId: number
+) {
+  const { data, error } = await client
+    .from('shipments')
+    .select('id, sync_status, sync_error, registration_payload_hash')
+    .eq('vendor_id', vendorId)
+    .eq('registration_request_id', registrationRequestId)
+    .eq('order_id', orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+function isUniqueViolation(error: unknown) {
+  return Boolean(
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code?: unknown }).code === '23505'
+  );
+}
+
+function normalizeShipmentSyncStatus(value: string | null | undefined): ShipmentUpsertResult['syncStatus'] {
+  if (value === 'synced' || value === 'error') {
+    return value;
+  }
+  return 'pending';
+}
+
+function buildShipmentRegistrationHash(params: {
+  vendorId: number;
+  orderId: number;
+  trackingNumber: string;
+  carrier: string;
+  lineItemIds: number[];
+  lineItemQuantities: Record<number, number | null>;
+}) {
+  const items = [...params.lineItemIds]
+    .sort((a, b) => a - b)
+    .map((lineItemId) => ({
+      lineItemId,
+      quantity: params.lineItemQuantities[lineItemId] ?? null
+    }));
+
+  return createHash('sha256')
+    .update(JSON.stringify({
+      vendorId: params.vendorId,
+      orderId: params.orderId,
+      trackingNumber: params.trackingNumber.trim(),
+      carrier: params.carrier.trim(),
+      items
+    }))
+    .digest('hex');
+}
+
+async function recordShipmentSyncEvent(
+  client: SupabaseClient<Database>,
+  params: {
+    shipmentId: number;
+    orderId: number | null;
+    vendorId: number | null;
+    eventType: ShipmentSyncEventType;
+    actorType?: ShipmentActorType;
+    actorUserId?: string | null;
+    statusFrom?: string | null;
+    statusTo?: string | null;
+    requestId?: string | null;
+    errorMessage?: string | null;
+    metadata?: Json;
+  }
+) {
+  const payload: Database['public']['Tables']['shipment_sync_events']['Insert'] = {
+    shipment_id: params.shipmentId,
+    order_id: params.orderId,
+    vendor_id: params.vendorId,
+    actor_type: params.actorType ?? 'system',
+    actor_user_id: params.actorUserId ?? null,
+    event_type: params.eventType,
+    status_from: params.statusFrom ?? null,
+    status_to: params.statusTo ?? null,
+    request_id: params.requestId ?? null,
+    error_message: params.errorMessage ?? null,
+    metadata: params.metadata ?? {}
+  };
+
+  const { error } = await client
+    .from('shipment_sync_events')
+    .insert(payload);
+
+  if (error) {
+    console.error('Failed to record shipment sync event', {
+      shipmentId: params.shipmentId,
+      eventType: params.eventType,
+      error
+    });
   }
 }
 
@@ -491,6 +868,183 @@ export async function markShipmentsCancelledForOrder(orderId: number): Promise<v
       sync_pending_until: null
     })
     .eq('order_id', orderId);
+}
+
+export async function resyncShipmentByAdmin(
+  shipmentId: number,
+  options?: { actorUserId?: string | null }
+): Promise<ShipmentUpsertResult> {
+  if (!Number.isInteger(shipmentId)) {
+    throw new Error('A valid shipmentId is required to resync shipment');
+  }
+
+  const client = assertServiceClient();
+
+  await recordShipmentSyncEvent(client, {
+    shipmentId,
+    orderId: null,
+    vendorId: null,
+    eventType: 'resync_requested',
+    actorType: 'admin',
+    actorUserId: options?.actorUserId ?? null
+  });
+
+  try {
+    await recordShipmentSyncEvent(client, {
+      shipmentId,
+      orderId: null,
+      vendorId: null,
+      eventType: 'sync_started',
+      statusFrom: 'pending',
+      statusTo: 'processing',
+      actorType: 'admin',
+      actorUserId: options?.actorUserId ?? null
+    });
+    await syncShipmentWithShopify(shipmentId);
+    await recordShipmentSyncEvent(client, {
+      shipmentId,
+      orderId: null,
+      vendorId: null,
+      eventType: 'sync_succeeded',
+      statusFrom: 'processing',
+      statusTo: 'synced',
+      actorType: 'admin',
+      actorUserId: options?.actorUserId ?? null
+    });
+    return {
+      shipmentId,
+      syncStatus: 'synced',
+      syncError: null
+    };
+  } catch (error) {
+    await markShipmentSyncFailure(client, shipmentId, error, {
+      actorType: 'admin',
+      actorUserId: options?.actorUserId ?? null
+    });
+    const rawMessage = sanitizeSyncErrorMessage(
+      error instanceof Error ? error.message : 'Shopify 連携で不明なエラーが発生しました'
+    );
+    return {
+      shipmentId,
+      syncStatus: isRetriableShipmentSyncError(rawMessage) ? 'pending' : 'error',
+      syncError: rawMessage
+    };
+  }
+}
+
+export async function markShipmentManualResolved(
+  shipmentId: number,
+  options?: { actorUserId?: string | null }
+): Promise<void> {
+  if (!Number.isInteger(shipmentId)) {
+    throw new Error('A valid shipmentId is required to mark shipment resolved');
+  }
+
+  const client = assertServiceClient();
+  const { data: shipment, error: loadError } = await client
+    .from('shipments')
+    .select('id, vendor_id, order_id, sync_status')
+    .eq('id', shipmentId)
+    .maybeSingle();
+
+  if (loadError) {
+    throw loadError;
+  }
+
+  if (!shipment) {
+    throw new Error('Shipment not found');
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error: updateError } = await client
+    .from('shipments')
+    .update({
+      sync_status: 'manual_resolved',
+      sync_error: null,
+      sync_pending_until: null,
+      updated_at: nowIso,
+      last_updated_source: 'admin:manual-resolved',
+      last_updated_by: options?.actorUserId ?? null
+    })
+    .eq('id', shipmentId);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  await recordShipmentSyncEvent(client, {
+    shipmentId,
+    orderId: shipment.order_id ?? null,
+    vendorId: shipment.vendor_id ?? null,
+    eventType: 'manual_resolved',
+    statusFrom: shipment.sync_status ?? null,
+    statusTo: 'manual_resolved',
+    actorType: 'admin',
+    actorUserId: options?.actorUserId ?? null
+  });
+}
+
+export async function linkShopifyFulfillmentToShipment(
+  shipmentId: number,
+  shopifyFulfillmentId: number,
+  options?: { actorUserId?: string | null }
+): Promise<void> {
+  if (!Number.isInteger(shipmentId)) {
+    throw new Error('A valid shipmentId is required to link fulfillment');
+  }
+
+  if (!Number.isInteger(shopifyFulfillmentId) || shopifyFulfillmentId <= 0) {
+    throw new Error('A valid Shopify fulfillment id is required');
+  }
+
+  const client = assertServiceClient();
+  const { data: shipment, error: loadError } = await client
+    .from('shipments')
+    .select('id, vendor_id, order_id, sync_status')
+    .eq('id', shipmentId)
+    .maybeSingle();
+
+  if (loadError) {
+    throw loadError;
+  }
+
+  if (!shipment) {
+    throw new Error('Shipment not found');
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error: updateError } = await client
+    .from('shipments')
+    .update({
+      shopify_fulfillment_id: shopifyFulfillmentId,
+      sync_status: 'synced',
+      sync_error: null,
+      synced_at: nowIso,
+      sync_pending_until: null,
+      sync_retry_count: 0,
+      updated_at: nowIso,
+      last_updated_source: 'admin:fulfillment-link',
+      last_updated_by: options?.actorUserId ?? null
+    })
+    .eq('id', shipmentId);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  await recordShipmentSyncEvent(client, {
+    shipmentId,
+    orderId: shipment.order_id ?? null,
+    vendorId: shipment.vendor_id ?? null,
+    eventType: 'shopify_fulfillment_linked',
+    statusFrom: shipment.sync_status ?? null,
+    statusTo: 'synced',
+    actorType: 'admin',
+    actorUserId: options?.actorUserId ?? null,
+    metadata: {
+      shopifyFulfillmentId
+    }
+  });
 }
 
 export async function updateOrderStatus(orderId: number, status: string, vendorId: number) {

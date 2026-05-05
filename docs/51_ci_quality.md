@@ -7,6 +7,7 @@
 - `npm run test` … 単体テストは `--runInBand --passWithNoTests` で安定化。Webhook・ラインアイテムなど重要ロジックは最低 1 つの回帰テストを追加。
 - `npm run typecheck` … `tsc --noEmit` を実行し、型追加時に必ず失敗箇所が見えるようにする。
 - `npm run build` … Next.js の production build が通ることを確認。`FAVICON` など静的アセットもここで検出できる。
+- Node.js は `package.json` / `.nvmrc` / `.node-version` / CI で 24 系に固定する。Vercel は `engines.node` を優先するため、Production build/functions も同じ major で検証される。
 
 > **開発体験 Tips**: `npm run verify` を作り、上記 4 コマンドをまとめて実行。VSCode の Tasks で 1 キー実行できるようにしておくと便利です。
 >
@@ -35,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint -- --max-warnings=0

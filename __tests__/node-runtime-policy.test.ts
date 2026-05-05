@@ -23,6 +23,8 @@ describe('Node runtime policy', () => {
     expect(readText('.nvmrc').trim()).toBe('24');
     expect(readText('.node-version').trim()).toBe('24');
     expect(ciWorkflow).toContain('FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true');
+    expect(ciWorkflow).toContain('uses: actions/checkout@v6');
+    expect(ciWorkflow).toContain('uses: actions/setup-node@v6');
     expect(ciWorkflow).toContain("node-version: '24'");
     expect(ciWorkflow).not.toContain("node-version: '20'");
   });

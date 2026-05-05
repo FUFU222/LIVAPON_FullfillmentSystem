@@ -571,12 +571,12 @@ function AppShellContent({
             onClick={(event) => handleNavigation(event, brandHref)}
           >
             <Image
-              src="/LIVAPON_logo_horizontal.svg"
+              src="/livapon-logo-horizontal-black.png"
               alt="LIVAPON"
-              width={192}
-              height={40}
+              width={2011}
+              height={325}
               priority
-              className="h-auto w-20 sm:w-24 md:w-36"
+              className="h-auto w-28 sm:w-32 md:w-40"
               style={{ height: 'auto' }}
             />
             <span className="hidden text-base font-semibold text-slate-500 md:inline">配送管理システム</span>

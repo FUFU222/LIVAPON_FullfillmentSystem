@@ -61,6 +61,21 @@ describe('AppShell mobile navigation', () => {
     mockPathname = '/orders';
   });
 
+  it('uses the true horizontal logo asset to keep the header compact', () => {
+    render(
+      <AppShell initialAuth={buildAuth()}>
+        <div>content</div>
+      </AppShell>
+    );
+
+    const logo = screen.getByAltText('LIVAPON');
+    expect(decodeURIComponent(logo.getAttribute('src') ?? '')).toContain('/livapon-logo-horizontal-black.png');
+    expect(logo).toHaveAttribute('width', '2011');
+    expect(logo).toHaveAttribute('height', '325');
+    expect(logo).toHaveClass('w-28');
+    expect(logo).toHaveClass('md:w-40');
+  });
+
   it('shows compact role-specific bottom tabs for vendors', () => {
     render(
       <AppShell initialAuth={buildAuth()}>

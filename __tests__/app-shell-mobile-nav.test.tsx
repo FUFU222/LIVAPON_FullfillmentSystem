@@ -69,9 +69,9 @@ describe('AppShell mobile navigation', () => {
     );
 
     const logo = screen.getByAltText('LIVAPON');
-    expect(decodeURIComponent(logo.getAttribute('src') ?? '')).toContain('/livapon-logo-horizontal-black.png');
-    expect(logo).toHaveAttribute('width', '2011');
-    expect(logo).toHaveAttribute('height', '325');
+    expect(logo).toHaveAttribute('src', '/brand/livapon-header-logo.svg');
+    expect(logo).toHaveAttribute('width', '266');
+    expect(logo).toHaveAttribute('height', '50');
     expect(logo).toHaveClass('w-28');
     expect(logo).toHaveClass('md:w-40');
   });

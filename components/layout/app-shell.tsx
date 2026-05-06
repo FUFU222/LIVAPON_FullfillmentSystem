@@ -571,10 +571,10 @@ function AppShellContent({
             onClick={(event) => handleNavigation(event, brandHref)}
           >
             <Image
-              src="/livapon-logo-horizontal-black.png"
+              src="/brand/livapon-header-logo.svg"
               alt="LIVAPON"
-              width={2011}
-              height={325}
+              width={266}
+              height={50}
               priority
               className="h-auto w-28 sm:w-32 md:w-40"
               style={{ height: 'auto' }}

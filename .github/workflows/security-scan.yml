@@ -21,8 +21,8 @@ env:
   GITLEAKS_IMAGE: zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
   # Trivy v0.69.3
   TRIVY_IMAGE: ghcr.io/aquasecurity/trivy@sha256:bcc376de8d77cfe086a917230e818dc9f8528e3c852f7b1aff648949b6258d1c
-  # OWASP ZAP 2.16.1
-  ZAP_IMAGE: zaproxy/zap-stable@sha256:7840969c7c9fead565bf9734b12f49f6886db90b1d35b1f74d79710bbd081dab
+  # OWASP ZAP stable as of 2026-05-06
+  ZAP_IMAGE: zaproxy/zap-stable@sha256:707fc6b9fd8327ba48bb7b49d0c5732c179b045dab9c99f8b95410627dff4a00
   SEMGREP_VERSION: '1.161.0'
 
 jobs:

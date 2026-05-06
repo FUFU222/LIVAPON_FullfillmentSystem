@@ -1,4 +1,4 @@
-# セラー向け注文通知メール計画
+# セラー向け注文通知メール仕様
 
 ## 1. 目的
 - Shopify から新規注文が取り込まれた際に、該当セラーへメールで即座に通知する。
@@ -12,8 +12,9 @@
 | 既存注文のセラー割当 | `orders.vendor_id` が `NULL`→値ありに更新されたタイミング | SKU 解決後にセラーが決まるケースを想定。|
 | 再通知 | デフォルトでは **なし**。メール未達やセラー設定変更時は手動で再送できるよう CLI/管理画面に余地を残す。|
 
-実装備考（2025-12-04）:
-- Gmail API 版では Shopify Webhook のうち `orders/create` のみ自動送信対象とし、`orders/updated` / 再割当は今後の再送フロー整備後に対応予定。
+実装備考（2026-05-06）:
+- 現行実装は Gmail API 版。Shopify Webhook のうち `orders/create` のみ自動送信対象とし、`orders/updated` / 再割当は今後の再送フロー整備後に対応予定。
+- 送信処理は `lib/shopify/order-import.ts` から `lib/notifications/vendor-new-order.ts` を呼び、送信結果は `vendor_order_notifications` に冪等記録する。
 
 フィルタリング:
 - `orders.archived_at IS NULL` のみ。
@@ -22,21 +23,16 @@
 
 ## 3. 送信先 & テンプレ
 - 送信先: `vendor.contact_email`（プロフィールで更新された最新アドレス）。将来的に `vendor_email_preferences` で複数アドレスや CC を扱う拡張も可能。
-- From: `notifications@livapon.jp`（既存設定を流用）。
-- 件名: `【LIVAPON】新規注文のご連絡（注文番号：{{order_number}}）`
-- 本文（テキスト）: **以下の固定フォーマットに刷新する。**
+- From: `GMAIL_SENDER`（未設定時は `information@chairman.jp`）。差出人名は `GMAIL_FROM_NAME`（未設定時は `LIVAPON 事務局`）。
+- 件名: `【LIVAPON】新しい注文のご案内`
+- 本文（テキスト）: 現行テンプレートは `lib/notifications/vendor-new-order.ts` の `buildPlainTextBody` を正とする。要旨は以下。
   ```
   {{vendor_name}} 様
 
-  LIVAPONをご利用いただきありがとうございます。
-  以下の内容で新規注文が登録されましたので、ご確認をお願いいたします。
+  新しい注文が届きました。
+  ご対応をお願いいたします（注文日時: {{order_created_at}}）。
 
   ────────────────────
-  ■ 注文情報
-  ・注文番号：{{order_number}}
-  ・注文日時：{{order_created_at}}
-  ・購入者名：{{customer_name}}
-
   ■ 配送先
   {{shipping_postal_code}}
   {{shipping_address1}}
@@ -49,26 +45,18 @@
   {{/each}}
   ────────────────────
 
-  発送準備につきましては、セラー様用コンソールよりご対応をお願いいたします。
-  ▼管理画面はこちら
+  ■ 注文を確認する
   https://livapon-fullfillment-system.vercel.app/orders
 
-  お心当たりのない場合やご不明点がございましたら、
-  運用担当またはLIVAPON事務局までご連絡ください。
   本メールは送信専用です。
-
-  ※本メールの受信有無は、セラープロフィール画面の通知設定から
-    いつでもオン／オフを切り替えていただけます。
-
-  よろしくお願いいたします。
-  LIVAPON 事務局
+  設定から通知のオン／オフを切り替えられます。
   ```
-- HTML テンプレートも同構成で整える。line_items のループでは SKU/バリエーション名を括弧付きで表示できるよう `{{product_name}} (SKU: {{sku}})` を拡張余地として残す。
+- HTML テンプレートも `lib/notifications/vendor-new-order.ts` 内で文字列生成する。React Email / `app/emails` は使っていない。
 - **動的項目一覧**
   | プレースホルダ | 取得元 |
   | --- | --- |
   | `vendor_name` | `vendors.name` |
-  | `order_number` | `orders.order_number` |
+  | `order_number` | `orders.order_number`。payload には含めるが、現行件名・本文では未表示。必要なら次回文面改定で追加する。 |
   | `order_created_at` | `orders.created_at`（JST 表記に整形） |
   | `customer_name` | `orders.customer_name` |
   | `shipping_postal_code` / `shipping_state` / `shipping_city` / `shipping_address1` / `shipping_address2` | `orders` の同名カラム |
@@ -81,30 +69,28 @@
    - **フェーズ1（現行〜当面）**: Gmail（Google Workspace）API を利用。Next.js の Route Handler / Server Action から Gmail API を叩き、プロジェクトのポリシーで定められている `information@chairman.jp` を送信元として扱う。
      - OAuth クライアントまたはサービスアカウントで認証し、Console のサーバーサイドでアクセストークンを保持。
      - セラー通知・管理者通知ともに同じ送信ヘルパーで一元管理する。
-   - **フェーズ2（本格スケール後）**: メール送信部分だけ Resend / SES などへ差し替え。`sendVendorNewOrderEmail(payload)` のインターフェースは維持し、実装を差し替えるだけで移行できる構成にする。
-   - `.env` に `RESEND_API_KEY`。
-   - `lib/notifications/email.ts` に送信ヘルパーを作成し、テンプレート別に型安全な呼び出しにする。
+   - **フェーズ2（本格スケール後）**: メール送信部分だけ SES などへ差し替え。`sendVendorNewOrderEmail(payload)` のインターフェースは維持し、実装を差し替えるだけで移行できる構成にする。
+   - `lib/notifications/email.ts` が Gmail service account JWT、access token cache、MIME 生成、retryable error 判定を担う。
 2. **非同期実行**:
-   - 既存の Webhook ジョブワーカー（`/api/internal/webhook-jobs/process`）で `processShopifyWebhook` 後に通知キューへ追加。
-   - もしくは Postgres `orders` テーブルの `AFTER INSERT` トリガー → `NOTIFY` で `Edge Function` を起動する案も検討可能だが、まずはワーカーに統合する。
+   - 既存の Webhook ジョブワーカー（`/api/internal/webhook-jobs/process`）で `processShopifyWebhook` 後に通知を送信する。
+   - メール失敗は注文取り込みを失敗扱いにしない。retryable error は通知ログ上で再試行候補にする。
 3. **冪等管理**:
    - `vendor_order_notifications` テーブルを新設（`order_id`, `vendor_id`, `notification_type`, `sent_at`, `status`, `error_message`）。
    - 送信前に `UPSERT` し、既に `status='sent'` の同キーが存在する場合はスキップ。
 4. **エラー処理**:
-   - Resend エラーは `status='error'` と `error_message` を保存。GitHub Actions のジョブ Summary で件数を報告。
+   - Gmail API エラーは `status='error'` と `error_message` を保存。GitHub Actions のジョブ Summary で件数を報告。
    - セラーのメール未登録の場合はログ警告＋後続の Slack 通知候補。
 5. **将来拡張 / 通知設定**:
    - `order_status` 変化（例: `fulfilled`）時に発送完了通知、`shipment_adjustment_requests` 更新時通知なども同インフラで拡張できる。
    - セラープロフィール画面に「新規注文メール通知」のトグルを追加し、`vendors.notify_new_orders boolean default true` で制御する案を採用。より細かい粒度が必要になった場合は `vendor_notification_preferences(vendor_id, notification_type, enabled)` へ移行する。
    - OFF のセラーには送信処理をスキップしつつ、`vendor_order_notifications` に `status='skipped'` を記録して監査できるようにする。
 
-## 5. 開発ステップ案
-1. **スキーマ**: `20251204090000_create_vendor_notification_logs.sql`（仮）で `vendor_order_notifications` 作成・インデックス追加。
-2. **メール送信ヘルパー**: `lib/notifications/email.ts` に Resend クライアント（SWR/キャッシュ含む）。`sendVendorNewOrderEmail(payload)` を export。
-3. **テンプレート**: `app/emails/vendor-new-order.tsx`（React Email + Tailwind）。`lib/emails/vendor-new-order.ts` でも良い。
-4. **ジョブ統合**: `lib/jobs/webhook-runner.ts` → `processShopifyWebhook` の成功パスで、`orders` の挿入結果を元に通知関数を呼び出す。`Promise.allSettled` でメール失敗があっても注文処理は継続。
-5. **監視**: GitHub Actions の Step summary に `sentCount / errorCount` を表示し、`vendor_order_notifications` を 24 時間で TTL 集計するクエリを `docs/60_development_status.md` に追記予定。
-6. **文言確認**: プロダクトオーナー確認用のプレビュー（Storybook 代わりに `/dev/email-preview/vendor-new-order`）を作成。
+## 5. 実装済みコンポーネント
+1. **スキーマ**: `vendor_order_notifications` と `vendors.notify_new_orders` で冪等送信・通知設定を管理。
+2. **メール送信ヘルパー**: `lib/notifications/email.ts`。Gmail service account + domain-wide delegation を前提に MIME を生成して送信する。
+3. **テンプレート**: `lib/notifications/vendor-new-order.ts`。text / HTML を同一 payload から生成する。
+4. **ジョブ統合**: `lib/shopify/order-import.ts` の注文取り込み成功パスで通知対象セラーを解決し、メール送信とログ保存を行う。
+5. **テスト**: `__tests__/vendor-new-order-notification.test.ts` と `__tests__/order-import-notification-recipients.test.ts` で本文・宛先解決を確認する。
 
 ## 6. オープン課題
 - 再通知ポリシー（未読/未発送が一定時間続いた場合のリマインド）。

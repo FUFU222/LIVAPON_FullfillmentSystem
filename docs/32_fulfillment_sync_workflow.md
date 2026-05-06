@@ -1,6 +1,6 @@
 # Fulfillment Sync ワークフロー & 耐障害設計
 
-最終更新: 2025-11-02
+最終更新: 2026-05-06
 
 ## データマッピング
 - `shipments` — 追跡番号・キャリア・同期状態・FO 関連 ID。
@@ -10,11 +10,13 @@
 
 ## フロー概要
 1. セラーが UI / API で発送登録。CSV 関連コードは残るが、現行運用スコープには含めない。
-2. `upsertShipment`
+2. `registerShipmentsFromSelections`
    - Line Item 権限を検証。
-   - Shipment と pivot を作成・更新。
+   - `requestId` と payload hash で同一リクエスト再送を冪等に扱う。
+   - Shipment と pivot を作成し、`shipment_sync_events.registered` を記録。
    - `sync_status = 'pending'`, `sync_error = null`, `sync_retry_count = 0`。
-3. `syncShipmentWithShopify`
+   - API は Shopify 同期を待たず `202` を返し、UI は入力をクリアして refresh する。
+3. `resyncPendingShipments` / `syncShipmentWithShopify`
    - `sync_status = 'processing'` に更新。
    - Shopify から FO を取得し、ラインアイテム毎に残量を計算。
    - 既存 Fulfillment があれば `update_tracking`、なければ新規作成。
@@ -24,7 +26,8 @@
    - `sync_error` にメッセージ、`sync_retry_count += 1`。
    - `sync_pending_until` を指数バックオフで未来に設定（5, 10, 20, ... 最大 60 分）。
 5. Shopify から FO 関連 Webhook を受信すると `triggerShipmentResyncForShopifyOrder` が対象注文の `sync_status='pending'` を再実行。
-6. 発送後の修正や取消が必要な場合は、`/support/shipment-adjustment` 経由で管理者が判断する。`cancelShipment` はバックエンド capability として残るが、セラー向け self-service UI は提供しない。
+6. GitHub Actions `resync-pending-shipments` が定期的に `/api/internal/shipments/resync` を呼び、期限到来分と stale `processing` を回収する。
+7. 発送後の修正や取消が必要な場合は、`/support/shipment-adjustment` 経由で管理者が判断する。セラー向け self-service の取消 / 再送 UI は提供しない。
 
 ## エラーパターン & 対応
 | 種類 | 想定原因 | 対応 |
@@ -33,13 +36,15 @@
 | `Shopify API 4xx` | スコープ不足/数量不整合 | `sync_status='error'` + `sync_error` に詳細。管理者が確認。|
 | ネットワークエラー | Shopify 側障害 | バックオフ → 管理者にはアラート。|
 | 429 レート | 呼び出し過多 | `sync_pending_until` をレート制限解除後に設定。|
+| stale `processing` | worker 中断 / serverless timeout | `/api/internal/shipments/resync` が pending/error へ戻して再処理。|
 
 ## UI との連携
 - `OrdersDispatchTable` / `OrdersDispatchPanel` がラインアイテム選択と発送登録（追跡番号・配送会社入力、確認モーダル、Toast）を担う。
 - `ShipmentHistoryTable` は発送履歴の参照と、修正依頼フローへの導線を担う。
+- `AdminOrderDetail` は同期失敗 shipment の再同期、Fulfillment ID 紐付け、手動対応済み化を担う。
 - セラー向けの手動再同期・取消ボタンは現行スコープ外。
 
 ## 耐障害運用 / 今後候補
 - `sync_pending_until <= NOW()` の Shipment は GitHub Actions + `/api/internal/shipments/resync` でバッチ再送する。
-- Shopify API レスポンスログを `shipments_sync_logs` テーブルに保存し、成功/失敗のトレースを容易にする。
-- 通知（Slack/メール）で `sync_status='error'` を監視。
+- Shopify API レスポンスは秘匿情報を保存せず、`shipment_sync_events` に要約イベントとして残す。
+- 通知（Slack/メール）で `sync_status='error'` と stale `processing` を監視。

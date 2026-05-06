@@ -16,16 +16,21 @@
 - 実装: `ToastProvider`（`app/layout.tsx`）。呼び出しは `useToast()`（例: `OrdersRefreshButton`, `VendorProfileForm`）。
 - 表示位置: 右上。1 件ずつ縦積み。
 - プロパティ: `{ id?, variant: 'default' | 'success' | 'error', title, description?, duration? }`。
-- 長時間処理（CSV インポートなど）は `duration: Infinity` で表示し、完了時に `dismissToast`。
+- 配送登録は Shopify 同期の完了を待たず、短い成功 Toast に留める。長時間ジョブの進捗 Toast / polling は通常導線に出さない。
 - アクセシビリティ: `aria-live="polite"` を維持。テキストは 40 文字以内を推奨。
 
 ## Modal ガイド
-- コンポーネント: `components/ui/modal.tsx`（Radix Dialog ベース）。
+- コンポーネント: `components/ui/modal.tsx`（React Portal + 自前 focus trap）。
 - 要件:
   - `aria-modal="true"`、タイトル要素に `id`。
   - オープン時は主要ボタンへフォーカス移動。閉じたらトリガーへ戻す。
   - Esc / 背景クリックで閉じられるよう許可しつつ、破壊的操作は明示的ボタンを用意。
 - 用途: セラー削除確認、申請詳細など。情報表示のみなら Drawer/Sheet も検討。
+
+## Loading / Navigation
+- route loading は `components/layout/navigation-loading.tsx` の静的 skeleton を使う。
+- 画面遷移時に全画面を覆う spinner や `router.push` 待ちの blocking overlay は使わない。
+- ボタン単位の処理中表示は許容するが、既に読める情報を隠さない。
 
 ## Alert & Banner
 - Alert: `components/ui/alert.tsx` を使用（`variant="default|success|destructive|warning"`）。
@@ -40,12 +45,15 @@
 
 ## 実装参照
 - `components/orders/orders-refresh-button.tsx` — Toast の典型例。
+- `components/orders/orders-dispatch-panel.tsx` — 発送登録の即時受付 Toast と入力リセット。
 - `components/vendor/profile-form.tsx` — フォーム内 Alert + Toast の連携。
 - `components/admin/vendor-bulk-delete-form.tsx` — Modal + Transition + Alert を組み合わせたケース。
+- `components/layout/app-shell.tsx` — mobile bottom nav とアイコン付き主要導線。
 
 ## QA チェックリスト
 - [ ] Toast/Alert の文言が日本語で簡潔かつ操作内容を伝えているか。
 - [ ] Toast が複数回連続で出ても積み上がりすぎないか（id 重複防止）。
 - [ ] Modal 内で Tab 移動がループし、Esc で閉じられるか。
+- [ ] 画面遷移 loading が spinner で操作感を阻害していないか。
 - [ ] ランディングの CTA コントラスト比が WCAG AA を満たすか。背景 `from-white via-slate-50 to-white` 上で `#801010` 利用可。
 - [ ] 主要ページでスクリーンリーダーが状態変化を読み上げるか（`aria-live`, `role="status"`）。

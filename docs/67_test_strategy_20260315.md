@@ -119,7 +119,8 @@ E2E は万能ではない。役割は以下に限定する。
 - `__tests__/status-badge.test.tsx`
 - `__tests__/vendor-delete-button.test.tsx`
 - `__tests__/vendor-bulk-delete-form.test.tsx`
-- `__tests__/navigation-overlay.test.tsx`
+- `__tests__/navigation-loading.test.tsx`
+- `__tests__/app-shell-mobile-nav.test.tsx`
 
 原則:
 - スナップショット中心にはしない
@@ -313,7 +314,7 @@ E2E は万能ではない。役割は以下に限定する。
 - `npm run build`
 
 将来的に追加:
-- `npm run typecheck`
+- standalone typecheck（Next 生成型と test fixture 型を整理した後）
 
 含めるテスト:
 - Domain / Logic
@@ -404,11 +405,11 @@ E2E は万能ではない。役割は以下に限定する。
 - `test.skip` は恒久状態にしない。Issue か doc に理由と戻し条件を残す
 
 ## 10. すぐやるべき運用変更
-- `package.json` に `typecheck` を追加
 - Playwright のタグ別実行 script を追加
   - 例: `test:e2e:smoke`, `test:e2e:hybrid`
 - PR では `@smoke @auth` を回す CI を追加
 - `docs/63_orders_test_plan.md` と `docs/42_realtime_test_plan.md` を本戦略の運用レーンに紐付ける
+- standalone typecheck は現在の `npm run build` ゲートと別枠で整備する。`npx tsc --noEmit` をそのまま必須化すると、Next dev/prod 生成型差分と既存テスト fixture 型で false positive が出る。
 
 ## 11. この方針の見方
 この戦略は「テストを増やすこと」自体が目的ではない。目的は、以下を安定して守ることです。

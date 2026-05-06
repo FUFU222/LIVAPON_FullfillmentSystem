@@ -2,13 +2,13 @@
 
 > 本ドキュメントは開発契約。すべての修正・PR はこの方針に従うこと。
 
-最終更新: 2025-11-02
+最終更新: 2026-05-06
 
 ---
 
 ## 1. 基本方針
 - `schema.sql` → マイグレーション → `lib/supabase/types.ts` → サービス層 → UI の一貫性を最優先。
-- 変更は最小単位（1 ファイル・1 責務）で行い、lint / test / typecheck を通してから次に進む。
+- 変更は最小単位（1 ファイル・1 責務）で行い、lint / test / build を通してから次に進む。
 - 命名・コメント・UI テキストは日本語を優先し、外部 API 仕様は原文（英語）を併記。
 
 ## 2. ドキュメント階層
@@ -44,8 +44,7 @@
 4. テスト
    ```bash
    npm run lint
-   npm run test
-   npx tsc --noEmit
+   npm test -- --runInBand
    npm run build
    ```
 5. 影響範囲を PR 説明に記載。UI 変更はスクショ添付。
@@ -70,7 +69,7 @@
 | スキーマ整合 | `schema.sql` ↔ マイグレーション ↔ `types.ts` が一致しているか |
 | UI 仕様 | `docs/20_ui_wireframes.md` と乖離していないか |
 | Shopify 連携 | `docs/30-35` の設計と矛盾がないか |
-| テスト | `npm run lint` / `npm run test` / `npx tsc --noEmit` / `npm run build` OK |
+| テスト | `npm run lint` / `npm test -- --runInBand` / `npm run build` OK |
 | 文書整合 | 関連ドキュメントの更新（要件/仕様/運用）を行ったか |
 
 ---
@@ -100,7 +99,7 @@ Secrets は `.env.local` で管理し、Git にコミットしない。
 | カテゴリ | 基準 |
 | -------- | ---- |
 | Lint | `npm run lint` 合格 |
-| 型 | `npx tsc --noEmit` 合格 |
+| 型 | `npm run build` の Next.js production build / 型検証に合格。standalone `npx tsc --noEmit` は今後の fixture 型整備後に正式ゲート化 |
 | テスト | `npm run test` 合格（Jest） |
 | ビルド | `npm run build` 成功 |
 | UI | shadcn/ui ベース、アクセシビリティ要件を満たす |
@@ -138,14 +137,14 @@ Secrets は `.env.local` で管理し、Git にコミットしない。
 リグレッションやヒューマンエラーを防ぐため、以下の品質ゲートを全タスクで順守する。
 
 1. **ローカルチェックの義務化**
-   - 変更内容に関わらず、コミット前に必ず `npm run lint` / `npm run test` / `npx tsc --noEmit` / `npm run build` を実行する。
+   - 変更内容に関わらず、コミット前に必ず `npm run lint` / `npm test -- --runInBand` / `npm run build` を実行する。
    - 実行ログは PR/共有コメントに貼り付け、いつでもトレースできるようにする。
 2. **差分に応じた追加テスト**
    - サーバーアクション・Webhook・同期ロジックを触った場合は、対象の Jest テストまたは一時的な再現スクリプトを追加し、再発防止の根拠を残す。
    - UI 改修はスクリーンショット（SP/PC 両方）と操作ログを添付する。
 3. **レビュー前セルフチェックリスト**
    - [ ] Supabase スキーマと型定義の差分なし
-   - [ ] Lint/Test/Type/Build 成功
+   - [ ] Lint/Test/Build 成功
    - [ ] 関連ドキュメント更新済み（要件・仕様・運用）
    - [ ] Webhook / Shopify 側で影響が出る場合は手順と検証日時を記録
 4. **監視とログ**

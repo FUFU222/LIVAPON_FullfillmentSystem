@@ -1,5 +1,9 @@
 # Docs Index
 
+最終整理: 2026-05-06
+
+このディレクトリでは、現行運用の判断材料になる文書を `docs/` 直下に置き、過去の計画・監査・引き継ぎは `docs/archive/` に退避する。2026-05-06 時点の実装は、Node.js 24 / Next.js 16.2.4、Shopify Webhook + GitHub Actions worker、配送登録の即時受付 + バックグラウンド同期、Gmail API 通知を正とする。
+
 ## 0x — 基本方針
 - `docs/00_language.md` — 言語ポリシー
 - `docs/01_system_overview.md` — システム概要
@@ -22,10 +26,10 @@
 - `docs/30_fulfillment_sync_overview.md`
 - `docs/31_fulfillment_api_details.md`
 - `docs/32_fulfillment_sync_workflow.md`
-- `docs/33_fulfillment_sync_backlog.md`
-- `docs/34_fulfillment_order_plan.md`
-- `docs/35_csv_import_notes.md`
-- `docs/68_async_shipment_registration_design.md` — 配送登録即時受付化の要件定義・設計
+- `docs/33_fulfillment_sync_backlog.md` — 現行 backlog。完了済み worker は Done に移動済み。
+- `docs/34_fulfillment_order_plan.md` — FO 連携の現行ステータスと残タスク。
+- `docs/35_csv_import_notes.md` — legacy / reference。正式導線ではない。
+- `docs/68_async_shipment_registration_design.md` — 配送登録即時受付化の実装済み設計。
 
 ## 4x — Supabase Realtime Platform
 - `docs/livapon-realtime-sync-guidelines.md` — 中心方針（今回の軸）
@@ -39,7 +43,13 @@
 ## 6x — ステータス / レポート / テスト
 - `docs/60_development_status.md`
 - `docs/63_orders_test_plan.md`
-- `docs/67_test_strategy_20260315.md` — 推奨テスト体型と実装計画
+- `docs/67_test_strategy_20260315.md` — 推奨テスト体系と実装計画
+
+## 現行スコープ外 / Legacy
+- `/import` と `shipment_import_jobs` は互換・過去ジョブ処理・CSV preview のため残す。通常のセラー発送登録は `/orders` から `shipments` を即時作成し、Shopify 同期は `/api/internal/shipments/resync` が順次処理する。
+- セラー自身による発送取消・再同期 UI は正式導線ではない。修正は `/support/shipment-adjustment` から管理者へ依頼し、同期失敗の管理者対応は admin 画面で行う。
+- standalone の `npx tsc --noEmit` / `npm run typecheck` は現行 CI ゲートではない。必須ゲートは `npm run lint` / `npm test -- --runInBand` / `npm run build`。
+- 2026-05-06 に未使用依存として `date-fns`, `class-variance-authority`, `@testing-library/user-event` を削除した。日時整形は `lib/date-time.ts`、ボタン variant は `components/ui/button.tsx` の軽量実装を使う。
 
 ## Archive
 - `docs/archive/README.md` — 過去の計画メモ / 監査メモ / 引き継ぎメモ

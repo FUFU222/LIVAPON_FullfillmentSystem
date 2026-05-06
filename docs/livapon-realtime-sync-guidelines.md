@@ -9,9 +9,9 @@ LIVAPONのフルフィルメントシステムでは、Shopify → Supabase → 
 
 ## 環境と要件
 - **Supabaseクライアント**: `@supabase/supabase-js@^2.58.0` + `@supabase/ssr@^0.7.0`
-- **フロントエンド**: Next.js 14 (App Router + SSR + Server Actions)
+- **フロントエンド**: Next.js 16 (App Router + SSR + Server Actions)
 - **データモデル**: 各テーブルに `vendor_id` カラムあり。JOIN不要でセラーごとに絞り込み可能。
-- **JWTクレーム**: `vendor_id` が `app_metadata` および `user_metadata` に保存。
+- **JWTクレーム**: `vendor_id` / `role` は `app_metadata` を信頼元にする。`user_metadata` は権限判定に使わない。
 - **ユースケース**: 1分あたり数件〜数十件のWebhook更新。複数セラーが同一注文を扱う。
 
 ---
@@ -206,7 +206,7 @@ Shopify からの Webhook/Realtime イベントを Console UI に即時反映さ
    alter table public.orders replica identity full;
    ```
    行数が多いテーブルは WAL 増を考慮しつつ、必要最小限の列（主キーなど）を指定する。
-3. **RLS と JWT** — RLS は Realtime にも適用されるため、疎通確認は「RLS OFF → 無フィルタ購読 → RLS ON → vendor フィルタ適用」の順で行う。Supabase Auth のユーザー `user_metadata/app_metadata` に `vendor_id` を必ずセットし、`auth.jwt()->>'vendor_id'` で参照できるようにしておく。
+3. **RLS と JWT** — RLS は Realtime にも適用されるため、疎通確認は「RLS OFF → 無フィルタ購読 → RLS ON → vendor フィルタ適用」の順で行う。Supabase Auth のユーザー `app_metadata.vendor_id` を必ずセットし、DB 側では `auth.jwt() -> 'app_metadata' ->> 'vendor_id'` を参照する。
 
 ### 想定ケース（抜け漏れ防止チェック）
 - [ ] 同一注文に複数セラーがいる場合

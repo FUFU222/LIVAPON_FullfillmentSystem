@@ -39,6 +39,7 @@
 ## 5x — プロセス / 品質
 - `docs/50_development_guide.md`
 - `docs/51_ci_quality.md`
+- `docs/52_security_scanning.md` — セキュリティスキャン、Dependabot、レポート運用。
 
 ## 6x — ステータス / レポート / テスト
 - `docs/60_development_status.md`

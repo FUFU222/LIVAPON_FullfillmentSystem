@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:10"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    groups:
+      next-react:
+        patterns:
+          - next
+          - react
+          - react-dom
+          - eslint-config-next
+      test-tooling:
+        patterns:
+          - "@playwright/test"
+          - "@testing-library/*"
+          - jest
+          - jest-environment-jsdom
+      supabase:
+        patterns:
+          - "@supabase/*"
+          - supabase
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:20"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5

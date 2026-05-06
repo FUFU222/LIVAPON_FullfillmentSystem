@@ -45,6 +45,7 @@ jobs:
 ```
 - どれか 1 つでも落ちたらマージをブロック。
 - `vercel --prod` は Actions 成功後にのみ許可する（ブランチ保護規則 + Required status checks）。
+- セキュリティゲートは `.github/workflows/security-scan.yml` を使う。PR / main push では `npm audit`、OSV-Scanner、Gitleaks、Semgrep ERROR を blocking にし、毎週の深いスキャンでは Trivy / Semgrep full report / ZAP baseline を実行する。運用詳細は `docs/52_security_scanning.md` を参照。
 
 ### Vercel 関連の自動化
 - `vercel env pull` を Actions で実行し、Production/Preview の環境変数差分を検査。「未設定の WEBHOOK_SECRET がある場合は CI を落とす」チェックを追加。

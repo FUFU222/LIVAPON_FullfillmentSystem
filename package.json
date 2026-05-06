@@ -16,7 +16,14 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:list": "playwright test --list",
-    "test:vendor-email": "tsx scripts/send-test-vendor-email.ts"
+    "test:vendor-email": "tsx scripts/send-test-vendor-email.ts",
+    "security:audit": "npm audit --audit-level=high",
+    "security:audit:prod": "npm audit --omit=dev --audit-level=high",
+    "security:osv": "osv-scanner scan source -r . --experimental-exclude node_modules --experimental-exclude .next --experimental-exclude .tmp --experimental-exclude security-reports --experimental-exclude security-scan-artifacts",
+    "security:gitleaks": "gitleaks git --redact --no-banner --log-level warn .",
+    "security:semgrep": "uvx --from semgrep semgrep scan --config p/default --metrics off --severity ERROR --exclude node_modules --exclude .next --exclude .tmp --exclude security-reports --exclude security-scan-artifacts .",
+    "security:trivy": "trivy fs --scanners vuln,misconfig --skip-dirs node_modules --skip-dirs .next --skip-dirs .tmp --skip-dirs security-reports --skip-dirs security-scan-artifacts --severity HIGH,CRITICAL --exit-code 1 .",
+    "security:quick": "npm run security:audit:prod && npm run security:audit && npm run security:osv && npm run security:gitleaks && npm run security:semgrep"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

@@ -20,6 +20,7 @@
 .env.production.local
 .tmp
 security-reports/
+security-scan-artifacts/
 
 npm-debug.log*
 yarn-debug.log*

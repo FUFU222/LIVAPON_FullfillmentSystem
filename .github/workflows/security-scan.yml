@@ -163,6 +163,7 @@ jobs:
           fi
 
           mkdir -p security-scan-artifacts/zap
+          chmod 777 security-scan-artifacts/zap
           docker run --rm \
             -v "${PWD}/security-scan-artifacts/zap:/zap/wrk:rw" \
             "${ZAP_IMAGE}" \

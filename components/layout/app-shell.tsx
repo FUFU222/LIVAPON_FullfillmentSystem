@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import {
   ClipboardList,
@@ -26,11 +26,6 @@ import { getBrowserClient } from '@/lib/supabase/client';
 import { resolveRoleFromAuthUser, resolveVendorIdFromAuthUser } from '@/lib/auth-metadata';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { GradientAvatar } from '@/components/ui/avatar';
-import {
-  NavigationOverlayLayer,
-  NavigationOverlayProvider,
-  useNavigationOverlay
-} from '@/components/layout/navigation-overlay';
 
 export type AppShellInitialAuth = {
   status: 'signed-in' | 'signed-out';
@@ -145,11 +140,7 @@ export function AppShell({
   children: ReactNode;
   initialAuth: AppShellInitialAuth;
 }) {
-  return (
-    <NavigationOverlayProvider>
-      <AppShellContent initialAuth={initialAuth}>{children}</AppShellContent>
-    </NavigationOverlayProvider>
-  );
+  return <AppShellContent initialAuth={initialAuth}>{children}</AppShellContent>;
 }
 
 function AppShellContent({
@@ -471,9 +462,6 @@ function AppShellContent({
   });
   const hasMobileBottomNav = mobileNavItems.length > 0;
 
-  const { beginNavigation } = useNavigationOverlay();
-  const navigationFallbackTimerRef = useRef<number | null>(null);
-
   const brandHref = (() => {
     if (status !== 'signed-in') {
       return '/';
@@ -489,35 +477,6 @@ function AppShellContent({
     }
     return '/';
   })();
-
-  const clearNavigationFallback = useCallback(() => {
-    if (navigationFallbackTimerRef.current !== null) {
-      window.clearTimeout(navigationFallbackTimerRef.current);
-      navigationFallbackTimerRef.current = null;
-    }
-  }, []);
-
-  const scheduleNavigationFallback = useCallback(
-    (href: string) => {
-      clearNavigationFallback();
-      navigationFallbackTimerRef.current = window.setTimeout(() => {
-        if (window.location.pathname !== href) {
-          window.location.assign(href);
-        }
-      }, 6000);
-    },
-    [clearNavigationFallback]
-  );
-
-  useEffect(() => {
-    clearNavigationFallback();
-  }, [pathname, clearNavigationFallback]);
-
-  useEffect(() => {
-    return () => {
-      clearNavigationFallback();
-    };
-  }, [clearNavigationFallback]);
 
   useEffect(() => {
     const prefetchTargets = Array.from(
@@ -536,31 +495,6 @@ function AppShellContent({
     });
   }, [brandHref, links, router]);
 
-  const handleNavigation = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>, href: string) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.shiftKey
-      ) {
-        return;
-      }
-
-      if (!pathname || pathname === href) {
-        return;
-      }
-
-      event.preventDefault();
-      beginNavigation();
-      router.push(href);
-      scheduleNavigationFallback(href);
-    },
-    [beginNavigation, pathname, router, scheduleNavigationFallback]
-  );
-
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="relative z-30 border-b border-slate-200 bg-white/80 backdrop-blur">
@@ -568,7 +502,6 @@ function AppShellContent({
           <Link
             href={brandHref}
             className="flex min-w-0 shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-foreground sm:gap-3"
-            onClick={(event) => handleNavigation(event, brandHref)}
           >
             <Image
               src="/brand/livapon-header-logo.svg"
@@ -602,7 +535,6 @@ function AppShellContent({
                         ? 'bg-foreground text-white shadow-sm'
                       : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
-                    onClick={(event) => handleNavigation(event, item.href)}
                   >
                     <span>{item.label}</span>
                     {role === 'admin' &&
@@ -644,7 +576,6 @@ function AppShellContent({
         >
           {children}
         </main>
-        <NavigationOverlayLayer />
       </div>
       <footer
         className={cn(
@@ -668,7 +599,6 @@ function AppShellContent({
         <MobileBottomNav
           items={mobileNavItems}
           pathname={pathname ?? null}
-          onNavigate={handleNavigation}
         />
       ) : null}
     </div>
@@ -677,12 +607,10 @@ function AppShellContent({
 
 function MobileBottomNav({
   items,
-  pathname,
-  onNavigate
+  pathname
 }: {
   items: MobileNavItem[];
   pathname: string | null;
-  onNavigate: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
 }) {
   return (
     <nav
@@ -715,7 +643,6 @@ function MobileBottomNav({
                   ? 'bg-slate-900 text-white shadow-sm'
                   : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
               )}
-              onClick={(event) => onNavigate(event, item.href)}
             >
               <span className="relative inline-flex">
                 <Icon className="h-5 w-5" aria-hidden="true" strokeWidth={2.1} />
@@ -781,7 +708,6 @@ function UserMenu({
   vendorId: number | null;
 }) {
   const router = useRouter();
-  const { beginNavigation } = useNavigationOverlay();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -853,7 +779,6 @@ function UserMenu({
                 className="block w-full px-4 py-2 text-left text-slate-600 transition hover:bg-slate-50 hover:text-foreground"
                 onClick={() => {
                   setOpen(false);
-                  beginNavigation();
                   router.push('/vendor/profile');
                 }}
               >

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { AppShell, type AppShellInitialAuth } from '@/components/layout/app-shell';
 
 let mockPathname = '/orders';
@@ -91,6 +91,30 @@ describe('AppShell mobile navigation', () => {
     expect(within(mobileNav).getByRole('link', { name: /修正/ })).toHaveAttribute('href', '/support/shipment-adjustment');
     expect(within(mobileNav).getByRole('link', { name: /会社/ })).toHaveAttribute('href', '/vendor/profile');
     expect(within(mobileNav).queryByRole('link', { name: /利用開始依頼/ })).not.toBeInTheDocument();
+  });
+
+  it('does not block prefetched navigation with a global loading overlay', () => {
+    jest.useFakeTimers();
+
+    try {
+      render(
+        <AppShell initialAuth={buildAuth()}>
+          <div>content</div>
+        </AppShell>
+      );
+
+      const mobileNav = screen.getByLabelText('モバイル主要ナビ');
+      fireEvent.click(within(mobileNav).getByRole('link', { name: /履歴/ }));
+
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(screen.queryByLabelText('読み込み中')).not.toBeInTheDocument();
+      expect(mockPush).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('shows admin bottom tabs with notification badges', () => {

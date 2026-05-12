@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Building2, KeyRound, type LucideIcon } from 'lucide-react';
+import { Bell, Building2, KeyRound, MapPin, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
@@ -21,6 +21,12 @@ export type VendorProfileInitialValues = {
   vendorCode: string | null;
   contactPhone: string | null;
   notifyNewOrders: boolean;
+  // 発送元住所(納品書に印字される)
+  postal: string | null;
+  prefecture: string | null;
+  city: string | null;
+  address1: string | null;
+  address2: string | null;
 };
 
 const INITIAL_VENDOR_PROFILE_STATE: VendorProfileActionState = {
@@ -147,6 +153,103 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         ) : (
           <p className="text-xs text-slate-500">緊急連絡先に利用します。</p>
         )}
+      </div>
+
+      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4">
+        <SectionHeading
+          icon={MapPin}
+          title="発送元住所"
+          description="納品書(packing slip)の「発送元」 欄に印字されます。建物名以外は必須です。"
+        />
+
+        <div className="grid gap-2 sm:max-w-[240px]">
+          <label htmlFor="postal" className="text-sm font-medium text-foreground">
+            郵便番号
+          </label>
+          <Input
+            id="postal"
+            name="postal"
+            defaultValue={initial.postal ?? ''}
+            placeholder="123-4567"
+            autoComplete="postal-code"
+            inputMode="numeric"
+            required
+            aria-invalid={state.fieldErrors?.postal ? 'true' : 'false'}
+          />
+          {state.fieldErrors?.postal ? (
+            <p className="text-xs text-red-600">{state.fieldErrors.postal}</p>
+          ) : (
+            <p className="text-xs text-slate-500">ハイフン有り/無しどちらでも可。</p>
+          )}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <label htmlFor="prefecture" className="text-sm font-medium text-foreground">
+              都道府県
+            </label>
+            <Input
+              id="prefecture"
+              name="prefecture"
+              defaultValue={initial.prefecture ?? ''}
+              placeholder="東京都"
+              autoComplete="address-level1"
+              required
+              aria-invalid={state.fieldErrors?.prefecture ? 'true' : 'false'}
+            />
+            {state.fieldErrors?.prefecture ? (
+              <p className="text-xs text-red-600">{state.fieldErrors.prefecture}</p>
+            ) : null}
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="city" className="text-sm font-medium text-foreground">
+              市区町村
+            </label>
+            <Input
+              id="city"
+              name="city"
+              defaultValue={initial.city ?? ''}
+              placeholder="港区南青山"
+              autoComplete="address-level2"
+              required
+              aria-invalid={state.fieldErrors?.city ? 'true' : 'false'}
+            />
+            {state.fieldErrors?.city ? (
+              <p className="text-xs text-red-600">{state.fieldErrors.city}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <label htmlFor="address1" className="text-sm font-medium text-foreground">
+            番地
+          </label>
+          <Input
+            id="address1"
+            name="address1"
+            defaultValue={initial.address1 ?? ''}
+            placeholder="2-2-15"
+            autoComplete="address-line1"
+            required
+            aria-invalid={state.fieldErrors?.address1 ? 'true' : 'false'}
+          />
+          {state.fieldErrors?.address1 ? (
+            <p className="text-xs text-red-600">{state.fieldErrors.address1}</p>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2">
+          <label htmlFor="address2" className="text-sm font-medium text-foreground">
+            建物名・部屋番号(任意)
+          </label>
+          <Input
+            id="address2"
+            name="address2"
+            defaultValue={initial.address2 ?? ''}
+            placeholder="○○ビル 3F"
+            autoComplete="address-line2"
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4">

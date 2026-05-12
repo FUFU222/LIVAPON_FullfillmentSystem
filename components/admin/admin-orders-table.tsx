@@ -8,19 +8,23 @@ import { Alert } from '@/components/ui/alert';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { PackingSlipStatusIcon } from '@/components/orders/packing-slip-button';
 import { compareTimestampsDesc } from '@/lib/date-time';
 import type { AdminOrderPreview, OrderDetail } from '@/lib/data/orders';
 import { formatOrderDateTime } from '@/lib/orders/date-time';
 
 type Props = {
   orders: AdminOrderPreview[];
+  /** 納品書が既に発行されている order.id 群(視覚化用) */
+  issuedOrderIds?: number[];
 };
 
 type DetailCache = Record<number, OrderDetail>;
 
 type LoadState = 'idle' | 'loading' | 'error';
 
-export function AdminOrdersTable({ orders }: Props) {
+export function AdminOrdersTable({ orders, issuedOrderIds = [] }: Props) {
+  const issuedSet = useMemo(() => new Set(issuedOrderIds), [issuedOrderIds]);
   const [activeOrderId, setActiveOrderId] = useState<number | null>(null);
   const [activeDetail, setActiveDetail] = useState<OrderDetail | null>(null);
   const [detailCache, setDetailCache] = useState<DetailCache>({});
@@ -171,6 +175,7 @@ export function AdminOrdersTable({ orders }: Props) {
               <th className="px-3 py-2">ステータス</th>
               <th className="px-3 py-2">顧客名</th>
               <th className="px-3 py-2">セラー</th>
+              <th className="px-3 py-2">納品書</th>
               <th className="px-3 py-2">最終更新</th>
             </tr>
           </thead>
@@ -203,6 +208,9 @@ export function AdminOrdersTable({ orders }: Props) {
                   ) : (
                     <span className="text-slate-400">未割当</span>
                   )}
+                </td>
+                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                  <PackingSlipStatusIcon orderId={order.id} issued={issuedSet.has(order.id)} />
                 </td>
                 <td className="px-3 py-2 text-xs">{formatOrderDateTime(order.updatedAt)}</td>
               </tr>

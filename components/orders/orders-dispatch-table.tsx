@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/orders/status-badge";
 import { cn } from "@/lib/utils";
 import { OrdersDispatchPanel } from "@/components/orders/orders-dispatch-panel";
+import { PackingSlipStatusIcon } from "@/components/orders/packing-slip-button";
 import { Badge } from "@/components/ui/badge";
 import { SelectedLineItem } from "@/components/orders/types";
 import { formatDateTimeInJst } from "@/lib/date-time";
@@ -105,13 +106,23 @@ function getOrderDisplayStatus(order: OrderSummary): string {
   return 'unfulfilled';
 }
 
-export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary[]; vendorId: number }) {
+export function OrdersDispatchTable({
+  orders,
+  vendorId,
+  issuedOrderIds = []
+}: {
+  orders: OrderSummary[];
+  vendorId: number;
+  /** 納品書が既に発行されている order.id 群(視覚化用) */
+  issuedOrderIds?: number[];
+}) {
   const filteredOrders = useMemo(() =>
     orders.map((order) => ({
       ...order,
       lineItems: order.lineItems.filter((item) => item.vendorId === vendorId)
     })),
   [orders, vendorId]);
+  const issuedSet = useMemo(() => new Set(issuedOrderIds), [issuedOrderIds]);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
   const [selectedLineItems, setSelectedLineItems] = useState<Map<number, SelectedLineItem>>(new Map());
 
@@ -361,6 +372,10 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                 </div>
               ) : null}
 
+              <div className="mt-3 flex justify-end">
+                <PackingSlipStatusIcon orderId={order.id} issued={issuedSet.has(order.id)} />
+              </div>
+
               {isExpanded ? (
                 <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3">
                   {order.lineItems.map((lineItem) => {
@@ -422,6 +437,7 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
             <TableHead className={cn(ORDER_ROW_HEAD, "hidden xl:table-cell")}>顧客名</TableHead>
             <TableHead className={cn("w-[18rem] md:w-[20rem]", ORDER_ROW_HEAD)}>配送先住所</TableHead>
             <TableHead className={cn("w-28", ORDER_ROW_HEAD)}>ステータス</TableHead>
+            <TableHead className={cn("w-28", ORDER_ROW_HEAD)}>納品書</TableHead>
             <TableHead className={cn(ORDER_ROW_HEAD, "hidden xl:table-cell")}>注文日時</TableHead>
           </TableRow>
         </TableHeader>
@@ -482,11 +498,14 @@ export function OrdersDispatchTable({ orders, vendorId }: { orders: OrderSummary
                 <TableCell className={ORDER_ROW_CELL}>
                   <StatusBadge status={displayOrderStatus} />
                 </TableCell>
+                <TableCell className={ORDER_ROW_CELL} onClick={(event) => event.stopPropagation()}>
+                  <PackingSlipStatusIcon orderId={order.id} issued={issuedSet.has(order.id)} />
+                </TableCell>
                 <TableCell className={cn(ORDER_ROW_CELL, "hidden xl:table-cell")}>{formatDateTimeInJst(order.createdAt)}</TableCell>
               </TableRow>
 
                 <TableRow className="bg-slate-50">
-                  <td colSpan={6} className="bg-slate-50 p-0">
+                  <td colSpan={7} className="bg-slate-50 p-0">
                     <div
                       className={cn(
                         "overflow-hidden border-t border-slate-200 transition-[max-height] duration-300 ease-in-out",

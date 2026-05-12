@@ -16,7 +16,12 @@ export type VendorProfileActionState = {
       | 'currentPassword'
       | 'contactPhone'
       | 'notificationEmail1'
-      | 'notificationEmail2',
+      | 'notificationEmail2'
+      | 'postal'
+      | 'prefecture'
+      | 'city'
+      | 'address1'
+      | 'address2',
       string
     >
   >;
@@ -43,6 +48,12 @@ function validatePhone(phone: string) {
   return pattern.test(phone);
 }
 
+function validatePostal(postal: string) {
+  // 日本の郵便番号: 123-4567 / 1234567 / 全半角混在に許容範囲を持たせる
+  const pattern = /^[0-9]{3}-?[0-9]{4}$/;
+  return pattern.test(postal);
+}
+
 export async function updateVendorProfileAction(
   _prevState: VendorProfileActionState,
   formData: FormData
@@ -54,6 +65,11 @@ export async function updateVendorProfileAction(
   const rawPassword = formData.get('password');
   const rawCurrentPassword = formData.get('currentPassword');
   const notifyNewOrdersRaw = formData.get('notifyNewOrders');
+  const rawPostal = formData.get('postal');
+  const rawPrefecture = formData.get('prefecture');
+  const rawCity = formData.get('city');
+  const rawAddress1 = formData.get('address1');
+  const rawAddress2 = formData.get('address2');
   const notificationEmailValues = NOTIFICATION_EMAIL_FIELDS.map((fieldName) => {
     const rawValue = formData.get(fieldName);
     return typeof rawValue === 'string' ? rawValue.trim() : '';
@@ -66,6 +82,11 @@ export async function updateVendorProfileAction(
   const password = typeof rawPassword === 'string' ? rawPassword : '';
   const currentPassword = typeof rawCurrentPassword === 'string' ? rawCurrentPassword : '';
   const notifyNewOrders = notifyNewOrdersRaw === 'on';
+  const postal = typeof rawPostal === 'string' ? rawPostal.trim() : '';
+  const prefecture = typeof rawPrefecture === 'string' ? rawPrefecture.trim() : '';
+  const city = typeof rawCity === 'string' ? rawCity.trim() : '';
+  const address1 = typeof rawAddress1 === 'string' ? rawAddress1.trim() : '';
+  const address2 = typeof rawAddress2 === 'string' ? rawAddress2.trim() : '';
 
   const fieldErrors: VendorProfileActionState['fieldErrors'] = {};
 
@@ -83,6 +104,26 @@ export async function updateVendorProfileAction(
     fieldErrors.contactPhone = '電話番号を入力してください。';
   } else if (!validatePhone(contactPhone)) {
     fieldErrors.contactPhone = '電話番号の形式が正しくありません。';
+  }
+
+  // 発送元住所 — 納品書出力に必須。新規登録フローでも必須項目化済み。
+  // address2(建物名・部屋番号) のみ任意入力。
+  if (!postal) {
+    fieldErrors.postal = '郵便番号を入力してください。';
+  } else if (!validatePostal(postal)) {
+    fieldErrors.postal = '郵便番号は「123-4567」 または「1234567」 で入力してください。';
+  }
+
+  if (!prefecture) {
+    fieldErrors.prefecture = '都道府県を入力してください。';
+  }
+
+  if (!city) {
+    fieldErrors.city = '市区町村を入力してください。';
+  }
+
+  if (!address1) {
+    fieldErrors.address1 = '番地を入力してください。';
   }
 
   if (password) {
@@ -139,7 +180,12 @@ export async function updateVendorProfileAction(
       notification_emails: notificationEmails,
       contact_name: contactName || null,
       contact_phone: contactPhone || null,
-      notify_new_orders: notifyNewOrders
+      notify_new_orders: notifyNewOrders,
+      postal: postal || null,
+      prefecture: prefecture || null,
+      city: city || null,
+      address1: address1 || null,
+      address2: address2 || null
     })
     .eq('id', auth.vendorId)
     .select('id')

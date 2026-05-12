@@ -26,6 +26,7 @@
     "security:quick": "npm run security:audit:prod && npm run security:audit && npm run security:osv && npm run security:gitleaks && npm run security:semgrep"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.58.0",
     "clsx": "^2.1.0",

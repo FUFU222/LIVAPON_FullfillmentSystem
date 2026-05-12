@@ -46,6 +46,12 @@ export type VendorProfile = {
   notificationEmails: string[];
   contactPhone: string | null;
   notifyNewOrders: boolean;
+  // 発送元住所(納品書の「発送元」 欄や将来の送り状印刷に使う)
+  postal: string | null;
+  prefecture: string | null;
+  city: string | null;
+  address1: string | null;
+  address2: string | null;
 };
 
 export type VendorListEntry = VendorProfile & {
@@ -102,6 +108,12 @@ export type VendorApplication = {
   reviewedAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  // 発送元住所(申請時に入力。承認時に vendors にコピーされる)
+  postal: string | null;
+  prefecture: string | null;
+  city: string | null;
+  address1: string | null;
+  address2: string | null;
 };
 
 function assertServiceClient(): AnySupabaseClient {
@@ -205,7 +217,12 @@ function toVendorApplication(record: VendorApplicationRecord): VendorApplication
     reviewerEmail: record.reviewer_email,
     reviewedAt: record.reviewed_at,
     createdAt: record.created_at,
-    updatedAt: record.updated_at
+    updatedAt: record.updated_at,
+    postal: record.postal ?? null,
+    prefecture: record.prefecture ?? null,
+    city: record.city ?? null,
+    address1: record.address1 ?? null,
+    address2: record.address2 ?? null
   };
 }
 
@@ -262,7 +279,7 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, created_at,
+      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, postal, prefecture, city, address1, address2, created_at,
        vendor_applications:vendor_applications(
          id, status, company_name, contact_name, contact_email, contact_phone, message,
          reviewer_email, reviewed_at, created_at, updated_at, notes
@@ -324,6 +341,11 @@ export async function getVendorDetailForAdmin(vendorId: number): Promise<VendorD
       : [],
     contactPhone: record.contact_phone ?? null,
     notifyNewOrders: record.notify_new_orders ?? true,
+    postal: record.postal ?? null,
+    prefecture: record.prefecture ?? null,
+    city: record.city ?? null,
+    address1: record.address1 ?? null,
+    address2: record.address2 ?? null,
     createdAt: record.created_at ?? null,
     summary,
     applications
@@ -431,6 +453,12 @@ export async function createVendorApplication(
     contactPhone: string;
     message?: string;
     authUserId?: string | null;
+    // 発送元住所(納品書出力に必要。新規申請では必須項目)
+    postal?: string;
+    prefecture?: string;
+    city?: string;
+    address1?: string;
+    address2?: string;
   },
   clientOverride?: AnySupabaseClient
 ): Promise<VendorApplication> {
@@ -461,7 +489,12 @@ export async function createVendorApplication(
     contact_email: normalizedEmail,
     contact_phone: input.contactPhone.trim(),
     message: input.message?.trim() ?? null,
-    status: 'pending'
+    status: 'pending',
+    postal: input.postal?.trim() || null,
+    prefecture: input.prefecture?.trim() || null,
+    city: input.city?.trim() || null,
+    address1: input.address1?.trim() || null,
+    address2: input.address2?.trim() || null
   };
 
   const { data, error } = await client
@@ -560,13 +593,16 @@ export async function getRecentVendorApplications(limit = 20): Promise<VendorApp
   return (data ?? []).map(toVendorApplication);
 }
 
-export async function approveVendorApplication(params: {
-  applicationId: number;
-  reviewerId: string;
-  reviewerEmail: string | null;
-  vendorCode?: string | null;
-  notes?: string | null;
-}): Promise<{
+export async function approveVendorApplication(
+  params: {
+    applicationId: number;
+    reviewerId: string;
+    reviewerEmail: string | null;
+    vendorCode?: string | null;
+    notes?: string | null;
+  },
+  clientOverride?: AnySupabaseClient
+): Promise<{
   vendorId: number;
   vendorCode: string;
   companyName: string;
@@ -574,7 +610,7 @@ export async function approveVendorApplication(params: {
   contactEmail: string;
   approvedAt: string;
 }> {
-  const client = assertServiceClient();
+  const client = clientOverride ?? assertServiceClient();
 
   const { data: application, error: fetchError } = await client
     .from('vendor_applications')
@@ -644,7 +680,14 @@ export async function approveVendorApplication(params: {
       name: application.company_name,
       contact_email: application.contact_email,
       contact_name: application.contact_name,
-      contact_phone: application.contact_phone
+      contact_phone: application.contact_phone,
+      // 申請時に入力された発送元住所をそのまま vendors にコピー
+      // 既存 pending application で住所が null の場合は null コピー(運用上 admin が後で補う)
+      postal: application.postal ?? null,
+      prefecture: application.prefecture ?? null,
+      city: application.city ?? null,
+      address1: application.address1 ?? null,
+      address2: application.address2 ?? null
     })
     .eq('id', vendor.id);
 
@@ -710,7 +753,7 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
 
   const { data, error } = await client
     .from('vendors')
-    .select('id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders')
+    .select('id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, postal, prefecture, city, address1, address2')
     .eq('id', vendorId)
     .maybeSingle();
 
@@ -732,7 +775,12 @@ export async function getVendorProfile(vendorId: number): Promise<VendorProfile 
       ? data.notification_emails.filter((email): email is string => typeof email === 'string' && email.trim().length > 0)
       : [],
     contactPhone: data.contact_phone ?? null,
-    notifyNewOrders: data.notify_new_orders ?? true
+    notifyNewOrders: data.notify_new_orders ?? true,
+    postal: data.postal ?? null,
+    prefecture: data.prefecture ?? null,
+    city: data.city ?? null,
+    address1: data.address1 ?? null,
+    address2: data.address2 ?? null
   };
 }
 
@@ -746,6 +794,11 @@ type VendorWithApplications = {
   contact_phone: string | null;
   created_at: string | null;
   notify_new_orders: boolean | null;
+  postal: string | null;
+  prefecture: string | null;
+  city: string | null;
+  address1: string | null;
+  address2: string | null;
   vendor_applications?: Array<{
     id: number;
     status: string | null;
@@ -812,6 +865,11 @@ function mapVendorsWithApplications(
         : [],
       contactPhone: vendor.contact_phone ?? null,
       notifyNewOrders: vendor.notify_new_orders ?? true,
+      postal: vendor.postal ?? null,
+      prefecture: vendor.prefecture ?? null,
+      city: vendor.city ?? null,
+      address1: vendor.address1 ?? null,
+      address2: vendor.address2 ?? null,
       createdAt: vendor.created_at,
       lastApplication
     } satisfies VendorListEntry;
@@ -824,7 +882,7 @@ export async function getRecentVendors(limit = 5): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, created_at,
+      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, postal, prefecture, city, address1, address2, created_at,
        vendor_applications:vendor_applications(
           id, status, reviewed_at, reviewer_email, auth_user_id, company_name, contact_phone, created_at
        )`
@@ -845,7 +903,7 @@ export async function getVendors(limit = 50): Promise<VendorListEntry[]> {
   const { data, error } = await client
     .from('vendors')
     .select(
-      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, created_at,
+      `id, code, name, contact_email, notification_emails, contact_name, contact_phone, notify_new_orders, postal, prefecture, city, address1, address2, created_at,
        vendor_applications:vendor_applications(
          id, status, reviewed_at, reviewer_email, auth_user_id, company_name, contact_phone, created_at
        )`

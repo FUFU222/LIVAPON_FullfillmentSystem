@@ -105,6 +105,102 @@ export function VendorApplicationForm() {
           ) : null}
         </div>
 
+        {/* 発送元住所 — 納品書 PDF の「発送元」欄に印字される。新規申請では必須。 */}
+        <fieldset className="grid gap-3 rounded-md border border-slate-200 bg-slate-50/40 p-4">
+          <legend className="px-1 text-sm font-medium text-foreground">発送元住所</legend>
+          <p className="text-xs text-slate-500">
+            納品書(packing slip)に印字される、商品の発送元となる住所です。
+          </p>
+
+          <div className="grid gap-2 text-sm text-slate-600 sm:max-w-[240px]">
+            <label htmlFor="postal" className="font-medium text-foreground">
+              郵便番号
+            </label>
+            <Input
+              id="postal"
+              name="postal"
+              required
+              placeholder="123-4567"
+              autoComplete="postal-code"
+              inputMode="numeric"
+              aria-invalid={state.errors?.postal ? 'true' : 'false'}
+              className={state.errors?.postal ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
+            />
+            {state.errors?.postal ? (
+              <span className="text-xs text-red-500">{state.errors?.postal}</span>
+            ) : (
+              <p className="text-xs text-slate-500">ハイフン有り/無しどちらでも可。</p>
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 text-sm text-slate-600">
+              <label htmlFor="prefecture" className="font-medium text-foreground">
+                都道府県
+              </label>
+              <Input
+                id="prefecture"
+                name="prefecture"
+                required
+                placeholder="東京都"
+                autoComplete="address-level1"
+                aria-invalid={state.errors?.prefecture ? 'true' : 'false'}
+                className={state.errors?.prefecture ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
+              />
+              {state.errors?.prefecture ? (
+                <span className="text-xs text-red-500">{state.errors?.prefecture}</span>
+              ) : null}
+            </div>
+            <div className="grid gap-2 text-sm text-slate-600">
+              <label htmlFor="city" className="font-medium text-foreground">
+                市区町村
+              </label>
+              <Input
+                id="city"
+                name="city"
+                required
+                placeholder="港区南青山"
+                autoComplete="address-level2"
+                aria-invalid={state.errors?.city ? 'true' : 'false'}
+                className={state.errors?.city ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
+              />
+              {state.errors?.city ? (
+                <span className="text-xs text-red-500">{state.errors?.city}</span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-2 text-sm text-slate-600">
+            <label htmlFor="address1" className="font-medium text-foreground">
+              番地
+            </label>
+            <Input
+              id="address1"
+              name="address1"
+              required
+              placeholder="2-2-15"
+              autoComplete="address-line1"
+              aria-invalid={state.errors?.address1 ? 'true' : 'false'}
+              className={state.errors?.address1 ? 'border-red-300 focus-visible:ring-red-400/70' : undefined}
+            />
+            {state.errors?.address1 ? (
+              <span className="text-xs text-red-500">{state.errors?.address1}</span>
+            ) : null}
+          </div>
+
+          <div className="grid gap-2 text-sm text-slate-600">
+            <label htmlFor="address2" className="font-medium text-foreground">
+              建物名・部屋番号 (任意)
+            </label>
+            <Input
+              id="address2"
+              name="address2"
+              placeholder="○○ビル 3F"
+              autoComplete="address-line2"
+            />
+          </div>
+        </fieldset>
+
         <div className="grid gap-2 text-sm text-slate-600">
           <label htmlFor="password" className="font-medium text-foreground">
             パスワード

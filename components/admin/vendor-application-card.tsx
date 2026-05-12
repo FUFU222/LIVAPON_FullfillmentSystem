@@ -47,6 +47,42 @@ function formatDateTime(value: string | null | undefined): string {
   return formatDateTimeInJst(value);
 }
 
+// 発送元住所ブロック(申請レビュー時の確認用)。
+// 住所未登録の申請は赤字警告 — admin が申請者にフォローアップする目印にする。
+function ApplicationAddressBlock({ application }: { application: VendorApplication }) {
+  const hasAddress = Boolean(
+    application.postal ||
+      application.prefecture ||
+      application.city ||
+      application.address1
+  );
+  if (!hasAddress) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <span className="block text-xs font-semibold uppercase tracking-wide">発送元住所</span>
+        <p className="mt-1">
+          ⚠ 住所が登録されていません(本機能リリース前の旧申請の可能性)。
+          承認後に admin から手動で <code className="text-xs">vendors.{`{postal,prefecture,...}`}</code> を補完してください。
+        </p>
+      </div>
+    );
+  }
+  const street = [application.prefecture, application.city, application.address1, application.address2]
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+      <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        発送元住所
+      </span>
+      <p className="mt-1 text-slate-700">
+        {application.postal ? <>〒{application.postal} </> : null}
+        {street}
+      </p>
+    </div>
+  );
+}
+
 function ApprovalSuccessDialog({
   open,
   vendorCode,
@@ -239,6 +275,9 @@ export function VendorApplicationCard({ application }: { application: VendorAppl
           <span>電話: {application.contactPhone ?? '-'}</span>
         </div>
       </div>
+
+      {/* 発送元住所 — 承認前に値の妥当性をレビューするためのセクション */}
+      <ApplicationAddressBlock application={application} />
 
       <div className="grid gap-3">
         <ActionMessage state={approveState} />

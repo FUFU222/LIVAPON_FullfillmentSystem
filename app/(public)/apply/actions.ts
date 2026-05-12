@@ -26,6 +26,12 @@ export async function submitVendorApplication(
   const password = (formData.get('password') as string | null) ?? '';
   const passwordConfirm = (formData.get('passwordConfirm') as string | null) ?? '';
   const acceptTerms = formData.get('acceptTerms') === 'on';
+  // 発送元住所(納品書の発送元欄に印字。申請時に必須)
+  const postal = (formData.get('postal') as string | null)?.trim() ?? '';
+  const prefecture = (formData.get('prefecture') as string | null)?.trim() ?? '';
+  const city = (formData.get('city') as string | null)?.trim() ?? '';
+  const address1 = (formData.get('address1') as string | null)?.trim() ?? '';
+  const address2 = (formData.get('address2') as string | null)?.trim() ?? '';
 
   const errors = validateVendorApplicationInput({
     companyName,
@@ -33,7 +39,12 @@ export async function submitVendorApplication(
     contactPhone,
     password,
     passwordConfirm,
-    acceptTerms
+    acceptTerms,
+    postal,
+    prefecture,
+    city,
+    address1,
+    address2
   });
 
   if (Object.keys(errors).length > 0) {
@@ -92,7 +103,12 @@ export async function submitVendorApplication(
       contactEmail,
       contactPhone,
       message,
-      authUserId
+      authUserId,
+      postal,
+      prefecture,
+      city,
+      address1,
+      address2: address2 || undefined
     });
 
     revalidatePath('/admin/applications');

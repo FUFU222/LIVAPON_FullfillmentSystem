@@ -19,6 +19,7 @@
 .env.test.local
 .env.production.local
 .tmp
+.claude/
 security-reports/
 security-scan-artifacts/
 

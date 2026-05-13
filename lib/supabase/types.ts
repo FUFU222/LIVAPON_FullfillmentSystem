@@ -877,6 +877,11 @@ export type Database = {
           updated_at: string | null
           vendor_code: string | null
           vendor_id: number | null
+          postal: string | null
+          prefecture: string | null
+          city: string | null
+          address1: string | null
+          address2: string | null
         }
         Insert: {
           auth_user_id?: string | null
@@ -895,6 +900,11 @@ export type Database = {
           updated_at?: string | null
           vendor_code?: string | null
           vendor_id?: number | null
+          postal?: string | null
+          prefecture?: string | null
+          city?: string | null
+          address1?: string | null
+          address2?: string | null
         }
         Update: {
           auth_user_id?: string | null
@@ -913,6 +923,11 @@ export type Database = {
           updated_at?: string | null
           vendor_code?: string | null
           vendor_id?: number | null
+          postal?: string | null
+          prefecture?: string | null
+          city?: string | null
+          address1?: string | null
+          address2?: string | null
         }
         Relationships: [
           {
@@ -1024,6 +1039,11 @@ export type Database = {
           notification_emails: string[]
           notify_new_orders: boolean | null
           name: string
+          postal: string | null
+          prefecture: string | null
+          city: string | null
+          address1: string | null
+          address2: string | null
         }
         Insert: {
           code?: string | null
@@ -1035,6 +1055,11 @@ export type Database = {
           notification_emails?: string[]
           notify_new_orders?: boolean | null
           name: string
+          postal?: string | null
+          prefecture?: string | null
+          city?: string | null
+          address1?: string | null
+          address2?: string | null
         }
         Update: {
           code?: string | null
@@ -1046,8 +1071,52 @@ export type Database = {
           notification_emails?: string[]
           notify_new_orders?: boolean | null
           name?: string
+          postal?: string | null
+          prefecture?: string | null
+          city?: string | null
+          address1?: string | null
+          address2?: string | null
         }
         Relationships: []
+      }
+      packing_slip_issuances: {
+        Row: {
+          id: number
+          order_id: number
+          vendor_id: number | null
+          issued_by: string
+          issued_at: string
+        }
+        Insert: {
+          id?: number
+          order_id: number
+          vendor_id?: number | null
+          issued_by: string
+          issued_at?: string
+        }
+        Update: {
+          id?: number
+          order_id?: number
+          vendor_id?: number | null
+          issued_by?: string
+          issued_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packing_slip_issuances_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packing_slip_issuances_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       vendor_order_notifications: {
         Row: {

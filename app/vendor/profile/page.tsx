@@ -68,7 +68,12 @@ export default async function VendorProfilePage() {
                 notificationEmails: vendor.notificationEmails,
                 vendorCode: vendor.code,
                 contactPhone: vendor.contactPhone ?? null,
-                notifyNewOrders
+                notifyNewOrders,
+                postal: vendor.postal ?? null,
+                prefecture: vendor.prefecture ?? null,
+                city: vendor.city ?? null,
+                address1: vendor.address1 ?? null,
+                address2: vendor.address2 ?? null
               }}
             />
           </CardContent>

@@ -48,6 +48,10 @@ export function AdminVendorDetail({ vendor }: Props) {
             <dd className="text-slate-700">{vendor.summary.skuCount.toLocaleString('ja-JP')}</dd>
           </div>
         </dl>
+
+        {/* 発送元住所 — backfill 作業時の確認用。
+            未登録は黄色警告で目立たせる(セラーへの登録依頼対象を一目で把握可能) */}
+        <VendorAddressBlock vendor={vendor} />
       </section>
 
       <section className="grid gap-3">
@@ -120,6 +124,35 @@ export function AdminVendorDetail({ vendor }: Props) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function VendorAddressBlock({ vendor }: { vendor: VendorDetail }) {
+  const hasAddress = Boolean(vendor.postal || vendor.prefecture || vendor.city || vendor.address1);
+  if (!hasAddress) {
+    return (
+      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <span className="block text-xs font-semibold uppercase tracking-wide">発送元住所</span>
+        <p className="mt-1">
+          ⚠ 未登録です。納品書の発送元欄に「(住所未登録)」 と表示されます。
+          backfill が必要なセラーです。
+        </p>
+      </div>
+    );
+  }
+  const street = [vendor.prefecture, vendor.city, vendor.address1, vendor.address2]
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+      <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        発送元住所
+      </span>
+      <p className="mt-1 text-slate-700">
+        {vendor.postal ? <>〒{vendor.postal} </> : null}
+        {street}
+      </p>
     </div>
   );
 }

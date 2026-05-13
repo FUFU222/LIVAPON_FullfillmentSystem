@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/orders/status-badge';
 import { formatOrderDateTime } from '@/lib/orders/date-time';
 import type { OrderDetail, OrderShipment } from '@/lib/data/orders';
 import { Button } from '@/components/ui/button';
+import { PackingSlipButton } from '@/components/orders/packing-slip-button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import {
@@ -114,8 +115,9 @@ export function AdminOrderDetail({ order, onOrderUpdated }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <section className="grid gap-2">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <StatusBadge status={order.status} />
+          <PackingSlipButton orderId={order.id} size="sm" />
         </div>
         <dl className="grid grid-cols-1 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3">
           <div className="flex flex-col gap-1">

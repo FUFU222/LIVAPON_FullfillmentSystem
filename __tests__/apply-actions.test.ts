@@ -33,6 +33,11 @@ function buildValidFormData(overrides?: {
   password?: string;
   passwordConfirm?: string;
   acceptTerms?: boolean;
+  postal?: string;
+  prefecture?: string;
+  city?: string;
+  address1?: string;
+  address2?: string;
 }) {
   const formData = new FormData();
   formData.set('companyName', overrides?.companyName ?? 'テスト商店');
@@ -45,6 +50,11 @@ function buildValidFormData(overrides?: {
   if (overrides?.acceptTerms ?? true) {
     formData.set('acceptTerms', 'on');
   }
+  formData.set('postal', overrides?.postal ?? '107-0062');
+  formData.set('prefecture', overrides?.prefecture ?? '東京都');
+  formData.set('city', overrides?.city ?? '港区南青山');
+  formData.set('address1', overrides?.address1 ?? '2-2-15');
+  formData.set('address2', overrides?.address2 ?? '');
   return formData;
 }
 
@@ -168,7 +178,12 @@ describe('submitVendorApplication', () => {
       contactEmail: 'vendor@example.com',
       contactPhone: '03-1234-5678',
       message: '審査をお願いします',
-      authUserId: 'auth-user-1'
+      authUserId: 'auth-user-1',
+      postal: '107-0062',
+      prefecture: '東京都',
+      city: '港区南青山',
+      address1: '2-2-15',
+      address2: undefined
     });
     expect(revalidatePath).toHaveBeenCalledWith('/admin/applications');
     expect(result).toEqual({

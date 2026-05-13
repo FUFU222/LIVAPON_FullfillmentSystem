@@ -37,19 +37,15 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Approve patch-level update
-        if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' }}
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr review --approve "$PR_URL"
-
       - name: Enable auto-merge for patch-level update
         if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' }}
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge --auto --squash "$PR_URL"
+        run: |
+          if ! gh pr merge --auto --squash "$PR_URL"; then
+            echo "::warning::Could not enable auto-merge. Confirm repository auto-merge is enabled and branch protection allows auto-merge after required checks pass."
+          fi
 
       - name: Comment for manual-review updates
         if: ${{ steps.metadata.outputs.update-type != 'version-update:semver-patch' }}
@@ -58,4 +54,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         run: |
-          gh pr comment "$PR_URL" --body "🛑 Auto-merge skipped: update type is **${UPDATE_TYPE}** (patch 以外は自動マージ対象外)。Changelog を確認のうえ手動でレビュー・マージしてください。"
+          if ! gh pr comment "$PR_URL" --body "Auto-merge skipped: update type is **${UPDATE_TYPE}** (patch 以外は自動マージ対象外)。Changelog を確認のうえ手動でレビュー・マージしてください。"; then
+            echo "::warning::Could not add manual-review comment."
+          fi

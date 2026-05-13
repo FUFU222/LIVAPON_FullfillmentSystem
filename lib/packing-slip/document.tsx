@@ -7,7 +7,7 @@
 //   - A4 縦
 //   - 上部: タイトル + 納品書No・発行日
 //   - 中央左: 宛先(顧客名 + shipping 住所)
-//   - 中央: 発送元(セラー) + 発行者(LIVAPON) を 2 列で
+//   - 中央: 出荷元(セラー) + 販売者(LIVAPON) を 2 列で
 //   - 商品テーブル: No / 品名 / 数量
 
 import path from 'node:path';
@@ -186,10 +186,10 @@ export function PackingSlipDocument({
           ))}
         </View>
 
-        {/* 発送元 / 発行者 */}
+        {/* 出荷元 / 販売者 */}
         <View style={styles.twoColumns}>
           <View style={styles.columnBox}>
-            <Text style={styles.columnLabel}>発送元</Text>
+            <Text style={styles.columnLabel}>出荷元</Text>
             {vendorBlock.map((l, i) => (
               <Text key={i} style={styles.columnText}>
                 {l}
@@ -197,7 +197,7 @@ export function PackingSlipDocument({
             ))}
           </View>
           <View style={styles.columnBox}>
-            <Text style={styles.columnLabel}>発行者</Text>
+            <Text style={styles.columnLabel}>販売者</Text>
             <Text style={styles.columnText}>{issuer.name}</Text>
             <Text style={styles.columnText}>〒{issuer.postal}</Text>
             <Text style={styles.columnText}>{issuer.address}</Text>

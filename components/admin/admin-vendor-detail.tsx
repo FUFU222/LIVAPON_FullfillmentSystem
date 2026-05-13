@@ -135,7 +135,7 @@ function VendorAddressBlock({ vendor }: { vendor: VendorDetail }) {
       <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
         <span className="block text-xs font-semibold uppercase tracking-wide">発送元住所</span>
         <p className="mt-1">
-          ⚠ 未登録です。納品書の発送元欄に「(住所未登録)」 と表示されます。
+          ⚠ 未登録です。納品書の出荷元欄は住所なしで印字されます。
           backfill が必要なセラーです。
         </p>
       </div>

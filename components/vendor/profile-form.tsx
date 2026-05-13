@@ -159,7 +159,7 @@ export function VendorProfileForm({ initial }: { initial: VendorProfileInitialVa
         <SectionHeading
           icon={MapPin}
           title="発送元住所"
-          description="納品書(packing slip)の「発送元」 欄に印字されます。建物名以外は必須です。"
+          description="納品書(packing slip)の「出荷元」欄に印字されます。建物名以外は必須です。"
         />
 
         <div className="grid gap-2 sm:max-w-[240px]">

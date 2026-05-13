@@ -46,7 +46,7 @@ export type VendorProfile = {
   notificationEmails: string[];
   contactPhone: string | null;
   notifyNewOrders: boolean;
-  // 発送元住所(納品書の「発送元」 欄や将来の送り状印刷に使う)
+  // 発送元住所(納品書の「出荷元」 欄や将来の送り状印刷に使う)
   postal: string | null;
   prefecture: string | null;
   city: string | null;

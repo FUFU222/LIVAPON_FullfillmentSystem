@@ -105,11 +105,11 @@ export function VendorApplicationForm() {
           ) : null}
         </div>
 
-        {/* 発送元住所 — 納品書 PDF の「発送元」欄に印字される。新規申請では必須。 */}
+        {/* 発送元住所 — 納品書 PDF の「出荷元」欄に印字される。新規申請では必須。 */}
         <fieldset className="grid gap-3 rounded-md border border-slate-200 bg-slate-50/40 p-4">
           <legend className="px-1 text-sm font-medium text-foreground">発送元住所</legend>
           <p className="text-xs text-slate-500">
-            納品書(packing slip)に印字される、商品の発送元となる住所です。
+            納品書(packing slip)に印字される、商品の出荷元となる住所です。
           </p>
 
           <div className="grid gap-2 text-sm text-slate-600 sm:max-w-[240px]">

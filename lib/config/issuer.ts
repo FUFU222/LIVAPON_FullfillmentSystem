@@ -1,4 +1,4 @@
-// 納品書(packing slip)の「発行者」 情報を一元管理する。
+// 納品書(packing slip)の「販売者」 情報を一元管理する。
 //
 // LIVAPON は特商法上 CHAIRMAN Co., Ltd. を販売者として運営している
 // 委託販売モデルのため、納品書は CHAIRMAN 名義で発行する。

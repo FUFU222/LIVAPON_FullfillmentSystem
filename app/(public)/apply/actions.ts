@@ -26,7 +26,7 @@ export async function submitVendorApplication(
   const password = (formData.get('password') as string | null) ?? '';
   const passwordConfirm = (formData.get('passwordConfirm') as string | null) ?? '';
   const acceptTerms = formData.get('acceptTerms') === 'on';
-  // 発送元住所(納品書の発送元欄に印字。申請時に必須)
+  // 発送元住所(納品書の出荷元欄に印字。申請時に必須)
   const postal = (formData.get('postal') as string | null)?.trim() ?? '';
   const prefecture = (formData.get('prefecture') as string | null)?.trim() ?? '';
   const city = (formData.get('city') as string | null)?.trim() ?? '';

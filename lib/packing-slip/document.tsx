@@ -9,7 +9,6 @@
 //   - 中央左: 宛先(顧客名 + shipping 住所)
 //   - 中央: 発送元(セラー) + 発行者(LIVAPON) を 2 列で
 //   - 商品テーブル: No / 品名 / 数量
-//   - 末尾: 追跡情報(複数発送は全件列挙)
 
 import path from 'node:path';
 import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
@@ -111,21 +110,7 @@ const styles = StyleSheet.create({
   },
   colNo: { width: 30, textAlign: 'center' },
   colName: { flex: 1, paddingHorizontal: 4 },
-  colQty: { width: 60, textAlign: 'right' },
-  trackingBlock: {
-    marginTop: 18
-  },
-  trackingTitle: {
-    fontSize: 11,
-    marginBottom: 6
-  },
-  trackingItem: {
-    fontSize: 9,
-    marginBottom: 2
-  },
-  fallbackNote: {
-    color: '#dc2626'
-  }
+  colQty: { width: 60, textAlign: 'right' }
 });
 
 function formatDateJa(d: Date): string {
@@ -143,12 +128,9 @@ function buildShippingAddressLines(order: OrderDetail): string[] {
   return lines;
 }
 
-function buildVendorAddressLines(vendor: VendorAddress | null): {
-  hasAddress: boolean;
-  lines: string[];
-} {
+function buildVendorAddressLines(vendor: VendorAddress | null): string[] {
   if (!vendor) {
-    return { hasAddress: false, lines: ['発送元情報なし'] };
+    return [];
   }
   const lines: string[] = [vendor.name];
   if (vendor.postal) lines.push(`〒${vendor.postal}`);
@@ -158,9 +140,7 @@ function buildVendorAddressLines(vendor: VendorAddress | null): {
   if (street) lines.push(street);
   if (vendor.contactPhone) lines.push(`TEL: ${vendor.contactPhone}`);
   if (vendor.contactEmail) lines.push(vendor.contactEmail);
-  const hasAddress = Boolean(vendor.postal || street);
-  if (!hasAddress) lines.push('(住所未登録)');
-  return { hasAddress, lines };
+  return lines;
 }
 
 export type PackingSlipDocumentProps = {
@@ -181,9 +161,6 @@ export function PackingSlipDocument({
 }: PackingSlipDocumentProps) {
   const recipientLines = buildShippingAddressLines(order);
   const vendorBlock = buildVendorAddressLines(vendor);
-  const allShipments = lineItems
-    .flatMap((li) => li.shipments.map((s) => ({ ...s, lineItemName: li.productName })))
-    .filter((s, idx, arr) => arr.findIndex((x) => x.id === s.id) === idx); // dedupe by shipment id
 
   return (
     <Document title={`納品書 ${order.orderNumber}`} author={issuer.name}>
@@ -213,14 +190,8 @@ export function PackingSlipDocument({
         <View style={styles.twoColumns}>
           <View style={styles.columnBox}>
             <Text style={styles.columnLabel}>発送元</Text>
-            {vendorBlock.lines.map((l, i) => (
-              <Text
-                key={i}
-                style={[
-                  styles.columnText,
-                  !vendorBlock.hasAddress && i > 0 ? styles.fallbackNote : {}
-                ]}
-              >
+            {vendorBlock.map((l, i) => (
+              <Text key={i} style={styles.columnText}>
                 {l}
               </Text>
             ))}
@@ -257,7 +228,7 @@ export function PackingSlipDocument({
           {lineItems.length === 0 ? (
             <View style={styles.tableRow}>
               <Text style={styles.colNo}>—</Text>
-              <Text style={[styles.colName, styles.fallbackNote]}>
+              <Text style={styles.colName}>
                 表示できる商品がありません
               </Text>
               <Text style={styles.colQty}>—</Text>
@@ -277,26 +248,6 @@ export function PackingSlipDocument({
             })
           )}
         </View>
-
-        {/* 追跡情報(複数発送は全件列挙) */}
-        {allShipments.length > 0 && (
-          <View style={styles.trackingBlock}>
-            <Text style={styles.trackingTitle}>追跡情報</Text>
-            {allShipments.map((s, i) => {
-              const carrier = s.carrier ?? '配送業者未設定';
-              const trackingNumber = s.trackingNumber ?? '追跡番号未設定';
-              const shippedAt = s.shippedAt
-                ? new Date(s.shippedAt).toISOString().slice(0, 10)
-                : null;
-              return (
-                <Text key={s.id ?? i} style={styles.trackingItem}>
-                  {`配送業者: ${carrier} / 追跡番号: ${trackingNumber}` +
-                    (shippedAt ? ` / 発送日: ${shippedAt}` : '')}
-                </Text>
-              );
-            })}
-          </View>
-        )}
       </Page>
     </Document>
   );

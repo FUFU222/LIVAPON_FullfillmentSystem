@@ -124,8 +124,7 @@ const styles = StyleSheet.create({
     marginBottom: 2
   },
   fallbackNote: {
-    color: '#dc2626',
-    fontStyle: 'italic'
+    color: '#dc2626'
   }
 });
 

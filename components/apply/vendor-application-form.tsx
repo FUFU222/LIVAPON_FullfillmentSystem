@@ -128,9 +128,7 @@ export function VendorApplicationForm() {
             />
             {state.errors?.postal ? (
               <span className="text-xs text-red-500">{state.errors?.postal}</span>
-            ) : (
-              <p className="text-xs text-slate-500">ハイフン有り/無しどちらでも可。</p>
-            )}
+            ) : null}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

@@ -1,7 +1,7 @@
 // 納品書(packing slip)PDF コンポーネント。
 //
 // 設計: @react-pdf/renderer による server-side PDF 生成。
-// 日本語フォント(Noto Sans JP)は Google Fonts ホスト URL から fetch する。
+// 日本語フォント(Noto Sans JP)はリクエスト時の外部 fetch を避けるため同梱ファイルを使う。
 //
 // レイアウト方針:
 //   - A4 縦
@@ -11,17 +11,20 @@
 //   - 商品テーブル: No / 品名 / 数量
 //   - 末尾: 追跡情報(複数発送は全件列挙)
 
+import path from 'node:path';
 import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { OrderDetail } from '@/lib/data/orders/types';
 import type { IssuerInfo } from '@/lib/config/issuer';
 import type { VendorAddress } from './types';
 
 // 日本語フォント登録 (CJK)。
-// Noto Sans JP は Google Fonts の静的 URL を使う。
-// production で安定性が必要になったら public/fonts/ に置いて差し替える。
+// @react-pdf/renderer は src に URL を渡すと PDF 生成時に fetch するため、
+// 本番の出力安定性を優先してローカルに同梱したフォントを参照する。
+const notoSansJPRegularPath = path.join(process.cwd(), 'public/fonts/NotoSansJP-Regular.ttf');
+
 Font.register({
   family: 'NotoSansJP',
-  src: 'https://fonts.gstatic.com/ea/notosansjp/v5/NotoSansJP-Regular.otf'
+  src: notoSansJPRegularPath
 });
 
 // 「、」「。」 等の禁則ぶら下げ無効化(縦組ではないので影響少だが念のため)

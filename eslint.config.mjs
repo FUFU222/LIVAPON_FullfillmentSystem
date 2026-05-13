@@ -2,7 +2,7 @@ import nextConfig from 'eslint-config-next/core-web-vitals';
 
 export default [
   {
-    ignores: ['.next', '.tmp', 'node_modules', '.bfg-report']
+    ignores: ['.next', '.tmp', '.claude', 'node_modules', '.bfg-report']
   },
   ...nextConfig,
   {

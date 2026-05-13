@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    '/api/orders/*/packing-slip': ['./public/fonts/NotoSansJP-Regular.ttf']
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb'

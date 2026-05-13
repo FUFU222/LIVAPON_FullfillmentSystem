@@ -38,7 +38,7 @@ const order: OrderDetail = {
   ]
 };
 
-const vendor: VendorAddress = {
+const vendorWithAddress: VendorAddress = {
   id: 1,
   code: 'V001',
   name: 'テスト出品者',
@@ -58,7 +58,7 @@ const issuer: IssuerInfo = {
   email: 'support@example.com'
 };
 
-async function main() {
+async function renderCase(label: string, vendor: VendorAddress | null) {
   const document = PackingSlipDocument({
     order,
     lineItems: order.lineItems,
@@ -73,7 +73,19 @@ async function main() {
     throw new Error('Packing slip PDF render returned an empty result');
   }
 
-  console.log(`packing-slip-render-ok ${buffer.byteLength}`);
+  console.log(`packing-slip-render-ok ${label} ${buffer.byteLength}`);
+}
+
+async function main() {
+  await renderCase('vendor-with-address', vendorWithAddress);
+  await renderCase('vendor-without-address', {
+    ...vendorWithAddress,
+    postal: null,
+    prefecture: null,
+    city: null,
+    address1: null,
+    address2: null
+  });
 }
 
 main().catch((error) => {

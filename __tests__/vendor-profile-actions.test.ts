@@ -25,6 +25,11 @@ function buildValidFormData(overrides?: {
   password?: string;
   currentPassword?: string;
   notifyNewOrders?: boolean;
+  postal?: string;
+  prefecture?: string;
+  city?: string;
+  address1?: string;
+  address2?: string;
 }) {
   const formData = new FormData();
   formData.set('companyName', overrides?.companyName ?? 'テスト商店');
@@ -45,6 +50,12 @@ function buildValidFormData(overrides?: {
   if (overrides?.notifyNewOrders ?? true) {
     formData.set('notifyNewOrders', 'on');
   }
+  // 発送元住所(必須化済み)。テストでは valid な値をデフォルトで渡す。
+  formData.set('postal', overrides?.postal ?? '107-0062');
+  formData.set('prefecture', overrides?.prefecture ?? '東京都');
+  formData.set('city', overrides?.city ?? '港区南青山');
+  formData.set('address1', overrides?.address1 ?? '2-2-15');
+  formData.set('address2', overrides?.address2 ?? '');
   return formData;
 }
 
@@ -139,7 +150,12 @@ describe('updateVendorProfileAction', () => {
       notification_emails: [],
       contact_name: '山田花子',
       contact_phone: '03-1234-5678',
-      notify_new_orders: true
+      notify_new_orders: true,
+      postal: '107-0062',
+      prefecture: '東京都',
+      city: '港区南青山',
+      address1: '2-2-15',
+      address2: null
     });
     expect(spies.eq).toHaveBeenCalledWith('id', 12);
     expect(spies.updateUser).toHaveBeenCalledWith({
@@ -179,7 +195,12 @@ describe('updateVendorProfileAction', () => {
       notification_emails: ['warehouse@example.com'],
       contact_name: '山田花子',
       contact_phone: '03-1234-5678',
-      notify_new_orders: false
+      notify_new_orders: false,
+      postal: '107-0062',
+      prefecture: '東京都',
+      city: '港区南青山',
+      address1: '2-2-15',
+      address2: null
     });
     expect(spies.updateUser).toHaveBeenCalledWith({
       data: {

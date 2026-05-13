@@ -12,6 +12,12 @@ CREATE TABLE vendors (
   notification_emails TEXT[] NOT NULL DEFAULT '{}' CHECK (COALESCE(array_length(notification_emails, 1), 0) <= 2),
   contact_phone VARCHAR(100),
   notify_new_orders BOOLEAN NOT NULL DEFAULT TRUE,
+  -- 発送元住所(納品書 / 送り状用)。既存セラーは backfill 必要。NULL は「未登録」 fallback で許容。
+  postal VARCHAR(20),
+  prefecture VARCHAR(100),
+  city VARCHAR(255),
+  address1 VARCHAR(255),
+  address2 VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -31,6 +37,12 @@ CREATE TABLE vendor_applications (
   reviewer_id UUID,
   reviewer_email VARCHAR(255),
   reviewed_at TIMESTAMPTZ,
+  -- 発送元住所(申請時に必須入力、承認時に vendors にコピー)
+  postal VARCHAR(20),
+  prefecture VARCHAR(100),
+  city VARCHAR(255),
+  address1 VARCHAR(255),
+  address2 VARCHAR(255),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -258,6 +270,17 @@ CREATE TABLE import_logs (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 納品書(packing slip)発行履歴
+-- 視覚化(出力済みフラグ)と監査ログの兼用
+-- admin が発行した場合は vendor_id = NULL
+CREATE TABLE packing_slip_issuances (
+  id BIGSERIAL PRIMARY KEY,
+  order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  vendor_id INT REFERENCES vendors(id) ON DELETE SET NULL,
+  issued_by UUID NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- インデックス
 CREATE INDEX idx_orders_vendor_id ON orders(vendor_id);
 CREATE INDEX idx_line_items_order_id ON line_items(order_id);
@@ -278,6 +301,9 @@ CREATE INDEX idx_shipment_import_jobs_created_at ON shipment_import_jobs(created
 CREATE INDEX idx_shipment_import_job_items_job_id ON shipment_import_job_items(job_id);
 CREATE INDEX idx_shipment_import_job_items_vendor_id ON shipment_import_job_items(vendor_id);
 CREATE INDEX idx_shipment_import_job_items_status ON shipment_import_job_items(status);
+CREATE INDEX idx_packing_slip_issuances_order_id ON packing_slip_issuances(order_id);
+CREATE INDEX idx_packing_slip_issuances_vendor_id ON packing_slip_issuances(vendor_id);
+CREATE INDEX idx_packing_slip_issuances_order_vendor ON packing_slip_issuances(order_id, vendor_id);
 CREATE INDEX idx_orders_shop_domain ON orders(shop_domain);
 CREATE INDEX idx_orders_shopify_fo_id ON orders(shopify_fulfillment_order_id);
 CREATE INDEX idx_orders_vendor_id_order_number ON orders(vendor_id, order_number);
@@ -326,6 +352,7 @@ ALTER TABLE shipment_cancellation_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shipment_sync_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopify_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE packing_slip_issuances ENABLE ROW LEVEL SECURITY;
 -- vendor_skus / shipment_line_items / vendor_order_notifications /
 -- shipment_cancellation_logs / shopify_connections / import_logs are kept
 -- service-role-only by design.
@@ -530,6 +557,27 @@ CREATE POLICY "ShipmentImportJobItemsAdminAll" ON shipment_import_job_items
   )
   WITH CHECK (
     public.requesting_is_admin()
+  );
+
+DROP POLICY IF EXISTS "PackingSlipIssuancesAdminAll" ON packing_slip_issuances;
+CREATE POLICY "PackingSlipIssuancesAdminAll" ON packing_slip_issuances
+  FOR ALL USING (
+    public.requesting_is_admin()
+  )
+  WITH CHECK (
+    public.requesting_is_admin()
+  );
+
+DROP POLICY IF EXISTS "PackingSlipIssuancesVendorReadable" ON packing_slip_issuances;
+CREATE POLICY "PackingSlipIssuancesVendorReadable" ON packing_slip_issuances
+  FOR SELECT USING (
+    vendor_id = public.requesting_vendor_id()
+  );
+
+DROP POLICY IF EXISTS "PackingSlipIssuancesVendorInsert" ON packing_slip_issuances;
+CREATE POLICY "PackingSlipIssuancesVendorInsert" ON packing_slip_issuances
+  FOR INSERT WITH CHECK (
+    vendor_id = public.requesting_vendor_id()
   );
 
 ALTER TABLE orders REPLICA IDENTITY FULL;

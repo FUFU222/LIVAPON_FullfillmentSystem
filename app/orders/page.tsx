@@ -10,6 +10,8 @@ import { OrderFilters } from '@/components/orders/order-filters';
 import { OrdersRefreshButton } from '@/components/orders/orders-refresh-button';
 import { getOrders } from '@/lib/data/orders';
 import { getAuthContext } from '@/lib/auth';
+import { getServerComponentClient } from '@/lib/supabase/server';
+import { getIssuanceFlagsByOrderIds } from '@/lib/packing-slip';
 import { cn } from '@/lib/utils';
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -53,6 +55,17 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const paginated = filtered.slice(startIndex, startIndex + PAGE_SIZE);
 
+  // 納品書出力済みフラグ(自分の vendor_id 分のみ、RLS で自動制限)
+  const supabase = await getServerComponentClient();
+  const issuanceFlags = await getIssuanceFlagsByOrderIds(
+    supabase,
+    paginated.map((o) => o.id),
+    { role: 'vendor', userId: auth.user.id, vendorId: auth.vendorId }
+  );
+  const issuedOrderIds = Array.from(issuanceFlags.entries())
+    .filter(([, issued]) => issued)
+    .map(([id]) => id);
+
   return (
     <Card className="overflow-hidden">
       <OrdersRealtimeListener vendorId={auth.vendorId} />
@@ -75,7 +88,11 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
         </div>
       </CardHeader>
       <CardContent className="gap-6 px-2 pb-6 sm:px-6">
-        <OrdersDispatchTable orders={paginated} vendorId={auth.vendorId} />
+        <OrdersDispatchTable
+          orders={paginated}
+          vendorId={auth.vendorId}
+          issuedOrderIds={issuedOrderIds}
+        />
         <PaginationControls currentPage={currentPage} totalPages={totalPages} params={params} />
       </CardContent>
     </Card>

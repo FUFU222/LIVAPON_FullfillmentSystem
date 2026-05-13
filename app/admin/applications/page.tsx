@@ -1,9 +1,26 @@
 import { redirect } from 'next/navigation';
 import { getAuthContext, isAdmin } from '@/lib/auth';
-import { getPendingVendorApplications, getRecentVendorApplications } from '@/lib/data/vendors';
+import {
+  getPendingVendorApplications,
+  getRecentVendorApplications,
+  type VendorApplication
+} from '@/lib/data/vendors';
 import { VendorApplicationCard } from '@/components/admin/vendor-application-card';
 import { Alert } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+// 申請レコードの住所を 1 行サマリに整形(一覧テーブル用)
+// 1 項目でも入っていれば「都道府県+市区町村+番地」 を返す。全部空なら null(=未登録扱い)。
+function formatVendorApplicationAddress(application: VendorApplication): string | null {
+  const parts = [application.prefecture, application.city, application.address1, application.address2]
+    .map((v) => v?.trim())
+    .filter((v): v is string => Boolean(v));
+  if (parts.length === 0 && !application.postal) return null;
+  const street = parts.join(' ');
+  if (application.postal && street) return `〒${application.postal} ${street}`;
+  if (application.postal) return `〒${application.postal}`;
+  return street;
+}
 
 export default async function AdminApplicationsPage() {
   const auth = await getAuthContext();
@@ -56,21 +73,30 @@ export default async function AdminApplicationsPage() {
                     <th className="px-3 py-2">担当者</th>
                     <th className="px-3 py-2">メール</th>
                     <th className="px-3 py-2">電話</th>
+                    <th className="px-3 py-2">発送元住所</th>
                     <th className="px-3 py-2">対応日時</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recent.map((application) => (
-                    <tr key={application.id} className="border-b border-slate-100 text-slate-600">
-                      <td className="px-3 py-2">{application.id}</td>
-                      <td className="px-3 py-2">{application.companyName}</td>
-                      <td className="px-3 py-2">{application.vendorCode ?? '-'}</td>
-                      <td className="px-3 py-2">{application.contactName ?? '-'}</td>
-                      <td className="px-3 py-2">{application.contactEmail}</td>
-                      <td className="px-3 py-2">{application.contactPhone ?? '-'}</td>
-                      <td className="px-3 py-2 text-xs">{application.reviewedAt ?? '-'}</td>
-                    </tr>
-                  ))}
+                  {recent.map((application) => {
+                    const addressSummary = formatVendorApplicationAddress(application);
+                    return (
+                      <tr key={application.id} className="border-b border-slate-100 text-slate-600">
+                        <td className="px-3 py-2">{application.id}</td>
+                        <td className="px-3 py-2">{application.companyName}</td>
+                        <td className="px-3 py-2">{application.vendorCode ?? '-'}</td>
+                        <td className="px-3 py-2">{application.contactName ?? '-'}</td>
+                        <td className="px-3 py-2">{application.contactEmail}</td>
+                        <td className="px-3 py-2">{application.contactPhone ?? '-'}</td>
+                        <td className="px-3 py-2 text-xs">
+                          {addressSummary ?? (
+                            <span className="text-amber-700">未登録</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-xs">{application.reviewedAt ?? '-'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

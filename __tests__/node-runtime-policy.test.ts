@@ -16,7 +16,7 @@ describe('Node runtime policy', () => {
     const ciWorkflow = readText('.github/workflows/ci.yml');
 
     expect(packageJson.engines?.node).toBe('24.x');
-    expect(packageJson.dependencies?.next).toBe('16.2.4');
+    expect(packageJson.dependencies?.next).toBe('16.2.6');
     expect(packageJson.overrides?.postcss).toBe('8.5.14');
     expect(packageJson.devDependencies?.['@types/node']).toMatch(/^24\./);
     expect(packageLock.packages[''].engines?.node).toBe('24.x');

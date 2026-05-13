@@ -1,0 +1,61 @@
+name: Dependabot auto-merge
+
+# 目的:
+#   - Patch 更新 (1.2.3 → 1.2.4) を CI が通った場合に限り自動マージする
+#   - Major / Minor / Group 更新は人間レビューを必須とする(従来通り)
+#
+# 対象 PR:
+#   - github.actor が dependabot[bot]
+#   - 更新タイプが version-update:semver-patch のみ(セキュリティ patch も含む)
+#
+# 安全装置:
+#   - gh pr merge --auto を使うので、ブランチ保護で必須化された CI が通るまで実際にはマージされない
+#   - Major/Minor は条件分岐で意図的にスキップ
+#   - グループ PR は最も深い変更で update-type が決まる(=どれか1つでも minor 以上なら patch 扱いにならない)
+#
+# ロールアウト時の前提:
+#   - リポジトリ Settings → General → Pull Requests で "Allow auto-merge" を有効化しておく
+#   - main ブランチ保護で "Require status checks to pass" を有効化しておく(あれば実質ゲート機能になる)
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto-merge safe Dependabot updates
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Approve patch-level update
+        if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' }}
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr review --approve "$PR_URL"
+
+      - name: Enable auto-merge for patch-level update
+        if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' }}
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Comment for manual-review updates
+        if: ${{ steps.metadata.outputs.update-type != 'version-update:semver-patch' }}
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          gh pr comment "$PR_URL" --body "🛑 Auto-merge skipped: update type is **${UPDATE_TYPE}** (patch 以外は自動マージ対象外)。Changelog を確認のうえ手動でレビュー・マージしてください。"

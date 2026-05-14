@@ -49,8 +49,7 @@ export function AdminVendorDetail({ vendor }: Props) {
           </div>
         </dl>
 
-        {/* 発送元住所 — backfill 作業時の確認用。
-            未登録は黄色警告で目立たせる(セラーへの登録依頼対象を一目で把握可能) */}
+        {/* 発送元住所 — 未登録は黄色警告で目立たせる。 */}
         <VendorAddressBlock vendor={vendor} />
       </section>
 
@@ -136,7 +135,6 @@ function VendorAddressBlock({ vendor }: { vendor: VendorDetail }) {
         <span className="block text-xs font-semibold uppercase tracking-wide">発送元住所</span>
         <p className="mt-1">
           ⚠ 未登録です。納品書の出荷元欄は住所なしで印字されます。
-          backfill が必要なセラーです。
         </p>
       </div>
     );

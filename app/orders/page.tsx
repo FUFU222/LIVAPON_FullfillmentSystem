@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { buttonClasses } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { OrdersDispatchTable } from '@/components/orders/orders-dispatch-table';
 import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
 import { OrdersRealtimeResetter } from '@/components/orders/orders-realtime-resetter';
@@ -65,37 +66,90 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
   const issuedOrderIds = Array.from(issuanceFlags.entries())
     .filter(([, issued]) => issued)
     .map(([id]) => id);
+  const summary = summarizeOrders(filtered);
 
   return (
-    <Card className="overflow-hidden">
+    <div className="grid gap-5">
       <OrdersRealtimeListener vendorId={auth.vendorId} />
       <OrdersRealtimeResetter />
-      <CardHeader className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <CardTitle className="text-2xl font-semibold">注文一覧</CardTitle>
+      <PageHeader
+        eyebrow="Dispatch"
+        title="注文処理"
+        description="発送対象の商品を選択し、追跡番号をスキャンまたは入力して発送登録します。"
+        meta={
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="border-slate-200 bg-white text-slate-600">
+              全 {filtered.length} 件
+            </Badge>
+            <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+              未発送 {summary.unfulfilledCount} 件
+            </Badge>
+            <Badge className="border-sky-200 bg-sky-50 text-sky-700">
+              一部発送 {summary.partialCount} 件
+            </Badge>
+            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
+              発送済 {summary.fulfilledCount} 件
+            </Badge>
+          </div>
+        }
+        actions={
+          <>
           <OrdersRefreshButton />
-        </div>
-        <div className="flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            全 {filtered.length} 件中 {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)} 件を表示
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <OrderFilters />
             <Link href="/orders/shipments" className={buttonClasses('outline')}>
               発送履歴一覧
             </Link>
+          </>
+        }
+      />
+
+      <Surface className="p-3 sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="text-sm text-slate-600">
+            <span className="font-medium text-slate-900">
+              {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)}
+            </span>
+            <span className="text-slate-400"> / </span>
+            <span>{filtered.length} 件を表示</span>
           </div>
+          <OrderFilters />
         </div>
-      </CardHeader>
-      <CardContent className="gap-6 px-2 pb-6 sm:px-6">
+      </Surface>
+
+      <Surface className="overflow-hidden p-2 sm:p-4">
         <OrdersDispatchTable
           orders={paginated}
           vendorId={auth.vendorId}
           issuedOrderIds={issuedOrderIds}
         />
         <PaginationControls currentPage={currentPage} totalPages={totalPages} params={params} />
-      </CardContent>
-    </Card>
+      </Surface>
+    </div>
+  );
+}
+
+function summarizeOrders(orders: Awaited<ReturnType<typeof getOrders>>) {
+  return orders.reduce(
+    (summary, order) => {
+      const remaining = order.lineItems.reduce(
+        (total, item) => total + Math.max(0, item.remainingQuantity ?? 0),
+        0
+      );
+      const shipped = order.lineItems.reduce(
+        (total, item) => total + Math.max(0, item.shippedQuantity ?? 0),
+        0
+      );
+
+      if (remaining <= 0 && order.lineItems.length > 0) {
+        summary.fulfilledCount += 1;
+      } else if (shipped > 0) {
+        summary.partialCount += 1;
+      } else {
+        summary.unfulfilledCount += 1;
+      }
+
+      return summary;
+    },
+    { unfulfilledCount: 0, partialCount: 0, fulfilledCount: 0 }
   );
 }
 

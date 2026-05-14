@@ -11,7 +11,7 @@ test.describe('admin applications', () => {
     test.skip(missing.length > 0, `Missing E2E credentials: ${missing.join(', ')}`);
 
     await signInAs(page, 'admin', '/admin/applications');
-    await expect(page.getByRole('heading', { name: '利用申請の審査' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '利用開始依頼' })).toBeVisible();
   });
 
   test('[AA-02] @admin approval flow promotes a pending application to vendor', async ({ page }) => {
@@ -97,7 +97,7 @@ test.describe('admin applications', () => {
       expect(vendorId).not.toBeNull();
 
       await signInWithCredentials(vendorPage, { email: fixture.email, password: fixture.password }, '/orders');
-      await expect(vendorPage.getByRole('heading', { name: '注文一覧' })).toBeVisible();
+      await expect(vendorPage.getByRole('heading', { name: '注文処理' })).toBeVisible();
     } finally {
       await vendorContext.close();
       await cleanupVendorApplicationFixture({

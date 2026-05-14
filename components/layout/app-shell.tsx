@@ -26,6 +26,7 @@ import { getBrowserClient } from '@/lib/supabase/client';
 import { resolveRoleFromAuthUser, resolveVendorIdFromAuthUser } from '@/lib/auth-metadata';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { GradientAvatar } from '@/components/ui/avatar';
+import { AdminTabAttentionIndicator } from '@/components/layout/admin-tab-attention-indicator';
 
 export type AppShellInitialAuth = {
   status: 'signed-in' | 'signed-out';
@@ -35,6 +36,7 @@ export type AppShellInitialAuth = {
   companyName: string | null;
   adminActiveShipmentRequestCount: number;
   adminPendingVendorApplicationCount: number;
+  adminOperationalAttentionCount: number;
 };
 
 const navItems = [
@@ -165,6 +167,9 @@ function AppShellContent({
   const [adminPendingVendorApplicationCount, setAdminPendingVendorApplicationCount] = useState(
     initialAuth.adminPendingVendorApplicationCount
   );
+  const [adminOperationalAttentionCount, setAdminOperationalAttentionCount] = useState(
+    initialAuth.adminOperationalAttentionCount
+  );
 
   useEffect(() => {
     const supabase = getBrowserClient();
@@ -208,6 +213,7 @@ function AppShellContent({
       setCompanyName(null);
       setAdminActiveShipmentRequestCount(0);
       setAdminPendingVendorApplicationCount(0);
+      setAdminOperationalAttentionCount(0);
     }
 
     async function syncSession(session: Session | null) {
@@ -275,8 +281,10 @@ function AppShellContent({
     setCompanyName(initialAuth.companyName);
     setAdminActiveShipmentRequestCount(initialAuth.adminActiveShipmentRequestCount);
     setAdminPendingVendorApplicationCount(initialAuth.adminPendingVendorApplicationCount);
+    setAdminOperationalAttentionCount(initialAuth.adminOperationalAttentionCount);
   }, [
     initialAuth.adminActiveShipmentRequestCount,
+    initialAuth.adminOperationalAttentionCount,
     initialAuth.adminPendingVendorApplicationCount,
     initialAuth.companyName,
     initialAuth.email,
@@ -461,6 +469,11 @@ function AppShellContent({
     adminPendingVendorApplicationCount
   });
   const hasMobileBottomNav = mobileNavItems.length > 0;
+  const adminTabAttentionCount = role === 'admin'
+    ? adminActiveShipmentRequestCount +
+      adminPendingVendorApplicationCount +
+      adminOperationalAttentionCount
+    : 0;
 
   const brandHref = (() => {
     if (status !== 'signed-in') {
@@ -497,6 +510,7 @@ function AppShellContent({
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <AdminTabAttentionIndicator active={adminTabAttentionCount > 0} />
       <header className="relative z-30 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-3 py-2 sm:px-4 md:gap-6 md:px-6 md:py-4">
           <Link
@@ -532,8 +546,8 @@ function AppShellContent({
                     className={cn(
                       'inline-flex items-center whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 active:scale-[0.98] sm:px-3 sm:py-2 sm:text-sm',
                       isNavActive(pathname ?? null, item.href)
-                        ? 'bg-foreground text-white shadow-sm'
-                      : 'text-foreground/70 hover:bg-muted hover:text-foreground'
+                        ? 'bg-slate-100 text-slate-950'
+                        : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <span>{item.label}</span>

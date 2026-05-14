@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Alert } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getVendors, type VendorListEntry } from '@/lib/data/vendors';
 import { VendorBulkDeleteForm } from '@/components/admin/vendor-bulk-delete-form';
@@ -37,12 +37,13 @@ export default async function AdminVendorsPage({
   const errorMessage = typeof resolvedParams.error === 'string' ? resolvedParams.error : null;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-1">
-        <CardTitle className="text-2xl font-semibold">セラー一覧</CardTitle>
-        <p className="text-sm text-slate-500">最新 100 件のセラーを表示しています。</p>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <div className="grid gap-5">
+      <PageHeader
+        eyebrow="Admin"
+        title="セラー"
+        description="登録済みセラーの連絡先・状態を確認できます。最新 100 件を表示しています。"
+      />
+      <Surface className="grid gap-4 p-3 sm:p-4">
         {statusMessage ? <Alert variant="success">{statusMessage}</Alert> : null}
         {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
@@ -53,7 +54,7 @@ export default async function AdminVendorsPage({
         ) : (
           <VendorBulkDeleteForm vendors={vendors} />
         )}
-      </CardContent>
-    </Card>
+      </Surface>
+    </div>
   );
 }

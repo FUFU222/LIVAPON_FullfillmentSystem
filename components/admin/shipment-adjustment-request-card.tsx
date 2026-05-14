@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useFormState } from 'react-dom';
+import { useActionState, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -62,7 +61,7 @@ export function ShipmentAdjustmentRequestCard({
 }: {
   request: AdminShipmentAdjustmentRequest;
 }) {
-  const [state, formAction] = useFormState(
+  const [state, formAction] = useActionState(
     handleShipmentAdjustmentAdminAction,
     INITIAL_SHIPMENT_ADJUSTMENT_ADMIN_STATE
   );

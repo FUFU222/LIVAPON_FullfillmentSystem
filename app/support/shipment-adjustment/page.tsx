@@ -5,8 +5,8 @@ import { formatDateTimeInJst } from '@/lib/date-time';
 import { getVendorProfile } from '@/lib/data/vendors';
 import { ShipmentAdjustmentForm } from '@/components/support/shipment-adjustment-form';
 import { ShipmentAdjustmentStatusBadge } from '@/components/support/shipment-adjustment-status-badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { getServerComponentClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -65,24 +65,24 @@ export default async function ShipmentAdjustmentPage() {
   }));
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
-      <div className="space-y-2">
-        <p className="text-base font-semibold text-foreground sm:text-lg">発送修正依頼</p>
-        <p className="text-sm text-slate-500">
-          発送済みの注文内容を変更する際は下記フォームから管理者に依頼してください。Console 上での直接取消はできません。
-        </p>
-      </div>
+    <div className="mx-auto grid w-full max-w-5xl gap-5">
+      <PageHeader
+        eyebrow="Support"
+        title="発送修正依頼"
+        description="発送済みの注文内容を変更する際は下記フォームから管理者に依頼してください。管理者が内容を確認して対応します。"
+      />
       <ShipmentAdjustmentForm
         defaultContactName={vendorProfile?.contactName ?? auth.user.user_metadata?.contact_name ?? ''}
         defaultContactEmail={vendorProfile?.contactEmail ?? auth.user.email}
         defaultContactPhone={vendorProfile?.contactPhone ?? null}
         vendorName={vendorProfile?.name ?? undefined}
       />
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">依頼履歴</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <Surface className="grid gap-4 p-4 sm:p-6">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950">依頼履歴</h2>
+          <p className="mt-1 text-sm text-slate-500">過去の依頼内容と管理者からのコメントを確認できます。</p>
+        </div>
+        <div className="grid gap-4">
           {history.length === 0 ? (
             <Alert variant="default">まだ依頼履歴はありません。</Alert>
           ) : (
@@ -137,8 +137,8 @@ export default async function ShipmentAdjustmentPage() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </div>
   );
 }

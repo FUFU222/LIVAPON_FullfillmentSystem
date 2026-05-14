@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import {
   listShipmentAdjustmentRequestsForAdmin,
@@ -29,11 +29,14 @@ export default async function AdminShipmentRequestsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">発送修正依頼 — 対応中</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <PageHeader
+        eyebrow="Admin"
+        title="発送修正依頼"
+        description="発送済みデータの修正依頼を確認し、必要な対応内容とセラーへの返信を管理します。"
+      />
+      <Surface className="grid gap-4 p-3 sm:p-4">
+        <SectionTitle title="対応中" description="確認・返信・反映が必要な修正依頼です。" />
+        <div className="grid gap-4">
           {activeRequests.length === 0 ? (
             <Alert variant="success">未対応の依頼はありません。</Alert>
           ) : (
@@ -41,14 +44,12 @@ export default async function AdminShipmentRequestsPage() {
               <ShipmentAdjustmentRequestCard key={request.id} request={request} />
             ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">最近完了した依頼</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <Surface className="grid gap-4 p-3 sm:p-4">
+        <SectionTitle title="最近完了した依頼" description="直近で解決済みにした修正依頼です。" />
+        <div className="grid gap-4">
           {resolvedRequests.length === 0 ? (
             <p className="text-sm text-slate-500">完了済みの依頼はまだありません。</p>
           ) : (
@@ -56,8 +57,17 @@ export default async function AdminShipmentRequestsPage() {
               <ShipmentAdjustmentRequestCard key={request.id} request={request} />
             ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
+    </div>
+  );
+}
+
+function SectionTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+      <p className="mt-1 text-sm text-slate-500">{description}</p>
     </div>
   );
 }

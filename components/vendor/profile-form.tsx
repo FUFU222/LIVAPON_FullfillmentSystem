@@ -1,9 +1,9 @@
 'use client';
 
 import { Bell, Building2, KeyRound, MapPin, type LucideIcon } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { updateVendorProfileAction } from '@/app/vendor/profile/actions';
 import type { VendorProfileActionState } from '@/app/vendor/profile/actions';
@@ -63,7 +63,7 @@ function shouldPreventEnterSubmit(event: ReactKeyboardEvent<HTMLFormElement>) {
 }
 
 export function VendorProfileForm({ initial }: { initial: VendorProfileInitialValues }) {
-  const [state, formAction] = useFormState(updateVendorProfileAction, INITIAL_VENDOR_PROFILE_STATE);
+  const [state, formAction] = useActionState(updateVendorProfileAction, INITIAL_VENDOR_PROFILE_STATE);
   const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
   const router = useRouter();

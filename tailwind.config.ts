@@ -10,9 +10,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#ffffff',
+        background: '#f8fafc',
         foreground: '#0f172a',
-        muted: '#f8fafc',
+        muted: '#f1f5f9',
         accent: '#1f2937'
       },
       keyframes: {

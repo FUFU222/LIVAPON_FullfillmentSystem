@@ -6,7 +6,7 @@ test.describe('vendor orders', () => {
     test.skip(missing.length > 0, `Missing E2E credentials: ${missing.join(', ')}`);
 
     await signInAs(page, 'vendorA', '/orders');
-    await expect(page.getByRole('heading', { name: '注文一覧' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '注文処理' })).toBeVisible();
   });
 
   test('[VO-02] @auth @vendor vendor A does not see vendor B order numbers', async ({ page }) => {

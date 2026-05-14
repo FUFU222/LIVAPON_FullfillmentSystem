@@ -14,7 +14,7 @@ test.describe('admin shipment adjustment requests', () => {
     test.skip(missing.length > 0, `Missing E2E credentials: ${missing.join(', ')}`);
 
     await signInAs(page, 'admin', '/admin/shipment-requests');
-    await expect(page.getByRole('heading', { name: '発送修正申請 — 対応中' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '発送修正依頼' })).toBeVisible();
   });
 
   test('[ASR-02] @admin admin can add a reply comment', async ({ page }) => {

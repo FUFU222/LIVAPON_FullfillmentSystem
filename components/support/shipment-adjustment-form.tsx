@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
+import { ChevronLeft } from 'lucide-react';
 import { submitShipmentAdjustmentRequest } from '@/app/support/shipment-adjustment/actions';
 import { initialShipmentAdjustmentFormState } from '@/app/support/shipment-adjustment/state';
 import { shipmentIssueTypeOptions } from '@/app/support/shipment-adjustment/options';
@@ -34,7 +35,7 @@ export function ShipmentAdjustmentForm({
   defaultContactPhone?: string | null;
   vendorName?: string | null;
 }) {
-  const [state, formAction] = useFormState(
+  const [state, formAction] = useActionState(
     submitShipmentAdjustmentRequest,
     initialShipmentAdjustmentFormState
   );
@@ -171,13 +172,12 @@ export function ShipmentAdjustmentForm({
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500">
             <Link
               href="/orders/shipments"
-              className="text-sm text-slate-600 underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 underline-offset-4 hover:text-foreground hover:underline"
             >
-              ← 発送履歴に戻る
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              発送履歴に戻る
             </Link>
-            <div className="flex flex-1 justify-center">
-              <SubmitButton />
-            </div>
+            <SubmitButton />
           </div>
         </form>
       </div>

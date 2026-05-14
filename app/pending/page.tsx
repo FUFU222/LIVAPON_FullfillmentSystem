@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getAuthContext } from '@/lib/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { PendingAccessStatus } from '@/components/pending/pending-access-status';
 
 export default async function PendingStatusPage() {
@@ -19,11 +19,13 @@ export default async function PendingStatusPage() {
   }
 
   return (
-    <Card className="mx-auto max-w-2xl">
-      <CardHeader>
-        <CardTitle className="text-2xl font-semibold">審査状況</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 text-sm text-slate-600">
+    <div className="mx-auto grid w-full max-w-2xl gap-5">
+      <PageHeader
+        eyebrow="Application"
+        title="審査状況"
+        description="利用開始依頼の確認が完了するまで、現在のステータスを表示します。"
+      />
+      <Surface className="space-y-4 p-4 text-sm text-slate-600 sm:p-6">
         <PendingAccessStatus />
         <p>
           緊急のご要望や追加のご連絡が必要な場合は
@@ -33,7 +35,7 @@ export default async function PendingStatusPage() {
           </a>
           {' '}までお問い合わせください。
         </p>
-      </CardContent>
-    </Card>
+      </Surface>
+    </div>
   );
 }

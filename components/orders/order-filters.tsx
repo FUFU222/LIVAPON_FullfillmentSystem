@@ -63,7 +63,7 @@ export function OrderFilters() {
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm",
+        "flex w-full flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-slate-50/80 p-2 text-sm lg:w-auto",
         isPending && "opacity-80"
       )}
     >

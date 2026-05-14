@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { AppShell, type AppShellInitialAuth } from '@/components/layout/app-shell';
 import { ToastProvider } from '@/components/ui/toast-provider';
 import { getAuthContext } from '@/lib/auth';
+import { getAdminOperationalStatus } from '@/lib/data/admin-operational-status';
 import { countActiveShipmentAdjustmentRequestsForAdmin } from '@/lib/data/shipment-adjustments';
 import {
   countPendingVendorApplicationsForAdmin,
@@ -22,6 +23,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   let companyName: string | null = null;
   let adminActiveShipmentRequestCount = 0;
   let adminPendingVendorApplicationCount = 0;
+  let adminOperationalAttentionCount = 0;
 
   if (auth && typeof auth.vendorId === 'number') {
     try {
@@ -33,13 +35,29 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   }
 
   if (auth?.role === 'admin') {
-    try {
-      [adminActiveShipmentRequestCount, adminPendingVendorApplicationCount] = await Promise.all([
+    const [shipmentRequestsResult, vendorApplicationsResult, operationalStatusResult] =
+      await Promise.allSettled([
         countActiveShipmentAdjustmentRequestsForAdmin(),
-        countPendingVendorApplicationsForAdmin()
+        countPendingVendorApplicationsForAdmin(),
+        getAdminOperationalStatus()
       ]);
-    } catch (error) {
-      console.error('Failed to load admin navigation counts for layout', error);
+
+    if (shipmentRequestsResult.status === 'fulfilled') {
+      adminActiveShipmentRequestCount = shipmentRequestsResult.value;
+    } else {
+      console.error('Failed to load admin shipment request count for layout', shipmentRequestsResult.reason);
+    }
+
+    if (vendorApplicationsResult.status === 'fulfilled') {
+      adminPendingVendorApplicationCount = vendorApplicationsResult.value;
+    } else {
+      console.error('Failed to load admin vendor application count for layout', vendorApplicationsResult.reason);
+    }
+
+    if (operationalStatusResult.status === 'fulfilled') {
+      adminOperationalAttentionCount = operationalStatusResult.value.attentionCount;
+    } else {
+      console.error('Failed to load admin operational status for layout', operationalStatusResult.reason);
     }
   }
 
@@ -51,7 +69,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         role: auth.role,
         companyName,
         adminActiveShipmentRequestCount,
-        adminPendingVendorApplicationCount
+        adminPendingVendorApplicationCount,
+        adminOperationalAttentionCount
       }
     : {
         status: 'signed-out',
@@ -60,7 +79,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         role: null,
         companyName: null,
         adminActiveShipmentRequestCount: 0,
-        adminPendingVendorApplicationCount: 0
+        adminPendingVendorApplicationCount: 0,
+        adminOperationalAttentionCount: 0
       };
 
   return (

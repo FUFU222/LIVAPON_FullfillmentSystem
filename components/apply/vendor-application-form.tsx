@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { submitVendorApplication } from '@/app/(public)/apply/actions';
 import { initialApplyFormState } from '@/app/(public)/apply/state';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ function SubmitButton({ pendingLabel, children }: { pendingLabel: string; childr
 }
 
 export function VendorApplicationForm() {
-  const [state, formAction] = useFormState(submitVendorApplication, initialApplyFormState);
+  const [state, formAction] = useActionState(submitVendorApplication, initialApplyFormState);
   const formRef = useRef<HTMLFormElement>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const router = useRouter();

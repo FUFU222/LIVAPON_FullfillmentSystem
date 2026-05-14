@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { approveApplicationAction, rejectApplicationAction } from '@/app/admin/applications/actions';
 import { initialAdminActionState, type AdminActionState } from '@/app/admin/applications/state';
@@ -189,8 +189,8 @@ function ApprovalSuccessDialog({
 
 export function VendorApplicationCard({ application }: { application: VendorApplication }) {
   const router = useRouter();
-  const [approveState, approveAction] = useFormState(approveApplicationAction, initialAdminActionState);
-  const [rejectState, rejectAction] = useFormState(rejectApplicationAction, initialAdminActionState);
+  const [approveState, approveAction] = useActionState(approveApplicationAction, initialAdminActionState);
+  const [rejectState, rejectAction] = useActionState(rejectApplicationAction, initialAdminActionState);
   const rejectFormRef = useRef<HTMLFormElement>(null);
   const approveFormRef = useRef<HTMLFormElement>(null);
   const bypassConfirmRef = useRef(false);

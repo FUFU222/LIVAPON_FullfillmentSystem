@@ -7,7 +7,7 @@ import {
 } from '@/lib/data/vendors';
 import { VendorApplicationCard } from '@/components/admin/vendor-application-card';
 import { Alert } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 
 // 申請レコードの住所を 1 行サマリに整形(一覧テーブル用)
 // 1 項目でも入っていれば「都道府県+市区町村+番地」 を返す。全部空なら null(=未登録扱い)。
@@ -40,11 +40,14 @@ export default async function AdminApplicationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">利用開始依頼</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-6">
+      <PageHeader
+        eyebrow="Admin"
+        title="利用開始依頼"
+        description="新しいセラーの利用申請を確認し、承認または差し戻しを行います。発送元住所は納品書にも利用されます。"
+      />
+      <Surface className="grid gap-4 p-3 sm:p-4">
+        <SectionTitle title="対応待ち" description="承認または差し戻しが必要な依頼です。" />
+        <div className="grid gap-4">
           {pending.length === 0 ? (
             <Alert variant="success">現在、対応待ちの依頼はありません。</Alert>
           ) : (
@@ -52,14 +55,12 @@ export default async function AdminApplicationsPage() {
               <VendorApplicationCard key={application.id} application={application} />
             ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">最近対応した依頼</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <Surface className="grid gap-4 overflow-hidden p-3 sm:p-4">
+        <SectionTitle title="最近対応した依頼" description="直近の承認・差し戻し履歴です。" />
+        <div className="grid gap-4">
           {recent.length === 0 ? (
             <p className="text-sm text-slate-500">履歴はまだありません。</p>
           ) : (
@@ -101,8 +102,17 @@ export default async function AdminApplicationsPage() {
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
+    </div>
+  );
+}
+
+function SectionTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+      <p className="mt-1 text-sm text-slate-500">{description}</p>
     </div>
   );
 }

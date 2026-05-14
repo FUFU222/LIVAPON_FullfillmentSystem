@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { GradientAvatar } from '@/components/ui/avatar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { VendorProfileForm } from '@/components/vendor/profile-form';
 import { OrdersRealtimeProvider } from '@/components/orders/orders-realtime-context';
 import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
@@ -44,40 +44,39 @@ export default async function VendorProfilePage() {
   return (
     <OrdersRealtimeProvider>
       <OrdersRealtimeListener vendorId={auth.vendorId} />
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:px-10">
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-col gap-6 border-b border-slate-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="mx-auto grid w-full max-w-4xl gap-5">
+        <PageHeader
+          eyebrow="Settings"
+          title="セラー設定"
+          description="連絡先、通知先、発送元住所、ログイン情報を管理します。"
+          meta={
+            <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
               <GradientAvatar seed={vendor.name ?? contactEmail} label={vendor.name ?? contactEmail} size="lg" />
-              <div className="space-y-2">
-                <CardTitle className="text-2xl font-semibold text-foreground">
-                  {vendor.name}
-                </CardTitle>
-                <CardDescription>
-                  連絡先、通知先、パスワードをここで更新できます。
-                </CardDescription>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-950">{vendor.name}</p>
+                <p className="truncate text-xs text-slate-500">{contactEmail}</p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <VendorProfileForm
-              initial={{
-                companyName: vendor.name,
-                contactName,
-                contactEmail,
-                notificationEmails: vendor.notificationEmails,
-                vendorCode: vendor.code,
-                contactPhone: vendor.contactPhone ?? null,
-                notifyNewOrders,
-                postal: vendor.postal ?? null,
-                prefecture: vendor.prefecture ?? null,
-                city: vendor.city ?? null,
-                address1: vendor.address1 ?? null,
-                address2: vendor.address2 ?? null
-              }}
-            />
-          </CardContent>
-        </Card>
+          }
+        />
+        <Surface className="p-4 sm:p-6">
+          <VendorProfileForm
+            initial={{
+              companyName: vendor.name,
+              contactName,
+              contactEmail,
+              notificationEmails: vendor.notificationEmails,
+              vendorCode: vendor.code,
+              contactPhone: vendor.contactPhone ?? null,
+              notifyNewOrders,
+              postal: vendor.postal ?? null,
+              prefecture: vendor.prefecture ?? null,
+              city: vendor.city ?? null,
+              address1: vendor.address1 ?? null,
+              address2: vendor.address2 ?? null
+            }}
+          />
+        </Surface>
       </div>
     </OrdersRealtimeProvider>
   );

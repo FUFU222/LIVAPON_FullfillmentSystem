@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState } from 'react-dom';
+import { useActionState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,7 +9,7 @@ import { processCsvUpload, type ImportResult } from './actions';
 const initialState: ImportResult = { ok: false, preview: [], errors: [] };
 
 export function UploadForm() {
-  const [state, formAction] = useFormState(processCsvUpload, initialState);
+  const [state, formAction] = useActionState(processCsvUpload, initialState);
 
   return (
     <div className="flex flex-col gap-6">

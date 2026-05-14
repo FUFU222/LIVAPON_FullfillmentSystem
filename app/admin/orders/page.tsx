@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Alert } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { AdminOrdersTable } from '@/components/admin/admin-orders-table';
 import { getAuthContext, isAdmin } from '@/lib/auth';
 import { getRecentOrdersForAdmin } from '@/lib/data/orders';
@@ -32,17 +32,19 @@ export default async function AdminOrdersPage() {
     .map(([id]) => id);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl font-semibold">全注文一覧</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="grid gap-5">
+      <PageHeader
+        eyebrow="Admin"
+        title="注文"
+        description="最近更新された注文を確認し、必要に応じて納品書・発送連携状態を確認できます。"
+      />
+      <Surface className="p-3 sm:p-4">
         {orders.length === 0 ? (
           <Alert variant="success">表示できる注文がありません。</Alert>
         ) : (
           <AdminOrdersTable orders={orders} issuedOrderIds={issuedOrderIds} />
         )}
-      </CardContent>
-    </Card>
+      </Surface>
+    </div>
   );
 }

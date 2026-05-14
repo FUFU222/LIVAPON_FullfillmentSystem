@@ -51,6 +51,7 @@ function buildAuth(overrides?: Partial<AppShellInitialAuth>): AppShellInitialAut
     companyName: 'テストセラー',
     adminActiveShipmentRequestCount: 0,
     adminPendingVendorApplicationCount: 0,
+    adminOperationalAttentionCount: 0,
     ...overrides
   };
 }

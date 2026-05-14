@@ -30,6 +30,7 @@ describe('/api/internal/shipment-jobs/process', () => {
     delete process.env.JOB_WORKER_SECRET;
     delete process.env.SHIPMENT_JOB_LIMIT;
     delete process.env.SHIPMENT_JOB_ITEM_LIMIT;
+    delete process.env.ALLOW_INSECURE_INTERNAL_ROUTES;
   });
 
   afterAll(() => {
@@ -75,5 +76,41 @@ describe('/api/internal/shipment-jobs/process', () => {
 
     expect(response.status).toBe(401);
     expect(processShipmentImportJobs).not.toHaveBeenCalled();
+  });
+
+  it('rejects requests when no worker secret is configured', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const processShipmentImportJobs = jest.fn();
+
+    jest.doMock('@/lib/jobs/shipment-import-runner', () => ({
+      processShipmentImportJobs
+    }));
+
+    const { POST } = await import('@/app/api/internal/shipment-jobs/process/route');
+    const response = await POST(buildRequest('https://app.example.com/api/internal/shipment-jobs/process'));
+
+    expect(response.status).toBe(401);
+    expect(processShipmentImportJobs).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[shipment-jobs] CRON_SECRET/JOB_WORKER_SECRET is not configured; refusing request.'
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('returns 405 for GET requests', async () => {
+    process.env.CRON_SECRET = 'test-secret';
+    const processShipmentImportJobs = jest.fn();
+
+    jest.doMock('@/lib/jobs/shipment-import-runner', () => ({
+      processShipmentImportJobs
+    }));
+
+    const { GET } = await import('@/app/api/internal/shipment-jobs/process/route');
+    const response = await GET();
+
+    expect(response.status).toBe(405);
+    expect(processShipmentImportJobs).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({ error: 'Method Not Allowed' });
   });
 });

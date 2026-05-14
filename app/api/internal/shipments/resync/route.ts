@@ -1,24 +1,25 @@
 import { NextResponse } from 'next/server';
 import { resyncPendingShipments } from '@/lib/data/orders';
+import {
+  isAuthorizedInternalRequest,
+  isExplicitInternalAuthBypassAllowed
+} from '@/lib/security/internal-auth';
+
+export const runtime = 'nodejs';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
 function isAuthorized(request: Request) {
   if (!CRON_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('CRON_SECRET is not configured; refusing request.');
-      return false;
+    if (isExplicitInternalAuthBypassAllowed()) {
+      console.warn('CRON_SECRET is not configured; allowing request because ALLOW_INSECURE_INTERNAL_ROUTES=true outside production.');
+      return true;
     }
-    console.warn('CRON_SECRET is not configured; allowing request in non-production environment.');
-    return true;
+    console.error('CRON_SECRET is not configured; refusing request.');
+    return false;
   }
 
-  const authorization = request.headers.get('authorization') ?? '';
-  const token = authorization.startsWith('Bearer ')
-    ? authorization.slice('Bearer '.length).trim()
-    : null;
-
-  return token === CRON_SECRET;
+  return isAuthorizedInternalRequest(request, CRON_SECRET);
 }
 
 async function handleRequest(request: Request) {
@@ -44,6 +45,6 @@ export async function POST(request: Request) {
   return handleRequest(request);
 }
 
-export async function GET(request: Request) {
-  return handleRequest(request);
+export async function GET() {
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405, headers: { Allow: 'POST' } });
 }

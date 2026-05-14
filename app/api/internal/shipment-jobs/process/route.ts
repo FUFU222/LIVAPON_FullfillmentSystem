@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { processShipmentImportJobs } from '@/lib/jobs/shipment-import-runner';
+import {
+  isAuthorizedInternalRequest,
+  isExplicitInternalAuthBypassAllowed
+} from '@/lib/security/internal-auth';
 
 export const runtime = 'nodejs';
 
@@ -7,14 +11,15 @@ const AUTH_TOKEN = process.env.CRON_SECRET ?? process.env.JOB_WORKER_SECRET ?? n
 
 function isAuthorized(request: Request) {
   if (!AUTH_TOKEN) {
-    console.warn('[shipment-jobs] CRON_SECRET not configured; allowing request in non-production mode');
-    return process.env.NODE_ENV !== 'production';
+    if (isExplicitInternalAuthBypassAllowed()) {
+      console.warn('[shipment-jobs] CRON_SECRET/JOB_WORKER_SECRET not configured; allowing request because ALLOW_INSECURE_INTERNAL_ROUTES=true outside production.');
+      return true;
+    }
+    console.error('[shipment-jobs] CRON_SECRET/JOB_WORKER_SECRET is not configured; refusing request.');
+    return false;
   }
-  const header = request.headers.get('authorization');
-  const token = header?.startsWith('Bearer ')
-    ? header.slice('Bearer '.length).trim()
-    : null;
-  return token === AUTH_TOKEN;
+
+  return isAuthorizedInternalRequest(request, AUTH_TOKEN);
 }
 
 function parseLimit(value: string | null, defaultValue: number, min: number, max: number) {
@@ -51,8 +56,8 @@ async function handle(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
-  return handle(request);
+export async function GET() {
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405, headers: { Allow: 'POST' } });
 }
 
 export async function POST(request: Request) {

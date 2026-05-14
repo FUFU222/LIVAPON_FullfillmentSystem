@@ -27,6 +27,7 @@ describe('/api/internal/webhook-jobs/process', () => {
     jest.resetModules();
     process.env = { ...originalEnv };
     delete process.env.JOB_WORKER_SECRET;
+    delete process.env.ALLOW_INSECURE_INTERNAL_ROUTES;
     process.env.NODE_ENV = 'test';
   });
 
@@ -46,8 +47,8 @@ describe('/api/internal/webhook-jobs/process', () => {
       processWebhookJobs
     }));
 
-    const { GET } = await import('@/app/api/internal/webhook-jobs/process/route');
-    const response = await GET(
+    const { POST } = await import('@/app/api/internal/webhook-jobs/process/route');
+    const response = await POST(
       buildRequest('https://app.example.com/api/internal/webhook-jobs/process?limit=9', 'worker-secret')
     );
 
@@ -77,7 +78,30 @@ describe('/api/internal/webhook-jobs/process', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Unauthorized' });
   });
 
-  it('allows requests without a secret outside production', async () => {
+  it('rejects requests without a configured secret by default outside production', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const processWebhookJobs = jest.fn();
+
+    jest.doMock('@/lib/jobs/webhook-runner', () => ({
+      processWebhookJobs
+    }));
+
+    const { POST } = await import('@/app/api/internal/webhook-jobs/process/route');
+    const response = await POST(
+      buildRequest('https://app.example.com/api/internal/webhook-jobs/process?limit=abc')
+    );
+
+    expect(response.status).toBe(401);
+    expect(processWebhookJobs).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[webhook-jobs] JOB_WORKER_SECRET is not configured; refusing request.'
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('allows requests without a secret only when the explicit local bypass is enabled', async () => {
+    process.env.ALLOW_INSECURE_INTERNAL_ROUTES = 'true';
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const processWebhookJobs = jest.fn().mockResolvedValue({
       claimed: 1,
@@ -89,15 +113,15 @@ describe('/api/internal/webhook-jobs/process', () => {
       processWebhookJobs
     }));
 
-    const { GET } = await import('@/app/api/internal/webhook-jobs/process/route');
-    const response = await GET(
+    const { POST } = await import('@/app/api/internal/webhook-jobs/process/route');
+    const response = await POST(
       buildRequest('https://app.example.com/api/internal/webhook-jobs/process?limit=abc')
     );
 
     expect(response.status).toBe(200);
     expect(processWebhookJobs).toHaveBeenCalledWith({ limit: undefined });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[webhook-jobs] JOB_WORKER_SECRET not set; allowing request (development only).'
+      '[webhook-jobs] JOB_WORKER_SECRET not set; allowing request because ALLOW_INSECURE_INTERNAL_ROUTES=true outside production.'
     );
 
     consoleWarnSpy.mockRestore();
@@ -105,7 +129,27 @@ describe('/api/internal/webhook-jobs/process', () => {
 
   it('rejects requests without a secret in production', async () => {
     process.env.NODE_ENV = 'production';
-    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const processWebhookJobs = jest.fn();
+
+    jest.doMock('@/lib/jobs/webhook-runner', () => ({
+      processWebhookJobs
+    }));
+
+    const { POST } = await import('@/app/api/internal/webhook-jobs/process/route');
+    const response = await POST(buildRequest('https://app.example.com/api/internal/webhook-jobs/process'));
+
+    expect(response.status).toBe(401);
+    expect(processWebhookJobs).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[webhook-jobs] JOB_WORKER_SECRET is not configured; refusing request.'
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('returns 405 for GET requests', async () => {
+    process.env.JOB_WORKER_SECRET = 'worker-secret';
     const processWebhookJobs = jest.fn();
 
     jest.doMock('@/lib/jobs/webhook-runner', () => ({
@@ -113,15 +157,11 @@ describe('/api/internal/webhook-jobs/process', () => {
     }));
 
     const { GET } = await import('@/app/api/internal/webhook-jobs/process/route');
-    const response = await GET(buildRequest('https://app.example.com/api/internal/webhook-jobs/process'));
+    const response = await GET();
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(405);
     expect(processWebhookJobs).not.toHaveBeenCalled();
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[webhook-jobs] JOB_WORKER_SECRET not set; allowing request (development only).'
-    );
-
-    consoleWarnSpy.mockRestore();
+    await expect(response.json()).resolves.toEqual({ error: 'Method Not Allowed' });
   });
 
   it('returns 500 when processing throws', async () => {

@@ -27,6 +27,7 @@ describe('/api/internal/shipments/resync', () => {
     jest.resetModules();
     process.env = { ...originalEnv };
     delete process.env.CRON_SECRET;
+    delete process.env.ALLOW_INSECURE_INTERNAL_ROUTES;
     process.env.NODE_ENV = 'test';
   });
 
@@ -73,8 +74,8 @@ describe('/api/internal/shipments/resync', () => {
       resyncPendingShipments
     }));
 
-    const { GET } = await import('@/app/api/internal/shipments/resync/route');
-    const response = await GET(
+    const { POST } = await import('@/app/api/internal/shipments/resync/route');
+    const response = await POST(
       buildRequest('https://app.example.com/api/internal/shipments/resync', 'wrong-secret')
     );
 
@@ -83,7 +84,30 @@ describe('/api/internal/shipments/resync', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Unauthorized' });
   });
 
-  it('allows requests without a secret outside production', async () => {
+  it('rejects requests without a configured secret by default outside production', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const resyncPendingShipments = jest.fn();
+
+    jest.doMock('@/lib/data/orders', () => ({
+      resyncPendingShipments
+    }));
+
+    const { POST } = await import('@/app/api/internal/shipments/resync/route');
+    const response = await POST(
+      buildRequest('https://app.example.com/api/internal/shipments/resync?limit=not-a-number')
+    );
+
+    expect(response.status).toBe(401);
+    expect(resyncPendingShipments).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'CRON_SECRET is not configured; refusing request.'
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('allows requests without a secret only when the explicit local bypass is enabled', async () => {
+    process.env.ALLOW_INSECURE_INTERNAL_ROUTES = 'true';
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const resyncPendingShipments = jest.fn().mockResolvedValue({
       total: 1,
@@ -96,15 +120,15 @@ describe('/api/internal/shipments/resync', () => {
       resyncPendingShipments
     }));
 
-    const { GET } = await import('@/app/api/internal/shipments/resync/route');
-    const response = await GET(
+    const { POST } = await import('@/app/api/internal/shipments/resync/route');
+    const response = await POST(
       buildRequest('https://app.example.com/api/internal/shipments/resync?limit=not-a-number')
     );
 
     expect(response.status).toBe(200);
     expect(resyncPendingShipments).toHaveBeenCalledWith({ limit: undefined });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'CRON_SECRET is not configured; allowing request in non-production environment.'
+      'CRON_SECRET is not configured; allowing request because ALLOW_INSECURE_INTERNAL_ROUTES=true outside production.'
     );
 
     consoleWarnSpy.mockRestore();
@@ -119,8 +143,8 @@ describe('/api/internal/shipments/resync', () => {
       resyncPendingShipments
     }));
 
-    const { GET } = await import('@/app/api/internal/shipments/resync/route');
-    const response = await GET(buildRequest('https://app.example.com/api/internal/shipments/resync'));
+    const { POST } = await import('@/app/api/internal/shipments/resync/route');
+    const response = await POST(buildRequest('https://app.example.com/api/internal/shipments/resync'));
 
     expect(response.status).toBe(401);
     expect(resyncPendingShipments).not.toHaveBeenCalled();
@@ -129,6 +153,22 @@ describe('/api/internal/shipments/resync', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it('returns 405 for GET requests', async () => {
+    process.env.CRON_SECRET = 'cron-secret';
+    const resyncPendingShipments = jest.fn();
+
+    jest.doMock('@/lib/data/orders', () => ({
+      resyncPendingShipments
+    }));
+
+    const { GET } = await import('@/app/api/internal/shipments/resync/route');
+    const response = await GET();
+
+    expect(response.status).toBe(405);
+    expect(resyncPendingShipments).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({ error: 'Method Not Allowed' });
   });
 
   it('returns 500 when resync throws', async () => {

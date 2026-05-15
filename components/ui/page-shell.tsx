@@ -6,6 +6,7 @@ type PageHeaderProps = {
   description?: string;
   eyebrow?: string;
   actions?: ReactNode;
+  actionsClassName?: string;
   meta?: ReactNode;
   className?: string;
 };
@@ -15,6 +16,7 @@ export function PageHeader({
   description,
   eyebrow,
   actions,
+  actionsClassName,
   meta,
   className
 }: PageHeaderProps) {
@@ -32,7 +34,11 @@ export function PageHeader({
         ) : null}
         {meta ? <div className="mt-3">{meta}</div> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className={cn('flex shrink-0 flex-wrap items-center gap-2', actionsClassName)}>
+          {actions}
+        </div>
+      ) : null}
     </header>
   );
 }

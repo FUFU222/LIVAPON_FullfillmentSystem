@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { buttonClasses } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { PageHeader, Surface } from '@/components/ui/page-shell';
 import { OrdersDispatchTable } from '@/components/orders/orders-dispatch-table';
 import { OrdersRealtimeListener } from '@/components/orders/orders-realtime-listener';
@@ -66,56 +65,38 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
   const issuedOrderIds = Array.from(issuanceFlags.entries())
     .filter(([, issued]) => issued)
     .map(([id]) => id);
-  const summary = summarizeOrders(filtered);
 
   return (
     <div className="grid gap-5">
       <OrdersRealtimeListener vendorId={auth.vendorId} />
       <OrdersRealtimeResetter />
       <PageHeader
+        className="sm:flex-col sm:items-stretch xl:flex-row xl:items-start"
+        actionsClassName="w-full xl:w-[36rem]"
         eyebrow="Dispatch"
         title="注文処理"
-        description="発送対象の商品を選択し、追跡番号をスキャンまたは入力して発送登録します。"
-        meta={
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="border-slate-200 bg-white text-slate-600">
-              全 {filtered.length} 件
-            </Badge>
-            <Badge className="border-amber-200 bg-amber-50 text-amber-700">
-              未発送 {summary.unfulfilledCount} 件
-            </Badge>
-            <Badge className="border-sky-200 bg-sky-50 text-sky-700">
-              一部発送 {summary.partialCount} 件
-            </Badge>
-            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
-              発送済 {summary.fulfilledCount} 件
-            </Badge>
-          </div>
-        }
+        description="発送対象の商品を選択し、追跡番号を入力して発送登録します。"
         actions={
-          <>
-          <OrdersRefreshButton />
-            <Link href="/orders/shipments" className={buttonClasses('outline')}>
-              発送履歴一覧
-            </Link>
-          </>
+          <div className="grid w-full gap-2">
+            <OrderFilters className="w-full bg-white/90 lg:w-full" />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <OrdersRefreshButton />
+              <Link href="/orders/shipments" className={buttonClasses('outline')}>
+                発送履歴一覧
+              </Link>
+            </div>
+          </div>
         }
       />
 
-      <Surface className="p-3 sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="text-sm text-slate-600">
-            <span className="font-medium text-slate-900">
-              {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)}
-            </span>
-            <span className="text-slate-400"> / </span>
-            <span>{filtered.length} 件を表示</span>
-          </div>
-          <OrderFilters />
-        </div>
-      </Surface>
-
       <Surface className="overflow-hidden p-2 sm:p-4">
+        <div className="mb-3 px-1 text-sm text-slate-600">
+          <span className="font-medium text-slate-900">
+            {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, filtered.length)}
+          </span>
+          <span className="text-slate-400"> / </span>
+          <span>{filtered.length} 件を表示</span>
+        </div>
         <OrdersDispatchTable
           orders={paginated}
           vendorId={auth.vendorId}
@@ -124,32 +105,6 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Sear
         <PaginationControls currentPage={currentPage} totalPages={totalPages} params={params} />
       </Surface>
     </div>
-  );
-}
-
-function summarizeOrders(orders: Awaited<ReturnType<typeof getOrders>>) {
-  return orders.reduce(
-    (summary, order) => {
-      const remaining = order.lineItems.reduce(
-        (total, item) => total + Math.max(0, item.remainingQuantity ?? 0),
-        0
-      );
-      const shipped = order.lineItems.reduce(
-        (total, item) => total + Math.max(0, item.shippedQuantity ?? 0),
-        0
-      );
-
-      if (remaining <= 0 && order.lineItems.length > 0) {
-        summary.fulfilledCount += 1;
-      } else if (shipped > 0) {
-        summary.partialCount += 1;
-      } else {
-        summary.unfulfilledCount += 1;
-      }
-
-      return summary;
-    },
-    { unfulfilledCount: 0, partialCount: 0, fulfilledCount: 0 }
   );
 }
 

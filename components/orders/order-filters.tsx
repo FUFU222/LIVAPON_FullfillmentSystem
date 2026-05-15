@@ -15,7 +15,7 @@ const statusOptions = [
   { value: "fulfilled", label: "発送済" }
 ];
 
-export function OrderFilters() {
+export function OrderFilters({ className }: { className?: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -64,7 +64,8 @@ export function OrderFilters() {
       onSubmit={handleSubmit}
       className={cn(
         "flex w-full flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-slate-50/80 p-2 text-sm lg:w-auto",
-        isPending && "opacity-80"
+        isPending && "opacity-80",
+        className
       )}
     >
       <div className="flex min-w-[220px] flex-1 items-center gap-2">

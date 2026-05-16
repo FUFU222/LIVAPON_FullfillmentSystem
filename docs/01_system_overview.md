@@ -1,7 +1,7 @@
 # LIVAPON Fulfillment System
 
-## 現況（2026-05-06）
-- Node.js 24 / Next.js 16.2.4 / React 19.2 系で運用。App Router + Supabase を基盤にし、ESLint 9 / Jest 30 / TypeScript 5.4 / GitHub Actions を品質ゲートにする。
+## 現況（2026-05-16）
+- Node.js 24 / Next.js 16.2.6 / React 19.2 系で運用。App Router + Supabase を基盤にし、ESLint 9 / Jest 30 / TypeScript 5.4 / GitHub Actions を品質ゲートにする。
 - Shopify Webhook は即時キュー投入 (`webhook_jobs`) → GitHub Actions（10 分間隔 or 手動）から `/api/internal/webhook-jobs/process` を叩き、`processShopifyWebhook` → `upsertShopifyOrder` で整合性を確保。
 - 発送登録は UI でラインアイテム選択 → `/api/shopify/orders/shipments` が `shipments` / `shipment_line_items` を即時作成し、ユーザーには「発送情報を登録しました」と返す。Shopify 共有は `sync_status` と `sync_pending_until` を使い、`/api/internal/shipments/resync` が順次処理する。
 - 旧 shipment import job 系は互換・過去ジョブ処理のため残す。通常導線の発送登録では `/api/shipment-jobs/:id` polling や `shipment_import_jobs` の進捗追跡を使わない。
